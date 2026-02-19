@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Dashboard</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background:#f6f7fb;
+            padding:24px;
+        }
+
+        h1 { margin-top:0; }
+
+        .row {
+            display:flex;
+            gap:16px;
+            flex-wrap:wrap;
+        }
+
+        .card {
+            background:#fff;
+            border-radius:12px;
+            padding:16px;
+            box-shadow:0 2px 10px rgba(0,0,0,.06);
+            min-width:220px;
+            flex:1;
+        }
+
+        .k { color:#777; font-size:12px; }
+        .v { font-size:22px; font-weight:700; margin-top:6px; }
+
+        table {
+            width:100%;
+            border-collapse:collapse;
+            background:#fff;
+            border-radius:12px;
+            overflow:hidden;
+            box-shadow:0 2px 10px rgba(0,0,0,.06);
+            margin-top:20px;
+        }
+
+        th, td {
+            padding:12px;
+            border-bottom:1px solid #eee;
+            text-align:left;
+        }
+
+        th {
+            background:#fafafa;
+        }
+
+        .danger { color:#e74c3c; font-weight:700; }
+        .warning { color:#f39c12; font-weight:700; }
+        .success { color:#2ecc71; font-weight:700; }
+
+        .section { margin-top:30px; }
+    </style>
+</head>
+
+<body>
+
+<h1>📊 Control Dashboard</h1>
+
+{% if role == "founder" %}
+<div class="section">
+    <form method="get">
+        <select name="company">
+            <option value="">-- All Companies --</option>
+            {% for c in companies %}
+                <option value="{{ c.id }}" {% if selected_company == c.id %}selected{% endif %}>
+                    {{ c.name }}
+                </option>
+            {% endfor %}
+        </select>
+        <button type="submit">Filter</button>
+    </form>
+</div>
+{% endif %}
+
+<!-- KPI -->
+<div class="section row">
+    <div class="card">
+        <div class="k">Total Clients</div>
+        <div class="v">{{ total_clients }}</div>
+    </div>
+
+    <div class="card">
+        <div class="k">Revenue</div>
+        <div class="v">{{ total_revenue|floatformat:0 }}</div>
+    </div>
+
+    <div class="card">
+        <div class="k">Profit</div>
+        <div class="v">{{ total_profit|floatformat:0 }}</div>
+    </div>
+
+    <div class="card">
+        <div class="k">Net</div>
+        <div class="v">{{ total_net|floatformat:0 }}</div>
+    </div>
+
+    <div class="card">
+        <div class="k">Margin</div>
+        <div class="v">
+            {% if margin < 5 %}
+                <span class="danger">{{ margin }}%</span>
+            {% elif margin < 12 %}
+                <span class="warning">{{ margin }}%</span>
+            {% else %}
+                <span class="success">{{ margin }}%</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+
+<!-- CHART -->
+<div class="section">
+    <canvas id="revenueChart" height="100"></canvas>
+</div>
+
+<script>
+    const months = {{ months|safe }};
+    const revenues = {{ revenues|safe }};
+    const profits = {{ profits|safe }};
+
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: months,
+            datasets: [
+                {
+                    label: 'Revenue',
+                    data: revenues,
+                    borderWidth: 2
+                },
+                {
+                    label: 'Profit',
+                    data: profits,
+                    borderWidth: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top' }
+            }
+        }
+    });
+</script>
+
+
+<!-- TOP COMPANIES -->
+<div class="section">
+    <h3>🏢 Top Companies</h3>
+    <table>
+        <tr>
+            <th>Company</th>
+            <th>Total Revenue</th>
+        </tr>
+        {% for c in top_companies %}
+        <tr>
+            <td>
+                {% if c.shop__brand__company__name %}
+                    {{ c.shop__brand__company__name }}
+                {% else %}
+                    {{ c.company__name }}
+                {% endif %}
+            </td>
+            <td>{{ c.total_revenue|floatformat:0 }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="2">No data</td></tr>
+        {% endfor %}
+    </table>
+</div>
+
+
+<!-- LOSS COMPANIES -->
+<div class="section">
+    <h3>💥 Loss Companies</h3>
+    <table>
+        <tr>
+            <th>Company</th>
+            <th>Net</th>
+        </tr>
+        {% for c in loss_companies %}
+        <tr>
+            <td>
+                {% if c.shop__brand__company__name %}
+                    {{ c.shop__brand__company__name }}
+                {% else %}
+                    {{ c.company__name }}
+                {% endif %}
+            </td>
+            <td class="danger">
+                {% if c.total_metric %}
+                    {{ c.total_metric|floatformat:0 }}
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="2">No loss companies</td></tr>
+        {% endfor %}
+    </table>
+</div>
+
+<!-- ALERTS -->
+<div class="section">
+    <h3>⚠ Risk Signals</h3>
+
+    {% if risk_loss %}
+        <div class="danger">⚠ Some companies are losing money</div>
+    {% endif %}
+
+    {% if risk_growth %}
+        <div class="warning">⚠ Revenue growth is negative</div>
+    {% endif %}
+
+    {% if anomalies %}
+        <div class="warning">
+            ⚠ Revenue anomalies detected:
+            {{ anomalies|join:", " }}
+        </div>
+    {% endif %}
+
+    {% if not risk_loss and not risk_growth and not anomalies %}
+        <div class="success">System stable</div>
+    {% endif %}
+</div>
+
+</body>
+</html>

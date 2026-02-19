@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Client Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f6f7fb; padding:24px; }
+    .card { background:#fff; border-radius:12px; padding:16px; box-shadow:0 2px 10px rgba(0,0,0,.06); max-width:720px; }
+    .k { color:#777; font-size:12px; }
+    .v { font-size:22px; font-weight:700; margin-top:6px; }
+  </style>
+</head>
+<body>
+  <h1>🛍️ Client Portal</h1>
+
+  <div class="card">
+    <div class="k">Revenue</div>
+    <div class="v">{{ total_revenue|floatformat:0 }}</div>
+    <div class="k" style="margin-top:12px;">Profit</div>
+    <div class="v">{{ total_profit|floatformat:0 }}</div>
+    <div class="k" style="margin-top:12px;">Net</div>
+    <div class="v">{{ total_net|floatformat:0 }}</div>
+    <div class="k" style="margin-top:12px;">Margin</div>
+    <div class="v">{{ margin }}%</div>
+  </div>
+
+  <p style="margin-top:16px;color:#777;">
+    (Portal bản đầu: chỉ KPI. Sau bạn muốn drill shop, chart, alert… mình nâng tiếp.)
+  </p>
+</body>
+</html>
