@@ -1,7 +1,7 @@
-# apps/projects/services.py
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from typing import Any, Dict, Optional, List
 
 from django.db.models import Count, Q
@@ -9,6 +9,13 @@ from django.utils import timezone
 
 from apps.projects.models import Project
 from apps.projects.types import normalize_project_type, get_type_display_safe
+
+from apps.rules.resolver import get_engine
+from apps.rules.types import EngineContext
+from datetime import date
+
+DOMAIN = "projects_dashboard"
+DEFAULT_RULE_VERSION = "v1"
 
 
 @dataclass
@@ -25,13 +32,22 @@ class ProjectDashboardService:
     """
 
     @staticmethod
-    def build(*, tenant_id: int, company_id: Optional[int] = None, limit: int = 50) -> ProjectDashboardResult:
+    def build(
+        *,
+        tenant_id: int,
+        company_id: Optional[int] = None,
+        limit: int = 50,
+    ) -> ProjectDashboardResult:
         qs = Project.objects_all.filter(tenant_id=tenant_id).order_by("-id")
-
-        # ✅ dùng is not None (đúng chuẩn)
         if company_id is not None:
             qs = qs.filter(company_id=company_id)
+        return ProjectDashboardService.build_from_queryset(qs, limit=limit)
 
+    @staticmethod
+    def build_from_queryset(qs, *, limit: int = 50) -> ProjectDashboardResult:
+        """
+        Dùng khi page đã filter/paginate sẵn queryset.
+        """
         qs = qs.annotate(
             shops_total=Count("project_shops", distinct=True),
             shops_active=Count("project_shops", filter=Q(project_shops__status="active"), distinct=True),
@@ -49,16 +65,28 @@ class ProjectDashboardService:
             paused = int(getattr(p, "shops_paused", 0) or 0)
             inactive = int(getattr(p, "shops_inactive", 0) or 0)
 
-            computed_progress = int(round((done / total) * 100)) if total else 0
-
-            computed_health = 100
-            computed_health -= paused * 10
-            computed_health -= inactive * 15
-            computed_health -= max(0, total - done) * 1
-            computed_health = max(0, min(100, computed_health))
-
-            type_code = normalize_project_type(getattr(p, "type", None))
+            type_code = normalize_project_type(getattr(p, "type", None)) or "default"
             type_display = get_type_display_safe(p)
+
+            # optional: nếu model có field rule_version thì dùng, không có thì fallback
+            rule_version = getattr(p, "rule_version", None) or DEFAULT_RULE_VERSION
+
+            spec = RuleRegistry.resolve(
+                domain=DOMAIN,
+                key=type_code,
+                rule_version=rule_version,
+                on_date=date.today(),
+                default_key="default",
+            )
+
+            if spec:
+                computed_progress, computed_health = spec.fn(
+                    total=total, done=done, paused=paused, inactive=inactive
+                )
+            else:
+                # fallback cực an toàn
+                computed_progress = int(round((done / total) * 100)) if total else 0
+                computed_health = 100
 
             items.append(
                 {
@@ -66,9 +94,11 @@ class ProjectDashboardService:
                     "tenant_id": p.tenant_id,
                     "company_id": p.company_id,
                     "name": p.name,
+                    "type": type_display,     # display
+                    "type_code": type_code,   # canonical
 
-                    "type": type_display,     # "SHOP_OPERATION"
-                    "type_code": type_code,   # "shop_operation"
+                    # (optional) cho debug/trace version đang áp
+                    "rule_version": rule_version,
 
                     "status": p.status,
                     "created_at": getattr(p, "created_at", None),
@@ -93,7 +123,7 @@ class ProjectDashboardService:
         for it in items:
             by_status[it["status"]] = by_status.get(it["status"], 0) + 1
 
-            # ✅ summary dùng type_code để không bị split key
+            # summary dùng type_code để không bị split key
             tcode = it.get("type_code") or normalize_project_type(it.get("type"))
             by_type[tcode] = by_type.get(tcode, 0) + 1
 

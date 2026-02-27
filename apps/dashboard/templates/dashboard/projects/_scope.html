@@ -1,0 +1,75 @@
+{# apps/dashboard/templates/dashboard/projects/_scope.html #}
+<div class="card">
+  <h4>Phạm vi</h4>
+
+  <div class="field" style="margin-bottom:12px;">
+    <div class="muted">Company</div>
+    <form method="get">
+      {% if filters.q %}<input type="hidden" name="q" value="{{ filters.q }}"/>{% endif %}
+      {% if filters.status %}<input type="hidden" name="status" value="{{ filters.status }}"/>{% endif %}
+      {% if filters.type %}<input type="hidden" name="type" value="{{ filters.type }}"/>{% endif %}
+      {% if filters.page_size %}<input type="hidden" name="page_size" value="{{ filters.page_size }}"/>{% endif %}
+      {% if filters.health_min != None %}<input type="hidden" name="health_min" value="{{ filters.health_min }}"/>{% endif %}
+      {% if filters.health_max != None %}<input type="hidden" name="health_max" value="{{ filters.health_max }}"/>{% endif %}
+      {% if filters.updated_from %}<input type="hidden" name="updated_from" value="{{ filters.updated_from }}"/>{% endif %}
+      {% if filters.updated_to %}<input type="hidden" name="updated_to" value="{{ filters.updated_to }}"/>{% endif %}
+      {# UI thêm shops_min/max, nếu query có thì giữ #}
+      {% if filters.shops_min != None %}<input type="hidden" name="shops_min" value="{{ filters.shops_min }}"/>{% endif %}
+      {% if filters.shops_max != None %}<input type="hidden" name="shops_max" value="{{ filters.shops_max }}"/>{% endif %}
+      {% if sort %}<input type="hidden" name="sort" value="{{ sort }}"/>{% endif %}
+      {% if dir %}<input type="hidden" name="dir" value="{{ dir }}"/>{% endif %}
+
+      <select name="company_id" onchange="this.form.submit()">
+        {% if role_label == "Founder" %}
+          <option value="" {% if not selected_company_id %}selected{% endif %}>Tất cả công ty</option>
+        {% endif %}
+        {% for c in companies %}
+          <option value="{{ c.id }}" {% if selected_company_id == c.id %}selected{% endif %}>
+            {{ c.name }} (id={{ c.id }})
+          </option>
+        {% endfor %}
+      </select>
+    </form>
+
+    <div class="muted" style="margin-top:8px;">
+      (Client bắt buộc company; Founder có thể chọn “Tất cả”)
+    </div>
+  </div>
+
+  <h4>Chỉ số nhanh</h4>
+
+  <div class="subtle">
+    <div class="kpi">
+      <div>
+        <div class="muted">Tổng dự án</div>
+        <div class="big">{{ summary.total_projects }}</div>
+      </div>
+      <div class="right">
+        <div class="muted">Link shop</div>
+        <div><b>{{ summary.shops.total }}</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:10px;"></div>
+
+  <div class="subtle">
+    <div class="muted">Theo trạng thái</div>
+    <div style="margin-top:6px; display:flex; flex-direction:column; gap:6px;">
+      {% for k,v in summary.by_status.items %}
+        <div class="pill"><b>{{ k|default:"(trống)" }}</b> <span class="muted">•</span> {{ v }}</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div style="height:10px;"></div>
+
+  <div class="subtle">
+    <div class="muted">Theo loại (chuẩn hoá)</div>
+    <div style="margin-top:6px; display:flex; flex-direction:column; gap:6px;">
+      {% for k,v in summary.by_type.items %}
+        <div class="pill"><b>{{ k|default:"(trống)" }}</b> <span class="muted">•</span> {{ v }}</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>

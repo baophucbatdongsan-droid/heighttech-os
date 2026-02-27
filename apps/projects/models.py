@@ -1,3 +1,4 @@
+# apps/projects/models.py
 from __future__ import annotations
 
 from django.conf import settings
@@ -30,6 +31,7 @@ class Project(models.Model):
         db_index=True,
     )
 
+    # ---------------- TYPE ----------------
     TYPE_SHOP_OPERATION = "shop_operation"
     TYPE_BUILD_CHANNEL = "build_channel"
     TYPE_BOOKING = "booking"
@@ -40,16 +42,20 @@ class Project(models.Model):
         (TYPE_BOOKING, "BOOKING"),
     ]
 
+    # ---------------- STATUS ----------------
     STATUS_ACTIVE = "active"
     STATUS_PAUSED = "paused"
     STATUS_DONE = "done"
+    STATUS_INACTIVE = "inactive"  # ✅ để match UI
 
     STATUS_CHOICES = [
         (STATUS_ACTIVE, "Active"),
         (STATUS_PAUSED, "Paused"),
         (STATUS_DONE, "Done"),
+        (STATUS_INACTIVE, "Inactive"),
     ]
 
+    # ---------------- CORE ----------------
     name = models.CharField(max_length=255, db_index=True)
     type = models.CharField(max_length=30, choices=TYPE_CHOICES, default=TYPE_SHOP_OPERATION, db_index=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_ACTIVE, db_index=True)
@@ -62,12 +68,20 @@ class Project(models.Model):
         related_name="owned_projects",
     )
 
+    # ---------------- OPS METRICS ----------------
+    # 0..100 (service/cron/signal sẽ update)
+    progress_percent = models.PositiveSmallIntegerField(default=0, db_index=True)
+    health_score = models.PositiveSmallIntegerField(default=100, db_index=True)
+    last_activity_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    # ---------------- TIME ----------------
     started_at = models.DateTimeField(default=timezone.now)
     ended_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # ---------------- MANAGERS ----------------
     objects = TenantManager()
     objects_all = TenantAllManager()
 
@@ -87,13 +101,6 @@ class Project(models.Model):
     def __str__(self) -> str:
         return f"{self.name} ({self.type})"
 
-    # 0..100 (tự cập nhật bằng service / cron / signal tuỳ bạn)
-    progress_percent = models.PositiveSmallIntegerField(default=0, db_index=True)
-    health_score = models.PositiveSmallIntegerField(default=100, db_index=True)
-    last_activity_at = models.DateTimeField(null=True, blank=True, db_index=True)
-
-    objects = TenantManager()
-    objects_all = TenantAllManager()
 
 class ProjectShop(models.Model):
     """
@@ -123,6 +130,7 @@ class ProjectShop(models.Model):
         db_index=True,
     )
 
+    # ---------------- ROLE ----------------
     ROLE_OPERATION = "operation"
     ROLE_BUILD = "build_channel"
     ROLE_BOOKING = "booking"
@@ -135,8 +143,9 @@ class ProjectShop(models.Model):
 
     role = models.CharField(max_length=30, choices=ROLE_CHOICES, default=ROLE_OPERATION, db_index=True)
 
+    # ---------------- STATUS ----------------
     STATUS_ACTIVE = "active"
-    STATUS_INACTIVE = "inactive"   # ✅ để hợp thức hóa API bạn đang PATCH
+    STATUS_INACTIVE = "inactive"
     STATUS_PAUSED = "paused"
     STATUS_DONE = "done"
 
@@ -161,7 +170,7 @@ class ProjectShop(models.Model):
     ended_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
-    updated_at = models.DateTimeField(auto_now=True)  # ✅ fix missing updated_at
+    updated_at = models.DateTimeField(auto_now=True)
 
     objects = TenantManager()
     objects_all = TenantAllManager()
@@ -182,15 +191,3 @@ class ProjectShop(models.Model):
 
     def __str__(self) -> str:
         return f"{self.project_id} - {self.shop_id}"
-
-    STATUS_ACTIVE = "active"
-    STATUS_PAUSED = "paused"
-    STATUS_DONE = "done"
-    STATUS_INACTIVE = "inactive"  # ✅ add
-
-    STATUS_CHOICES = [
-        (STATUS_ACTIVE, "Active"),
-        (STATUS_PAUSED, "Paused"),
-        (STATUS_DONE, "Done"),
-        (STATUS_INACTIVE, "Inactive"),  # ✅ add
-    ]

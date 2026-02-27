@@ -1,0 +1,571 @@
+{# apps/dashboard/templates/dashboard/projects/_scripts.html #}
+<script>
+(function(){
+  // =========================
+  // Toast
+  // =========================
+  (function () {
+    const wrap = document.getElementById("toastWrap");
+    if (!wrap) return;
+    setTimeout(() => wrap.querySelectorAll(".toast").forEach(t => t.remove()), 3500);
+  })();
+
+  // =========================
+  // Helpers
+  // =========================
+  function tenantId() {
+    const m = document.querySelector('meta[name="x-tenant-id"]');
+    return (m && m.content) ? m.content : "";
+  }
+
+  function csrfToken() {
+    const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : "";
+  }
+
+  async function apiFetch(url, opts = {}) {
+    const headers = new Headers(opts.headers || {});
+    const tid = tenantId();
+    if (tid) headers.set("X-Tenant-Id", tid);
+    headers.set("Accept", "application/json");
+    headers.set("X-Requested-With", "XMLHttpRequest");
+
+    const method = (opts.method || "GET").toUpperCase();
+    if (method !== "GET" && method !== "HEAD") {
+      const c = csrfToken();
+      if (c) headers.set("X-CSRFToken", c);
+    }
+
+    if (opts.json !== undefined) {
+      headers.set("Content-Type", "application/json");
+      opts.body = JSON.stringify(opts.json);
+      delete opts.json;
+    }
+
+    return fetch(url, { ...opts, headers, cache: "no-store" });
+  }
+
+  async function readJsonSafe(res) {
+    const ct = (res.headers.get("Content-Type") || "").toLowerCase();
+    if (ct.includes("application/json")) return res.json();
+    const txt = await res.text();
+    return { ok:false, detail: txt.slice(0, 1200), status: res.status };
+  }
+
+  function escapeHtml(s) {
+    return String(s ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  // =========================
+  // Bulk helpers
+  // =========================
+  function toggleAll(flag) {
+    document.querySelectorAll(".rowchk").forEach(el => el.checked = !!flag);
+    const head = document.getElementById("chkAllPage");
+    if (head) head.checked = !!flag;
+  }
+
+  function syncHeaderCheck() {
+    const all = [...document.querySelectorAll(".rowchk")];
+    if (!all.length) return;
+    const head = document.getElementById("chkAllPage");
+    if (head) head.checked = all.every(x => x.checked);
+  }
+
+  function _selectedCount() {
+    return [...document.querySelectorAll(".rowchk")].filter(x => x.checked).length;
+  }
+
+  function _validateBulkInputs() {
+    const st = (document.getElementById("bulkStatus")?.value || "").trim();
+    const tp = (document.getElementById("bulkType")?.value || "").trim();
+    if (!st && !tp) {
+      alert("Bạn chưa chọn 'Trạng thái mới' hoặc 'Loại mới' để cập nhật.");
+      return false;
+    }
+    return true;
+  }
+
+  function confirmBulk(isAllFiltered) {
+    if (!_validateBulkInputs()) return false;
+
+    if (isAllFiltered) {
+      return confirm("Bạn chắc chắn muốn áp dụng cập nhật cho TẤT CẢ theo bộ lọc hiện tại?\nCó thể ảnh hưởng rất nhiều dự án.");
+    }
+
+    const n = _selectedCount();
+    if (n <= 0) {
+      alert("Bạn chưa chọn dòng nào.");
+      return false;
+    }
+    return confirm(`Bạn chắc chắn muốn cập nhật ${n} dòng đã chọn?`);
+  }
+
+  async function previewAllFiltered() {
+    if (!_validateBulkInputs()) return;
+
+    const base = window.location.pathname + window.location.search;
+    const url = base + (window.location.search ? "&preview_count=1" : "?preview_count=1");
+
+    try {
+      const res = await apiFetch(url, { method: "GET" });
+      const data = await readJsonSafe(res);
+
+      if (!res.ok || !data.ok) {
+        alert(data.message || data.detail || "Không thể lấy số lượng.");
+        return;
+      }
+
+      const total = Number(data.total || 0);
+      if (!total) {
+        alert("Không có dòng nào phù hợp bộ lọc.");
+        return;
+      }
+
+      if (!confirm(`Bạn sắp cập nhật ${total} dòng theo bộ lọc hiện tại.\nBạn chắc chắn?`)) return;
+
+      document.getElementById("selectAllFiltered").value = "1";
+      document.getElementById("bulkForm").submit();
+    } catch (err) {
+      alert("Không thể kiểm tra số lượng trước khi cập nhật.");
+    }
+  }
+
+  // =========================
+  // Drawer (ONE TRUE VERSION)
+  // =========================
+  function _setDrawer(titleText, subText, htmlBody){
+    const title = document.getElementById("drawerTitle");
+    const sub = document.getElementById("drawerSubtitle");
+    const body = document.getElementById("drawerBody");
+    if (title) title.textContent = titleText || "";
+    if (sub) sub.textContent = subText || "";
+    if (body) body.innerHTML = htmlBody || "";
+  }
+
+  function openDrawer(mode){
+    const tid = escapeHtml(tenantId() || "-");
+
+    if (mode === "work_help") {
+      _setDrawer(
+        "Work Help",
+        "Kanban / WorkItem",
+        `<ul style="margin:0; padding-left:18px;">
+          <li>Kanban lấy từ <code>/api/v1/work/board/</code> (có header <b>X-Tenant-Id</b>).</li>
+          <li>Click 1 card WorkItem → mở drawer timeline/comment.</li>
+          <li>Comment: <code>/api/v1/work/items/&lt;id&gt;/comment/</code></li>
+          <li>Timeline: <code>/api/v1/work/items/&lt;id&gt;/timeline/</code></li>
+        </ul>`
+      );
+    } else if (mode === "bulk_note") {
+      _setDrawer("Ghi chú", "UI placeholder", `<div class="muted">Chỗ này để sau nối backend. Hiện là placeholder.</div>`);
+    } else if (mode === "create") {
+      _setDrawer("Tạo dự án (UI)", `Tenant ${tid} • placeholder`, `<div class="muted">UI placeholder.</div>`);
+    } else if (mode === "seed") {
+      _setDrawer("Seed data", `Tenant ${tid} • placeholder`, `<div class="muted">UI placeholder.</div>`);
+    } else if (mode === "sync") {
+      _setDrawer("Sync", `Tenant ${tid} • placeholder`, `<div class="muted">UI placeholder.</div>`);
+    } else {
+      _setDrawer(
+        "Hướng dẫn dùng nhanh",
+        "Projects Dashboard",
+        `<ul style="margin:0; padding-left:18px;">
+          <li>Nút <b>HDSD</b> mở hướng dẫn.</li>
+          <li>Nút <b>Load board</b> gọi Kanban.</li>
+          <li>Trong bảng dự án: <b>Board</b> mở Kanban theo project.</li>
+        </ul>`
+      );
+    }
+
+    document.getElementById("drawerMask")?.classList.add("open");
+    document.getElementById("drawer")?.classList.add("open");
+  }
+
+  function closeDrawer(){
+    document.getElementById("drawerMask")?.classList.remove("open");
+    document.getElementById("drawer")?.classList.remove("open");
+  }
+
+  document.addEventListener("click", function(e){
+    if (e.target && e.target.id === "drawerMask") closeDrawer();
+  });
+
+  function drawerPrimaryAction(){ closeDrawer(); }
+
+  window.openDrawer = openDrawer;
+  window.closeDrawer = closeDrawer;
+  window.drawerPrimaryAction = drawerPrimaryAction;
+
+  // =========================
+  // WorkItem Drawer (REAL API)
+  // =========================
+  function workItemUrls(id) {
+    return {
+      comment: `/api/v1/work/items/${id}/comment/`,
+      timeline: `/api/v1/work/items/${id}/timeline/`,
+      detail: `/api/v1/work/items/${id}/`,
+    };
+  }
+
+  function renderTimeline(items) {
+    if (!items || !items.length) return `<div class="muted">Chưa có comment.</div>`;
+    return `
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        ${items.map(it => `
+          <div class="card" style="padding:10px;">
+            <div style="display:flex; justify-content:space-between; gap:10px;">
+              <div><b>${escapeHtml(it.actor_username || ("user#" + it.actor_id))}</b></div>
+              <div class="mini nowrap">${escapeHtml(it.created_at || "")}</div>
+            </div>
+            <div style="margin-top:6px; white-space:pre-wrap;">${escapeHtml(it.body || "")}</div>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  async function loadTimelineInto(containerEl, workItemId) {
+    const res = await apiFetch(workItemUrls(workItemId).timeline, { method: "GET" });
+    const data = await readJsonSafe(res);
+
+    if (!res.ok || !data.ok) {
+      containerEl.innerHTML = `
+        <div class="danger">Không load được timeline (status ${res.status}).</div>
+        <div class="mini">${escapeHtml(data.detail || data.message || "")}</div>
+      `;
+      return;
+    }
+    containerEl.innerHTML = renderTimeline(data.items || []);
+  }
+
+  async function postComment(workItemId, bodyText, metaObj = {}) {
+    const res = await apiFetch(workItemUrls(workItemId).comment, {
+      method: "POST",
+      json: { body: bodyText, meta: metaObj || {} },
+    });
+    const data = await readJsonSafe(res);
+    if (!res.ok || !data.ok) throw new Error(data.detail || data.message || `POST failed (${res.status})`);
+    return data;
+  }
+
+  function openWorkItemDrawer(workItemId, labelText) {
+    _setDrawer(
+      `Work Item #${workItemId}`,
+      labelText || "Timeline / Comment",
+      `
+        <div class="row" style="margin:0 0 10px 0;">
+          <span class="pill">Tenant <b>${escapeHtml(tenantId() || "-")}</b></span>
+          <span class="pill">ID <b>${workItemId}</b></span>
+          <a class="pill" href="/api/v1/work/items/${workItemId}/" target="_blank">API Detail</a>
+        </div>
+
+        <div class="card">
+          <h4>Thêm comment</h4>
+          <textarea id="wiCommentBody" style="width:100%; min-height:90px" placeholder="Nhập comment..."></textarea>
+          <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:8px;">
+            <button type="button" onclick="__wiReloadTimeline(${workItemId})">Reload</button>
+            <button type="button" class="btn-primary" onclick="__wiSubmitComment(${workItemId})">Gửi</button>
+          </div>
+          <div class="mini" id="wiCommentHint" style="margin-top:8px;"></div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="card">
+          <h4>Timeline</h4>
+          <div id="wiTimelineBox"><div class="muted">Đang tải...</div></div>
+        </div>
+      `
+    );
+
+    document.getElementById("drawerMask")?.classList.add("open");
+    document.getElementById("drawer")?.classList.add("open");
+
+    const box = document.getElementById("wiTimelineBox");
+    if (box) loadTimelineInto(box, workItemId);
+  }
+
+  window.__wiReloadTimeline = async function(workItemId){
+    const box = document.getElementById("wiTimelineBox");
+    if (!box) return;
+    box.innerHTML = `<div class="muted">Đang tải...</div>`;
+    await loadTimelineInto(box, workItemId);
+  };
+
+  window.__wiSubmitComment = async function(workItemId){
+    const ta = document.getElementById("wiCommentBody");
+    const hint = document.getElementById("wiCommentHint");
+    const box = document.getElementById("wiTimelineBox");
+    if (!ta || !hint) return;
+
+    const text = (ta.value || "").trim();
+    if (!text) { hint.innerHTML = `<span class="warn">Bạn chưa nhập nội dung.</span>`; return; }
+
+    hint.innerHTML = `<span class="muted">Đang gửi...</span>`;
+    try {
+      await postComment(workItemId, text, { source:"dashboard", event:"comment" });
+      ta.value = "";
+      hint.innerHTML = `<span class="ok">Đã gửi ✅</span>`;
+      if (box) await loadTimelineInto(box, workItemId);
+    } catch (e) {
+      hint.innerHTML = `<span class="danger">Lỗi: ${escapeHtml(e.message || String(e))}</span>`;
+    }
+  };
+
+  // =========================
+  // Kanban render
+  // =========================
+  function statusLabel(st){
+    const map = {todo:"TODO", doing:"DOING", blocked:"BLOCKED", done:"DONE", cancelled:"CANCELLED"};
+    return map[st] || st;
+  }
+
+  function renderKanbanColumns(columns){
+    if (!columns || !columns.length) return `<div class="muted">Không có dữ liệu board.</div>`;
+
+    return `
+      <div class="kanbanRow">
+        ${columns.map(col => `
+          <div class="kanbanCol">
+            <div class="card" style="padding:10px;">
+              <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
+                <b>${statusLabel(col.status)}</b>
+                <span class="pill"><b>${Number(col.total || 0)}</b></span>
+              </div>
+
+              <div style="height:10px;"></div>
+
+              ${(col.items || []).map(it => `
+                <div class="kanbanCard"
+                  data-open-work-item="${it.id}"
+                  data-open-label="${escapeHtml(it.title || ("WorkItem #" + it.id))}">
+                  <div style="display:flex; justify-content:space-between; gap:10px;">
+                    <b>#${it.id}</b>
+                    <span class="mini nowrap">${escapeHtml(it.updated_at || "")}</span>
+                  </div>
+                  <div style="margin-top:6px;">${escapeHtml(it.title || "(no title)")}</div>
+                  <div class="mini" style="margin-top:6px;">
+                    target: ${escapeHtml(it.target_type || "-")} / ${escapeHtml(it.target_id ?? "-")}
+                    ${it.company_id ? " • company:" + escapeHtml(it.company_id) : ""}
+                    ${it.project_id ? " • project:" + escapeHtml(it.project_id) : ""}
+                  </div>
+                </div>
+              `).join("") || `<div class="muted">Trống</div>`}
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  // ✅ FIX CHÍNH: đừng ép scope=company (vì WorkItem.company_id đang null nhiều)
+  // ưu tiên: project > shop > all
+  function buildWorkBoardQuery(){
+    const sp = new URLSearchParams(window.location.search || "");
+    const keep = new URLSearchParams();
+
+    const projectId = (sp.get("project_id") || "").trim();
+    const shopId = (sp.get("shop_id") || "").trim();
+
+    if (projectId && projectId !== "None" && projectId !== "null" && projectId !== "undefined") {
+      keep.set("scope", "project");
+      keep.set("project_id", projectId);
+    } else if (shopId && shopId !== "None" && shopId !== "null" && shopId !== "undefined") {
+      keep.set("scope", "shop");
+      keep.set("shop_id", shopId);
+    } else {
+      keep.set("scope", "all");
+    }
+
+    // giữ sort/dir/limit nếu có
+    const sort = (sp.get("sort") || "").trim();
+    const dir = (sp.get("dir") || "").trim();
+    const limit = (sp.get("limit") || "").trim();
+
+    if (sort) keep.set("sort", sort);
+    if (dir) keep.set("dir", dir);
+    keep.set("limit", (limit && limit !== "None") ? limit : "50");
+
+    return keep.toString();
+  }
+
+  async function loadWorkBoard(){
+    const root = document.getElementById("kanbanRoot");
+    const hint = document.getElementById("workBoardHint");
+    if (!root) return;
+
+    root.innerHTML = `<div class="muted">Đang tải board...</div>`;
+    if (hint) hint.textContent = "";
+
+    const qs = buildWorkBoardQuery();
+    const url = "/api/v1/work/board/" + (qs ? ("?" + qs) : "");
+
+    try{
+      const res = await apiFetch(url, { method:"GET" });
+      const data = await readJsonSafe(res);
+
+      if (!res.ok || !data.ok){
+        root.innerHTML = `
+          <div class="danger">Không load được board (status ${res.status}).</div>
+          <div class="mini">${escapeHtml(data.detail || data.message || "")}</div>
+        `;
+        if (hint) hint.textContent = `URL: ${url} • tenant=${tenantId() || "-"}`;
+        return;
+      }
+
+      if (hint){
+        hint.textContent =
+          `GET ${url} | status=${res.status} | tenant=${tenantId() || "-"} | totals(todo=${data.totals?.todo||0}, doing=${data.totals?.doing||0}, blocked=${data.totals?.blocked||0}, done=${data.totals?.done||0}, cancelled=${data.totals?.cancelled||0})`;
+      }
+      root.innerHTML = renderKanbanColumns(data.columns || []);
+    }catch(e){
+      root.innerHTML = `
+        <div class="danger">Lỗi load board</div>
+        <div class="mini">${escapeHtml(e.message || String(e))}</div>
+      `;
+      if (hint) hint.textContent = `URL: ${url} • tenant=${tenantId() || "-"}`;
+    }
+  }
+
+  window.loadWorkBoard = loadWorkBoard;
+
+  // =========================
+  // Project -> Board drawer
+  // =========================
+  function workBoardUrlForProject(projectId) {
+    return `/api/v1/work/board/?scope=project&project_id=${projectId}&limit=50`;
+  }
+
+  async function openProjectBoardDrawer(projectId, labelText) {
+    _setDrawer(
+      `Project #${projectId}`,
+      (labelText || "Work Board") + " • Kanban",
+      `
+        <div class="row" style="margin:0 0 10px 0;">
+          <span class="pill">Tenant <b>${escapeHtml(tenantId() || "-")}</b></span>
+          <span class="pill">Project <b>${projectId}</b></span>
+          <a class="pill" href="${workBoardUrlForProject(projectId)}" target="_blank">API board</a>
+        </div>
+
+        <div id="projectBoardBox"><div class="muted">Đang tải board...</div></div>
+      `
+    );
+
+    document.getElementById("drawerMask")?.classList.add("open");
+    document.getElementById("drawer")?.classList.add("open");
+
+    const box = document.getElementById("projectBoardBox");
+    try{
+      const res = await apiFetch(workBoardUrlForProject(projectId), { method:"GET" });
+      const data = await readJsonSafe(res);
+
+      if (!res.ok || !data.ok){
+        box.innerHTML = `<div class="danger">Không load được board (status ${res.status}).</div>
+                         <div class="mini">${escapeHtml(data.detail || data.message || "")}</div>`;
+        return;
+      }
+      box.innerHTML = renderKanbanColumns(data.columns || []);
+    }catch(e){
+      box.innerHTML = `<div class="danger">Lỗi load board</div><div class="mini">${escapeHtml(e.message || String(e))}</div>`;
+    }
+  }
+
+  // =========================
+  // ONE click handler (đúng 1 nơi)
+  // =========================
+  document.addEventListener("click", function(e){
+    const w = e.target.closest("[data-open-work-item]");
+    if (w) {
+      e.preventDefault();
+      const id = Number(w.getAttribute("data-open-work-item") || "0");
+      if (!id) return;
+      const label = w.getAttribute("data-open-label") || "";
+      openWorkItemDrawer(id, label);
+      return;
+    }
+
+    const p = e.target.closest("[data-open-project-board]");
+    if (p) {
+      e.preventDefault();
+      const id = Number(p.getAttribute("data-open-project-board") || "0");
+      if (!id) return;
+      const label = p.getAttribute("data-open-label") || "";
+      openProjectBoardDrawer(id, label);
+      return;
+    }
+  });
+
+  // =========================
+  // KPI + Inbox (derive from table)
+  // =========================
+  (function deriveUiMetrics(){
+    const rows = [...document.querySelectorAll("#projectsTable tbody tr[data-project-id]")];
+    if (!rows.length) return;
+
+    const countByStatus = {active:0, paused:0, done:0, inactive:0};
+    let lowHealth = 0;
+
+    const inbox = {critical:0, warning:0, info:0};
+    const inboxItems = [];
+
+    rows.forEach(r => {
+      const st = (r.dataset.projectStatus || "").toLowerCase();
+      if (countByStatus[st] != null) countByStatus[st]++;
+
+      const health = Number(r.dataset.projectHealth || "100");
+      if (health <= 40) lowHealth++;
+
+      if (health <= 30) {
+        inbox.critical++;
+        inboxItems.push({level:"critical", text:`Health rất thấp (${health}) - #${r.dataset.projectId}`});
+      } else if (health <= 50) {
+        inbox.warning++;
+        inboxItems.push({level:"warning", text:`Health thấp (${health}) - #${r.dataset.projectId}`});
+      }
+    });
+
+    const set = (id, val) => { const el=document.getElementById(id); if(el) el.textContent = String(val); };
+    set("kpiActive", countByStatus.active);
+    set("kpiPaused", countByStatus.paused);
+    set("kpiDone", countByStatus.done);
+    set("kpiInactive", countByStatus.inactive);
+    set("kpiLowHealth", lowHealth);
+
+    set("inboxCritical", inbox.critical);
+    set("inboxWarning", inbox.warning);
+    set("inboxInfo", inbox.info);
+
+    const list = document.getElementById("inboxList");
+    if (list) {
+      if (!inboxItems.length) {
+        list.innerHTML = `<div class="muted">Chưa có cảnh báo.</div>`;
+      } else {
+        list.innerHTML = inboxItems.slice(0, 6).map(x => {
+          const cls = x.level === "critical" ? "danger" : "warn";
+          const icon = x.level === "critical" ? "🔥" : "⚠️";
+          return `<div class="badge ${cls}">${icon} ${escapeHtml(x.text)}</div>`;
+        }).join("");
+      }
+    }
+  })();
+
+  // =========================
+  // Init
+  // =========================
+  (function init(){
+    document.getElementById("btnLoadWorkBoard")?.addEventListener("click", loadWorkBoard);
+    loadWorkBoard(); // auto load
+  })();
+
+  // expose
+  window.previewAllFiltered = previewAllFiltered;
+  window.confirmBulk = confirmBulk;
+  window.toggleAll = toggleAll;
+  window.syncHeaderCheck = syncHeaderCheck;
+})();
+</script>

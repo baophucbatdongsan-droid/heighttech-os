@@ -14,9 +14,10 @@ from .client import ClientDashboardApi
 # OPS
 from .ops_health import FounderOpsHealthApi
 from .ops_owners import FounderOpsOwnerPerformanceApi
-# apps/api/v1/urls.py
-from .founder_projects_dashboard import FounderProjectsDashboardApi
 
+from .founder_projects_dashboard import FounderProjectsDashboardApi
+from .projects_dashboard import ProjectsDashboardApi
+from .founder_ops import FounderOpsOverviewApi
 # ACTIONS V1 + V2
 from .actions import (
     FounderActionsApi,
@@ -30,8 +31,6 @@ from .actions import (
 # SNAPSHOTS
 from .founder_insights import FounderSnapshotListApi, FounderSnapshotDetailApi
 
-from .projects_dashboard import ProjectsDashboardApi
-
 
 urlpatterns = [
     path("", ApiV1Root.as_view(), name="api_v1_root"),
@@ -42,13 +41,13 @@ urlpatterns = [
     # FOUNDER
     path("founder/", FounderDashboardApi.as_view(), name="api_v1_founder_dashboard"),
     path("founder/shops/<int:shop_id>/", FounderShopDetailApi.as_view(), name="api_v1_founder_shop_detail"),
+    path("founder/insight/", FounderInsightApi.as_view(), name="api_v1_founder_insight"),
 
     # IMPORT
     path("import/monthly-performance/", ImportMonthlyPerformanceApi.as_view(), name="api_v1_import_monthly_performance"),
 
     # SYSTEM
     path("system/health/", SystemHealthApi.as_view(), name="api_v1_system_health"),
-    path("founder/insight/", FounderInsightApi.as_view(), name="api_v1_founder_insight"),
 
     # CLIENT
     path("client/dashboard/", ClientDashboardApi.as_view(), name="api_v1_client_dashboard"),
@@ -71,9 +70,15 @@ urlpatterns = [
     path("founder/ops/health/", FounderOpsHealthApi.as_view(), name="api_v1_ops_health"),
     path("founder/ops/owners/performance/", FounderOpsOwnerPerformanceApi.as_view(), name="api_v1_ops_owner_performance"),
 
-    # PROJECTS (include)
+    # PROJECTS
     path("", include("apps.api.v1.urls_projects")),
     path("founder/projects/dashboard/", FounderProjectsDashboardApi.as_view(), name="api_v1_founder_projects_dashboard"),
     path("projects/dashboard/", ProjectsDashboardApi.as_view(), name="api_v1_projects_dashboard"),
-    path("", include("apps.api.v1.urls_projects")),
+
+    # BILLING (include đúng chuẩn)
+    path("billing/", include("apps.api.v1.billing.urls")),
+
+    path("work/", include("apps.api.v1.work.urls")),
+    path("founder/ops/overview/", FounderOpsOverviewApi.as_view()),
 ]
+

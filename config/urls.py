@@ -2,6 +2,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from apps.intelligence.views import founder_dashboard
+from apps.core.views_metrics import metrics_view
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -14,4 +15,6 @@ urlpatterns = [
 
     path("api/", include("apps.api.urls")),
     path("", include("apps.intelligence.urls")),
+    path("metrics", metrics_view),
+
 ]

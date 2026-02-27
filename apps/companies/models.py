@@ -8,104 +8,65 @@ from apps.core.tenant_managers import TenantManager
 
 
 class Company(models.Model):
+    # =========================
+    # MULTI TENANT
+    # =========================
     tenant = models.ForeignKey(
         "tenants.Tenant",
         on_delete=models.CASCADE,
         related_name="companies",
         db_index=True,
+        verbose_name="Tenant",
     )
 
-    agency = models.ForeignKey(
-        "tenants.Agency",
-        on_delete=models.CASCADE,
-        related_name="companies",
-        null=True,
-        blank=True,
-        verbose_name="Agency quản lý",
-    )
-
-    name = models.CharField(max_length=255)
-    max_clients = models.IntegerField(default=5)
-    months_active = models.IntegerField(default=0)
-
-    is_active = models.BooleanField(default=True, db_index=True)
-    created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    # ✅ managers
-    objects = TenantManager()
-    objects_all = models.Manager()  # unscoped fallback
-
-    class Meta:
-        ordering = ["-id"]
-        unique_together = ("tenant", "name")
-        indexes = [
-            models.Index(fields=["tenant"], name="idx_company_tenant"),
-            models.Index(fields=["is_active"], name="idx_company_active"),
-        ]
-
-    def __str__(self):
-        return self.name
-    # =============================
-    # BASIC INFO
-    # =============================
-    name = models.CharField(max_length=255, verbose_name="Tên Company")
-
-    max_clients = models.IntegerField(
-        default=5,
-        verbose_name="Số client tối đa"
-    )
-
-    months_active = models.IntegerField(
-        default=0,
-        verbose_name="Số tháng hoạt động"
-    )
-
-    is_active = models.BooleanField(
-        default=True,
-        verbose_name="Đang hoạt động"
-    )
-
-    # =============================
-    # AGENCY (OPTIONAL – nội bộ)
-    # =============================
+    # =========================
+    # AGENCY (OPTIONAL)
+    # =========================
     agency = models.ForeignKey(
         "tenants.Agency",
         on_delete=models.SET_NULL,
         related_name="companies",
         null=True,
         blank=True,
-        verbose_name="Agency quản lý"
+        verbose_name="Agency quản lý",
     )
 
-    # =============================
+    # =========================
+    # BASIC INFO
+    # =========================
+    name = models.CharField(max_length=255, db_index=True, verbose_name="Tên Company")
+
+    max_clients = models.IntegerField(default=5, verbose_name="Số client tối đa")
+    months_active = models.IntegerField(default=0, verbose_name="Số tháng hoạt động")
+
+    is_active = models.BooleanField(default=True, db_index=True, verbose_name="Đang hoạt động")
+
+    # =========================
     # TIMESTAMPS
-    # =============================
-    created_at = models.DateTimeField(
-        default=timezone.now,
-        verbose_name="Ngày tạo"
-    )
+    # =========================
+    created_at = models.DateTimeField(default=timezone.now, verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Cập nhật")
 
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        verbose_name="Cập nhật"
-    )
+    # =========================
+    # MANAGERS
+    # =========================
+    objects = TenantManager()        # scoped
+    objects_all = models.Manager()   # unscoped fallback
 
-    # =============================
-    # META
-    # =============================
     class Meta:
         verbose_name = "Company"
         verbose_name_plural = "Companies"
         ordering = ["-id"]
-        unique_together = ("tenant", "name")  # 🔥 cực quan trọng
+        constraints = [
+            models.UniqueConstraint(fields=["tenant", "name"], name="uq_company_tenant_name"),
+        ]
         indexes = [
             models.Index(fields=["tenant"], name="idx_company_tenant"),
             models.Index(fields=["is_active"], name="idx_company_active"),
+            models.Index(fields=["tenant", "is_active"], name="idx_company_tenant_active"),
         ]
 
-    # =============================
-    # STR
-    # =============================
-    def __str__(self):
-        return f"{self.name} ({self.tenant.name})"
+    def __str__(self) -> str:
+        # tránh crash nếu tenant chưa load
+        tenant_name = getattr(self.tenant, "name", f"tenant#{self.tenant_id}")
+        return f"{self.name} ({tenant_name})"

@@ -74,6 +74,25 @@ class Shop(models.Model):
         verbose_name="Trạng thái",
     )
 
+        # =========================
+    # RULE ENGINE (code-based, versioned)
+    # =========================
+    industry_code = models.CharField(
+        max_length=64,
+        default="default",
+        db_index=True,
+        verbose_name="Industry code",
+        help_text="Ví dụ: default, ecommerce, agency, ...",
+    )
+
+    rule_version = models.CharField(
+        max_length=32,
+        default="v1",
+        db_index=True,
+        verbose_name="Rule version",
+        help_text="Ví dụ: v1, v2, ... (code-based rules)",
+    )
+
     started_at = models.DateField(blank=True, null=True, verbose_name="Ngày bắt đầu")
     ended_at = models.DateField(blank=True, null=True, verbose_name="Ngày kết thúc")
 
@@ -97,6 +116,7 @@ class Shop(models.Model):
             models.Index(fields=["tenant", "is_active"], name="idx_shop_tenant_active"),
             models.Index(fields=["brand"], name="idx_shop_brand"),
             models.Index(fields=["status"], name="idx_shop_status"),
+            models.Index(fields=["tenant", "industry_code", "rule_version"], name="idx_shop_rule"),
         ]
         constraints = [
             models.UniqueConstraint(

@@ -1,4 +1,3 @@
-# apps/api/v1/projects_dashboard.py
 from __future__ import annotations
 
 from typing import Optional, Dict
@@ -16,12 +15,7 @@ from apps.core.tenant_context import get_current_tenant_id
 from apps.accounts.models import Membership
 from apps.projects.models import Project, ProjectShop
 
-# ✅ ưu tiên import normalize từ module types (nếu bạn đã tách),
-#    fallback về services để không bị gãy nếu chưa tách.
-try:
-    from apps.projects.types import normalize_project_type
-except Exception:
-    from apps.projects.services import normalize_project_type
+from apps.projects.types import normalize_project_type
 
 
 def _get_int(v, default=None):
@@ -71,7 +65,7 @@ class ProjectsDashboardApi(BaseApi):
         if not tid:
             return api_error("bad_request", "Missing tenant context (X-Tenant-Id).", status=400)
 
-        tid = int(tid)  # ✅ FIX: cast 1 lần cho chắc
+        tid = int(tid)
 
         try:
             company_id = _resolve_company_scope(request, tenant_id=tid)
@@ -82,9 +76,6 @@ class ProjectsDashboardApi(BaseApi):
         if company_id is not None:
             qs = qs.filter(company_id=company_id)
 
-        # -------------------------
-        # Projects summary (DB aggregate)
-        # -------------------------
         total_projects = qs.count()
 
         by_status: Dict[str, int] = {}
@@ -92,18 +83,12 @@ class ProjectsDashboardApi(BaseApi):
             st = row["status"] or ""
             by_status[st] = int(row["c"] or 0)
 
-        # ✅ FIX: normalize -> tránh split key SHOP_OPERATION vs shop_operation
         by_type: Dict[str, int] = {}
         for row in qs.values("type").annotate(c=Count("id")):
             t_raw = row["type"] or ""
             t_code = normalize_project_type(t_raw)
             by_type[t_code] = by_type.get(t_code, 0) + int(row["c"] or 0)
 
-        # -------------------------
-        # Shops summary (DB aggregate)
-        #   - luôn trả đủ key để FE ổn định
-        #   - không cho "mọc key lạ"
-        # -------------------------
         links = ProjectShop.objects_all.filter(tenant_id=tid, project__tenant_id=tid)
         if company_id is not None:
             links = links.filter(project__company_id=company_id)
@@ -113,7 +98,7 @@ class ProjectsDashboardApi(BaseApi):
         shops_status: Dict[str, int] = {"active": 0, "paused": 0, "done": 0, "inactive": 0}
         for row in links.values("status").annotate(c=Count("id")):
             st = (row["status"] or "").strip()
-            if st in shops_status:  # ✅ FIX: giữ response ổn định, không mọc key khác
+            if st in shops_status:
                 shops_status[st] = int(row["c"] or 0)
 
         data = {
@@ -122,7 +107,7 @@ class ProjectsDashboardApi(BaseApi):
             "summary": {
                 "total_projects": total_projects,
                 "by_status": by_status,
-                "by_type": by_type,  # canonical type_code
+                "by_type": by_type,
                 "shops": {
                     "total": shops_total,
                     **shops_status,

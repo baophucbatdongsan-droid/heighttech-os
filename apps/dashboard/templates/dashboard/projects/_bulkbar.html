@@ -1,0 +1,63 @@
+{# apps/dashboard/templates/dashboard/projects/_bulkbar.html #}
+<form id="bulkForm" method="post" action="{% url 'dashboard_projects:projects_dashboard_bulk_update' %}" class="card stickybar">
+  {% csrf_token %}
+  <input type="hidden" name="back" value="{{ request.get_full_path }}"/>
+  <input type="hidden" name="select_all_filtered" id="selectAllFiltered" value="0"/>
+
+  <h4>Cập nhật hàng loạt</h4>
+  <div class="muted" style="margin-bottom:8px;">
+    Tick dự án → chọn “Trạng thái / Loại” → bấm “Cập nhật”.
+    Hoặc dùng “Áp dụng cho TẤT CẢ theo bộ lọc”.
+  </div>
+
+  <div class="bulkbar">
+    <div class="field">
+      <div class="muted">Trạng thái mới</div>
+      <select name="bulk_status" id="bulkStatus">
+        <option value="">(Không đổi)</option>
+        <option value="active">active</option>
+        <option value="paused">paused</option>
+        <option value="done">done</option>
+        <option value="inactive">inactive</option>
+      </select>
+      <div class="hint">✅ Khớp backend</div>
+    </div>
+
+    <div class="field">
+      <div class="muted">Loại mới (type)</div>
+      <input name="bulk_type" id="bulkType" placeholder="Ví dụ: SHOP_OPERATION"/>
+      <div class="hint">✅ Khớp backend</div>
+    </div>
+
+    <div class="field">
+      <div class="muted">&nbsp;</div>
+      <button class="btn-primary" type="submit" onclick="return confirmBulk(false)">
+        Cập nhật (dự án đã chọn)
+      </button>
+      <div class="hint">Áp dụng cho các dòng đã tick</div>
+    </div>
+
+    <div class="field">
+      <div class="muted">&nbsp;</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button type="button" onclick="toggleAll(true)">Chọn tất cả (trang)</button>
+        <button type="button" onclick="toggleAll(false)">Bỏ chọn</button>
+      </div>
+      <div class="hint">Chỉ ảnh hưởng các dòng trên trang hiện tại</div>
+    </div>
+
+    <div class="field">
+      <div class="muted">&nbsp;</div>
+      <button type="button" class="btn-primary" onclick="previewAllFiltered()">
+        Áp dụng cho TẤT CẢ theo bộ lọc
+      </button>
+      <div class="hint">AJAX preview_count=1</div>
+    </div>
+
+    <div class="field">
+      <div class="muted">&nbsp;</div>
+      <button type="button" onclick="openDrawer('bulk_note')">📝 Ghi chú</button>
+      <div class="hint">UI trước, backend lấp sau</div>
+    </div>
+  </div>
+</form>

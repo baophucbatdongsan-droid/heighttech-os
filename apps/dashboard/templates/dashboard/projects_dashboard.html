@@ -1,0 +1,135 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Projects Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 16px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; min-width: 220px; }
+    .muted { color: #666; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
+    th { background: #fafafa; position: sticky; top: 0; }
+    .badge { display: inline-block; padding: 2px 8px; border: 1px solid #ddd; border-radius: 999px; font-size: 12px; }
+    .right { text-align: right; }
+    .topbar { display:flex; justify-content: space-between; align-items: center; gap:12px; flex-wrap: wrap; }
+    a { text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    pre { background: #0b1020; color: #d7e3ff; padding: 10px; border-radius: 8px; overflow:auto; }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div>
+      <h2 style="margin:0;">Projects Dashboard</h2>
+      <div class="muted">Tenant: {{ tenant_id }} | Role: {{ role }}</div>
+    </div>
+
+    <div>
+      <form method="get" style="display:flex; gap:8px; align-items:center;">
+        {% if is_founder %}
+          <label class="muted">Company</label>
+          <select name="company_id">
+            <option value="" {% if company_id == None %}selected{% endif %}>All companies</option>
+            {% for c in companies %}
+              <option value="{{ c.id }}" {% if company_id == c.id %}selected{% endif %}>
+                #{{ c.id }} - {{ c.name|default:"Company" }}
+              </option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <span class="muted">Company:</span>
+          <span class="badge">#{{ company.id }} - {{ company.name|default:"Company" }}</span>
+        {% endif %}
+        <button type="submit">Reload</button>
+      </form>
+    </div>
+  </div>
+
+  <div style="height:12px;"></div>
+
+  <div class="row">
+    <div class="card">
+      <div class="muted">Total projects</div>
+      <div style="font-size:28px;">{{ summary.total_projects }}</div>
+    </div>
+
+    <div class="card">
+      <div class="muted">By type (canonical)</div>
+      {% for k,v in summary.by_type.items %}
+        <div><span class="badge">{{ k }}</span> <b>{{ v }}</b></div>
+      {% empty %}
+        <div class="muted">No data</div>
+      {% endfor %}
+    </div>
+
+    <div class="card">
+      <div class="muted">By status</div>
+      {% for k,v in summary.by_status.items %}
+        <div><span class="badge">{{ k }}</span> <b>{{ v }}</b></div>
+      {% empty %}
+        <div class="muted">No data</div>
+      {% endfor %}
+    </div>
+
+    <div class="card">
+      <div class="muted">Health buckets</div>
+      <div><span class="badge">0-39</span> <b>{{ summary.health_buckets.0_39 }}</b></div>
+      <div><span class="badge">40-69</span> <b>{{ summary.health_buckets.40_69 }}</b></div>
+      <div><span class="badge">70-100</span> <b>{{ summary.health_buckets.70_100 }}</b></div>
+      <div class="muted" style="margin-top:8px;">Generated: {{ summary.generated_at }}</div>
+    </div>
+  </div>
+
+  <h3 style="margin-top:18px;">Projects</h3>
+  <div class="muted">Click vào tên để mở Project detail (gán shop, update status/role, remove link).</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Company</th>
+        <th>Type</th>
+        <th>Status</th>
+        <th class="right">Health</th>
+        <th class="right">Progress</th>
+        <th class="right">Shops</th>
+        <th>Updated</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in items %}
+        <tr>
+          <td>#{{ p.id }}</td>
+          <td>
+            <a href="{% url 'dashboard_projects:project_detail' p.id %}">
+              {{ p.name }}
+            </a>
+            <div class="muted">{{ p.type_code }}</div>
+          </td>
+          <td>#{{ p.company_id }}</td>
+          <td>{{ p.type }}</td>
+          <td><span class="badge">{{ p.status }}</span></td>
+          <td class="right"><b>{{ p.health_score }}</b></td>
+          <td class="right">{{ p.progress_percent }}%</td>
+          <td class="right">
+            {{ p.shops.total }} (A:{{ p.shops.active }} P:{{ p.shops.paused }} D:{{ p.shops.done }} I:{{ p.shops.inactive }})
+          </td>
+          <td class="muted">{{ p.updated_at }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="9" class="muted">No projects</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if is_founder %}
+    <h3 style="margin-top:18px;">Founder extra: Top risk (from computed items)</h3>
+    <pre>{{ summary.top_risk|safe }}</pre>
+  {% endif %}
+
+</body>
+</html>

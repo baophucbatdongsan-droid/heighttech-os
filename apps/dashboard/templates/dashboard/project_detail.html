@@ -1,0 +1,359 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Project Detail</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 16px; background:#fafafa; }
+      a { text-decoration:none; color:#0b57d0; }
+      a:hover { text-decoration: underline; }
+
+      .muted { color:#777; font-size: 13px; }
+      .danger { color:#b00020; }
+      .ok { color:#0a7a0a; }
+
+      .row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom: 12px; }
+      .grid { display:grid; grid-template-columns: 360px 1fr; gap:12px; }
+      @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+
+      .card {
+        border:1px solid #eee; border-radius:12px; padding:12px;
+        background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.03);
+      }
+      .card h4 { margin:0 0 10px 0; font-size:14px; }
+
+      table { border-collapse: collapse; width: 100%; background:#fff; border:1px solid #eee; border-radius:12px; overflow:hidden; }
+      th, td { border-bottom: 1px solid #eee; padding: 10px; text-align: left; vertical-align: top; }
+      th { background:#fbfbfb; }
+
+      input, select, button { padding:8px 10px; border:1px solid #ddd; border-radius:10px; background:#fff; }
+      button { cursor:pointer; }
+      button:hover { background:#f5f5f5; }
+
+      .toolbar { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+      .pill {
+        display:inline-flex; align-items:center; gap:8px;
+        padding:4px 10px; border-radius:999px; border:1px solid #e6e6e6;
+        background:#fff; font-size:12px;
+      }
+      .badge {
+        display:inline-flex; align-items:center; gap:6px;
+        padding:4px 10px; border-radius:999px;
+        font-size:12px; border:1px solid #eee; background:#fff;
+      }
+      .dot { width:8px; height:8px; border-radius:50%; background:#bbb; display:inline-block; }
+
+      .b-active { border-color: rgba(10,122,10,.25); box-shadow:0 0 0 2px rgba(10,122,10,.08); }
+      .b-active .dot { background:#0a7a0a; }
+      .b-paused { border-color: rgba(245,158,11,.25); box-shadow:0 0 0 2px rgba(245,158,11,.10); }
+      .b-paused .dot { background:#f59e0b; }
+      .b-done { border-color: rgba(37,99,235,.25); box-shadow:0 0 0 2px rgba(37,99,235,.10); }
+      .b-done .dot { background:#2563eb; }
+      .b-inactive { border-color: rgba(107,114,128,.25); box-shadow:0 0 0 2px rgba(107,114,128,.10); }
+      .b-inactive .dot { background:#6b7280; }
+
+      .kpi { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+      .kpi .box { min-width:160px; }
+      .kpi .big { font-size:22px; font-weight:700; }
+      .kpi .label { font-size:12px; color:#777; }
+
+      .subtle { background:#fcfcfc; border:1px dashed #eee; border-radius:12px; padding:10px; }
+
+      .right { text-align:right; }
+      .nowrap { white-space:nowrap; }
+      .actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+      .btn-danger { border-color:#ffd3d8; background:#fff5f6; }
+      .btn-danger:hover { background:#ffecef; }
+      .hint { font-size:12px; color:#777; margin-top:6px; }
+    </style>
+  </head>
+
+  <body>
+    <!-- top breadcrumb -->
+    <div class="toolbar" style="margin-bottom:12px;">
+      <div>
+        <div class="muted" style="margin-bottom:6px;">
+          <a href="{{ back_url }}">&larr; Back</a>
+          <span class="muted">•</span>
+          <span class="muted">Dashboard</span>
+          <span class="muted">/</span>
+          <span class="muted">Projects</span>
+          <span class="muted">/</span>
+          <b>#{{ project.id }}</b>
+        </div>
+        <h2 style="margin:0;">
+          Project #{{ project.id }} — {{ project.name }}
+        </h2>
+        <div class="muted" style="margin-top:6px;">
+          Tenant: <b>{{ tenant_id }}</b>
+          {% if company %}
+            <span class="muted">|</span>
+            Company: <b>{{ company.name }}</b> <span class="muted">(id={{ company.id }})</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="actions">
+        {% if messages %}
+        <div style="margin: 10px 0;">
+            {% for m in messages %}
+            <div class="pill" style="margin-bottom:8px;">
+                {% if m.tags == "success" %}<b class="ok">✅</b>{% endif %}
+                {% if m.tags == "error" %}<b class="danger">⚠</b>{% endif %}
+                {% if m.tags != "success" and m.tags != "error" %}<b>ℹ</b>{% endif %}
+                {{ m }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if error and not project %}
+      <div class="card" style="border-color:#ffd3d8; background:#fff5f6;">
+        <div class="danger"><b>Error:</b> {{ error }}</div>
+      </div>
+    {% endif %}
+
+    {% if project %}
+      <div class="grid">
+        <!-- LEFT: Overview + Update -->
+        <div>
+          <div class="card">
+            <h4>Overview</h4>
+
+            <div class="row" style="margin-bottom:0;">
+              <div class="pill">
+                <span class="muted">Type</span>
+                <b>{{ project_type_display }}</b>
+                <span class="muted">({{ project_type_code }})</span>
+              </div>
+
+              {% if project.status == "active" %}
+                <div class="badge b-active"><span class="dot"></span> active</div>
+              {% elif project.status == "paused" %}
+                <div class="badge b-paused"><span class="dot"></span> paused</div>
+              {% elif project.status == "done" %}
+                <div class="badge b-done"><span class="dot"></span> done</div>
+              {% elif project.status == "inactive" %}
+                <div class="badge b-inactive"><span class="dot"></span> inactive</div>
+              {% else %}
+                <div class="badge"><span class="dot"></span> {{ project.status }}</div>
+              {% endif %}
+            </div>
+
+            <div style="height:10px;"></div>
+
+            <div class="subtle">
+              <div class="kpi">
+                <div class="box">
+                  <div class="label">created_at</div>
+                  <div class="nowrap"><b>{{ project.created_at }}</b></div>
+                </div>
+                <div class="box">
+                  <div class="label">updated_at</div>
+                  <div class="nowrap"><b>{{ project.updated_at }}</b></div>
+                </div>
+              </div>
+              <div style="height:8px;"></div>
+              <div class="muted">
+                raw type: <b>{{ project.type }}</b>
+                {% if project.last_activity_at %}
+                  <span class="muted">•</span> last_activity_at: <b>{{ project.last_activity_at }}</b>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div style="height:12px;"></div>
+
+          <div class="card">
+            <h4>Update project</h4>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="update_project"/>
+
+              <div class="row">
+                <div style="flex:1; min-width:240px;">
+                  <div class="muted">Name</div>
+                  <input name="name" value="{{ project.name }}" style="width:100%;"/>
+                </div>
+
+                <div style="min-width:180px;">
+                  <div class="muted">Type</div>
+                  <input name="type" value="{{ project_type_code }}" placeholder="shop_operation/build_channel/booking" style="width:100%;"/>
+                </div>
+
+                <div style="min-width:140px;">
+                  <div class="muted">Status</div>
+                  <select name="status" style="width:100%;">
+                    <option value="" selected>(keep)</option>
+                    <option value="active">active</option>
+                    <option value="paused">paused</option>
+                    <option value="done">done</option>
+                    <option value="inactive">inactive</option>
+                  </select>
+                </div>
+
+                <div style="align-self:end;">
+                  <button type="submit">Save</button>
+                </div>
+              </div>
+
+              <div class="hint">
+                Tip: bạn có thể nhập <b>type uppercase</b> cũng được (sẽ normalize).
+              </div>
+            </form>
+          </div>
+
+          <div style="height:12px;"></div>
+
+          <div class="card">
+            <h4>Link a shop</h4>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="link_shop"/>
+
+              <div class="row">
+                <div style="min-width:220px;">
+                  <div class="muted">Shop</div>
+                  {% if available_shops %}
+                    <select name="shop_id" style="width:100%;">
+                      {% for s in available_shops %}
+                        <option value="{{ s.id }}">
+                          {{ s.id }} — {{ s.name|default:"(no name)" }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  {% else %}
+                    <input name="shop_id" placeholder="shop_id" style="width:100%;"/>
+                  {% endif %}
+                </div>
+
+                <div style="min-width:160px;">
+                  <div class="muted">Link status</div>
+                  <select name="link_status" style="width:100%;">
+                    <option value="active">active</option>
+                    <option value="paused">paused</option>
+                    <option value="done">done</option>
+                    <option value="inactive">inactive</option>
+                  </select>
+                </div>
+
+                <div style="min-width:200px;">
+                  <div class="muted">Role</div>
+                  <input name="link_role" placeholder="role (optional)" style="width:100%;"/>
+                </div>
+
+                <div style="align-self:end;">
+                  <button type="submit">Link</button>
+                </div>
+              </div>
+
+              <div class="hint">
+                Shop dropdown chỉ hiện shop cùng company và chưa link vào project.
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- RIGHT: Linked shops -->
+        <div>
+          <div class="card" style="padding:0; overflow:hidden;">
+            <div style="padding:12px;">
+              <h4 style="margin:0;">Linked shops</h4>
+              <div class="muted" style="margin-top:6px;">
+                Manage status/role trực tiếp ngay trong bảng.
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:90px;">Link ID</th>
+                  <th>Shop</th>
+                  <th style="width:120px;">Status</th>
+                  <th style="width:200px;">Role</th>
+                  <th style="width:220px;">Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {% for ps in links %}
+                  <tr>
+                    <td class="nowrap">{{ ps.id }}</td>
+                    <td>
+                      <div>
+                        <b>{{ ps.shop_id }}</b>
+                        —
+                        {{ ps.shop.name|default:"(no name)" }}
+                      </div>
+                      <div class="muted">
+                        {% if ps.shop.code %}code: {{ ps.shop.code }}{% endif %}
+                        {% if ps.shop.brand %} • brand: {{ ps.shop.brand }}{% endif %}
+                      </div>
+                    </td>
+
+                    <td class="nowrap">
+                      {% if ps.status == "active" %}
+                        <span class="badge b-active"><span class="dot"></span> active</span>
+                      {% elif ps.status == "paused" %}
+                        <span class="badge b-paused"><span class="dot"></span> paused</span>
+                      {% elif ps.status == "done" %}
+                        <span class="badge b-done"><span class="dot"></span> done</span>
+                      {% elif ps.status == "inactive" %}
+                        <span class="badge b-inactive"><span class="dot"></span> inactive</span>
+                      {% else %}
+                        <span class="badge"><span class="dot"></span> {{ ps.status }}</span>
+                      {% endif %}
+                    </td>
+
+                    <td class="muted nowrap">{{ ps.role }}</td>
+
+                    <td>
+                      <div class="actions">
+                        <form method="post" style="display:inline-flex; gap:8px; align-items:center;">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="update_link"/>
+                          <input type="hidden" name="project_shop_id" value="{{ ps.id }}"/>
+
+                          <select name="status">
+                            <option value="active" {% if ps.status == "active" %}selected{% endif %}>active</option>
+                            <option value="paused" {% if ps.status == "paused" %}selected{% endif %}>paused</option>
+                            <option value="done" {% if ps.status == "done" %}selected{% endif %}>done</option>
+                            <option value="inactive" {% if ps.status == "inactive" %}selected{% endif %}>inactive</option>
+                          </select>
+
+                          <input name="role" value="{{ ps.role }}" placeholder="role" style="width:120px;"/>
+
+                          <button type="submit">Update</button>
+                        </form>
+
+                        <form method="post" style="display:inline-flex;">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="unlink_shop"/>
+                          <input type="hidden" name="project_shop_id" value="{{ ps.id }}"/>
+                          <button class="btn-danger" type="submit" onclick="return confirm('Unlink this shop?')">Unlink</button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                {% empty %}
+                  <tr>
+                    <td colspan="5" class="muted" style="padding:16px;">
+                      No linked shops.
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="card" style="border-color:#ffd3d8; background:#fff5f6;">
+        <div class="danger"><b>Project not found.</b></div>
+      </div>
+    {% endif %}
+  </body>
+</html>

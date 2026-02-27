@@ -1,0 +1,15 @@
+{# apps/dashboard/templates/dashboard/projects/_inbox.html #}
+<div class="card">
+  <h4>Inbox / Cảnh báo</h4>
+  <div class="muted">Tự dựng từ dữ liệu trang (UI). Sau này nối service alerts/audit.</div>
+
+  <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+    <span class="badge">🔥 Critical: <b id="inboxCritical">0</b></span>
+    <span class="badge">⚠️ Warning: <b id="inboxWarning">0</b></span>
+    <span class="badge">ℹ️ Info: <b id="inboxInfo">0</b></span>
+  </div>
+
+  <div id="inboxList" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+    <div class="muted">Chưa có cảnh báo.</div>
+  </div>
+</div>

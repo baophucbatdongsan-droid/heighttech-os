@@ -1,7 +1,11 @@
+# apps/api/v1/permissions.py
+from __future__ import annotations
+
+from typing import Set
 from rest_framework.permissions import BasePermission
 
 # ===============================
-# ROLE CONSTANTS
+# HẰNG SỐ ROLE
 # ===============================
 ROLE_FOUNDER = "founder"
 ROLE_HEAD = "head"
@@ -12,115 +16,104 @@ ROLE_CLIENT = "client"
 ROLE_NONE = "none"
 
 # ===============================
-# ABILITY CONSTANTS
+# HẰNG SỐ ABILITY
 # ===============================
 VIEW_API_DASHBOARD = "api:view_dashboard"
 VIEW_API_FOUNDER = "api:view_founder"
 
 # ===============================
-# ROLE → ABILITY POLICY
+# POLICY ROLE → ABILITY
 # ===============================
 ROLE_TO_ABILITIES = {
-    ROLE_FOUNDER: {
-        VIEW_API_DASHBOARD,
-        VIEW_API_FOUNDER,
-    },
-    ROLE_CLIENT: {
-        VIEW_API_DASHBOARD,
-    },
-    ROLE_OPERATOR: {
-        VIEW_API_DASHBOARD,
-    },
-    ROLE_ACCOUNT: {
-        VIEW_API_DASHBOARD,
-    },
-    ROLE_HEAD: {
-        VIEW_API_DASHBOARD,
-    },
-    ROLE_SALE: {
-        VIEW_API_DASHBOARD,
-    },
+    ROLE_FOUNDER: {VIEW_API_DASHBOARD, VIEW_API_FOUNDER},
+    ROLE_HEAD: {VIEW_API_DASHBOARD},
+    ROLE_ACCOUNT: {VIEW_API_DASHBOARD},
+    ROLE_SALE: {VIEW_API_DASHBOARD},
+    ROLE_OPERATOR: {VIEW_API_DASHBOARD},
+    ROLE_CLIENT: {VIEW_API_DASHBOARD},
 }
 
-# ===============================
-# ROLE RESOLUTION
-# ===============================
-def resolve_user_role(user) -> str:
-    if not user or not user.is_authenticated:
-        return ROLE_NONE
-
-    if user.is_superuser:
-        return ROLE_FOUNDER
-
-    # membership based
-    from apps.accounts.models import Membership
-    m = Membership.objects.filter(user=user, is_active=True).first()
-    if not m:
-        return ROLE_NONE
-
-    role = (m.role or "").lower()
-
-    if role in ROLE_TO_ABILITIES:
-        return role
-
-    return ROLE_CLIENT
-
 
 # ===============================
-# ABILITY CHECK
+# HÀM TIỆN ÍCH
 # ===============================
+def _is_authed(user) -> bool:
+    return bool(getattr(user, "is_authenticated", False))
+
+
 def role_has_ability(role: str, ability: str) -> bool:
     role = (role or ROLE_NONE).lower()
     return ability in ROLE_TO_ABILITIES.get(role, set())
 
 
+def resolve_user_role(user) -> str:
+    """
+    Resolve role theo thứ tự ưu tiên:
+      superuser -> founder
+      membership.role -> theo mapping
+      nếu không có membership -> none
+    """
+    if not _is_authed(user):
+        return ROLE_NONE
+
+    if bool(getattr(user, "is_superuser", False)):
+        return ROLE_FOUNDER
+
+    # membership-based
+    try:
+        from apps.accounts.models import Membership
+
+        m = Membership.objects.filter(user=user, is_active=True).first()
+        if not m:
+            return ROLE_NONE
+
+        role = (getattr(m, "role", "") or "").strip().lower()
+        if role in ROLE_TO_ABILITIES:
+            return role
+
+        # Nếu role lạ/không nằm policy thì mặc định client (an toàn hơn NONE)
+        return ROLE_CLIENT
+    except Exception:
+        # Nếu vì lý do gì đó không query được membership thì chặn
+        return ROLE_NONE
+
+
 # ===============================
-# DRF Permission Class
+# DRF PERMISSIONS
 # ===============================
 class AbilityPermission(BasePermission):
-    message = "Forbidden: missing ability"
+    """
+    Mỗi view chỉ cần khai báo:
+      required_ability = VIEW_API_DASHBOARD
+    """
 
-    def has_permission(self, request, view):
+    # ✅ message tiếng Việt (DRF sẽ trả {"detail": message})
+    message = "Bạn không có quyền truy cập chức năng này"
+
+    def has_permission(self, request, view) -> bool:
         required = getattr(view, "required_ability", None)
         if not required:
             return True
 
-        user = request.user
+        user = getattr(request, "user", None)
         role = resolve_user_role(user)
-
         return role_has_ability(role, required)
-    
-from rest_framework.permissions import BasePermission
-from apps.core.permissions import is_founder
+
 
 class FounderOnlyPermission(BasePermission):
-    message = "Founder only"
+    """
+    Chỉ founder/superuser mới được vào.
+    """
+    message = "Chỉ Founder mới có quyền truy cập"
 
-    def has_permission(self, request, view):
+    def has_permission(self, request, view) -> bool:
         u = getattr(request, "user", None)
-        if not getattr(u, "is_authenticated", False):
+        if not _is_authed(u):
             return False
-        return bool(getattr(u, "is_superuser", False) or is_founder(u))
-from rest_framework.permissions import BasePermission
-from apps.core.permissions import is_founder
 
-class FounderOnlyPermission(BasePermission):
-    message = "Founder only"
+        # superuser luôn là founder
+        if bool(getattr(u, "is_superuser", False)):
+            return True
 
-    def has_permission(self, request, view):
-        u = getattr(request, "user", None)
-        if not getattr(u, "is_authenticated", False):
-            return False
-        return bool(getattr(u, "is_superuser", False) or is_founder(u))
-    
-from rest_framework.permissions import BasePermission
-from apps.core.permissions import is_founder
-
-class FounderOnlyPermission(BasePermission):
-    message = "Founder only"
-
-    def has_permission(self, request, view):
-        u = getattr(request, "user", None)
-        if not getattr(u, "is_authenticated", False):
-            return False
-        return bool(getattr(u, "is_superuser", False) or is_founder(u))
+        # founder theo Membership role
+        return resolve_user_role(u) == ROLE_FOUNDER

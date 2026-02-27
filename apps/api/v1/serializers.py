@@ -83,33 +83,27 @@ def serialize_shop_health_row(row: Any) -> Dict[str, Any]:
         "shop_name": _get(row, "shop_name", "") or "",
         "platform": _get(row, "platform", "") or "",
         "company_name": _get(row, "company_name", "") or "",
-
         "months": int(_get(row, "months", 0) or 0),
         "last_month": _get(row, "last_month", "") or "",
-
         "revenue_last": _to_float(_get(row, "revenue_last")),
         "cost_last": _to_float(_get(row, "cost_last")),
         "profit_last": _to_float(_get(row, "profit_last")),
         "margin_last": _to_float(_get(row, "margin_last")),
         "growth_mom": _to_float(_get(row, "growth_mom")),
-
         "stability_score": _to_float(_get(row, "stability_score")),
         "margin_score": _to_float(_get(row, "margin_score")),
         "growth_score": _to_float(_get(row, "growth_score")),
         "loss_risk_score": _to_float(_get(row, "loss_risk_score")),
-
         "health_score": _to_float(_get(row, "health_score")),
         "health_badge": (_get(row, "health_badge", "UNKNOWN") or "UNKNOWN"),
         "risk_level": (_get(row, "risk_level", "LOW") or "LOW"),
         "notes": _get(row, "notes", "") or "",
-
         # v2
         "forecast_next": _to_float(_get(row, "forecast_next")),
         "trend_slope": _to_float(_get(row, "trend_slope")),
         "volatility": _to_float(_get(row, "volatility")),
         "anomaly_flags": _get(row, "anomaly_flags", []) or [],
         "rank_percentile": _to_float(_get(row, "rank_percentile")),
-
         # v3
         "roi_percent": _to_float(_get(row, "roi_percent")),
         "early_warning": bool(_get(row, "early_warning", False)),

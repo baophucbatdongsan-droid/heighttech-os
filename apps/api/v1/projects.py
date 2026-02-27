@@ -1,4 +1,3 @@
-# apps/api/v1/projects.py
 from __future__ import annotations
 
 from typing import Any, Dict, Optional, Set
@@ -158,15 +157,15 @@ def _get_type_display_safe(p: Project) -> str:
 
 
 def serialize_project(p: Project) -> Dict[str, Any]:
-    type_display = _get_type_display_safe(p)                 # vd: "BUILD_CHANNEL"
+    type_display = _get_type_display_safe(p)  # vd: "BUILD_CHANNEL"
     type_code = normalize_project_type(getattr(p, "type", None))  # vd: "build_channel"
     return {
         "id": p.id,
         "tenant_id": p.tenant_id,
         "company_id": p.company_id,
         "name": p.name,
-        "type": type_display,   # display (UPPER) cho FE
-        "type_code": type_code, # canonical (lower) cho filter/summary
+        "type": type_display,  # display (UPPER) cho FE
+        "type_code": type_code,  # canonical (lower) cho filter/summary
         "status": p.status,
         "created_at": getattr(p, "created_at", None),
         "updated_at": getattr(p, "updated_at", None),

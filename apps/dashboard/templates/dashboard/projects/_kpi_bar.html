@@ -1,0 +1,25 @@
+{# apps/dashboard/templates/dashboard/projects/_kpi_bar.html #}
+<div class="row">
+  <div class="card" style="flex:1; min-width:260px;">
+    <h4>KPI nhanh</h4>
+    <div class="muted">Tạm lấy theo dữ liệu trang hiện tại (UI), sau nối backend/metrics.</div>
+    <div class="row" style="margin-top:10px;">
+      <span class="badge">⚡ Active: <b id="kpiActive">0</b></span>
+      <span class="badge">⏸ Paused: <b id="kpiPaused">0</b></span>
+      <span class="badge">✅ Done: <b id="kpiDone">0</b></span>
+      <span class="badge">🧊 Inactive: <b id="kpiInactive">0</b></span>
+      <span class="badge">⚠ Low health: <b id="kpiLowHealth">0</b></span>
+    </div>
+  </div>
+
+  <div class="card" style="min-width:320px;">
+    <h4>Quick actions</h4>
+    <div class="muted">UI full trước: tạo dự án / seed / sync / guide.</div>
+    <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+      <button type="button" class="btn-primary" onclick="openDrawer('create')">+ Tạo dự án</button>
+      <button type="button" onclick="openDrawer('seed')">🧪 Seed data</button>
+      <button type="button" onclick="openDrawer('sync')">🔄 Sync</button>
+      <button type="button" onclick="openDrawer('help')">❓ HDSD</button>
+    </div>
+  </div>
+</div>

@@ -4,13 +4,16 @@ from __future__ import annotations
 from typing import List, Set, Tuple, Optional
 
 from django.core.exceptions import PermissionDenied
+from rest_framework.permissions import BasePermission
 
 from apps.core.tenant_context import get_current_tenant
+from apps.accounts.models import Membership
+from apps.shops.models import ShopMember
+
 
 # =====================================================
 # ROLE CONSTANTS
 # =====================================================
-
 ROLE_FOUNDER = "founder"
 ROLE_HEAD = "head"
 ROLE_ACCOUNT = "account"
@@ -21,33 +24,58 @@ ROLE_NONE = "none"
 
 
 # =====================================================
+# ABILITY CONSTANTS
+# =====================================================
+VIEW_API_DASHBOARD = "api:view_dashboard"
+VIEW_API_FOUNDER = "api:view_founder"
+
+
+# =====================================================
+# ROLE → ABILITY POLICY
+# =====================================================
+ROLE_TO_ABILITIES = {
+    ROLE_FOUNDER: {VIEW_API_DASHBOARD, VIEW_API_FOUNDER},
+    ROLE_HEAD: {VIEW_API_DASHBOARD},
+    ROLE_ACCOUNT: {VIEW_API_DASHBOARD},
+    ROLE_SALE: {VIEW_API_DASHBOARD},
+    ROLE_OPERATOR: {VIEW_API_DASHBOARD},
+    ROLE_CLIENT: {VIEW_API_DASHBOARD},
+}
+
+
+# =====================================================
 # SAFE CHECKS
 # =====================================================
-
 def _is_authenticated(user) -> bool:
     return bool(getattr(user, "is_authenticated", False))
 
 
-def _current_tenant_id():
+def _current_tenant_id() -> Optional[int]:
     t = get_current_tenant()
     return getattr(t, "id", None)
 
 
-# =====================================================
-# COMPANY MEMBERSHIP HELPERS (accounts.Membership)
-# =====================================================
+def _mgr(model_cls):
+    """
+    Ưu tiên objects_all (soft-delete friendly), fallback objects.
+    """
+    return getattr(model_cls, "objects_all", model_cls.objects)
 
+
+# =====================================================
+# MEMBERSHIP HELPERS (accounts.Membership)
+# =====================================================
 def get_user_memberships(user):
+    """
+    Membership company-level.
+    """
     if not _is_authenticated(user):
-        return []
-    if not hasattr(user, "memberships"):
-        return []
+        return Membership.objects.none()
 
     tenant_id = _current_tenant_id()
+    qs = Membership.objects.filter(user=user, is_active=True)
 
-    qs = user.memberships.filter(is_active=True)
-
-    # Nếu model Membership sau này có tenant_id thì tự filter
+    # nếu Membership có tenant_id thì filter theo tenant
     if tenant_id and hasattr(qs.model, "tenant_id"):
         qs = qs.filter(tenant_id=tenant_id)
 
@@ -60,52 +88,40 @@ def get_user_roles(user) -> Set[str]:
     return set(get_user_memberships(user).values_list("role", flat=True))
 
 
-def get_user_company_ids(user) -> List[int]:
-    if not _is_authenticated(user):
-        return []
-    return list(get_user_memberships(user).values_list("company_id", flat=True))
-
-
 # =====================================================
-# SHOP MEMBERSHIP HELPERS (shops.ShopMember)
+# SHOPMEMBER HELPERS (shops.ShopMember)
 # =====================================================
-
 def get_user_shop_memberships(user):
+    """
+    Shop-level membership.
+    Lưu ý: nhiều project dùng soft-delete/custom manager nên ưu tiên objects_all.
+    """
     if not _is_authenticated(user):
-        return []
-    if not hasattr(user, "shop_memberships"):
-        return []
+        return _mgr(ShopMember).none()
 
     tenant_id = _current_tenant_id()
+    qs = _mgr(ShopMember).filter(user=user, is_active=True)
 
-    qs = user.shop_memberships.filter(is_active=True)
-
-    # Multi-tenant filter nếu model có tenant
     if tenant_id and hasattr(qs.model, "tenant_id"):
         qs = qs.filter(tenant_id=tenant_id)
 
     return qs
 
 
-def get_user_shop_ids(user) -> List[int]:
-    if not _is_authenticated(user):
-        return []
-    return list(get_user_shop_memberships(user).values_list("shop_id", flat=True))
-
-
-def get_user_company_ids_from_shops(user) -> List[int]:
-    if not _is_authenticated(user):
-        return []
-
-    qs = get_user_shop_memberships(user)
-    return list(qs.values_list("shop__brand__company_id", flat=True).distinct())
+def user_has_any_shop_membership(user) -> bool:
+    try:
+        return get_user_shop_memberships(user).exists()
+    except Exception:
+        return False
 
 
 # =====================================================
 # ROLE CHECKERS
 # =====================================================
-
 def is_founder(user) -> bool:
+    """
+    founder = superuser OR có role founder trong Membership.
+    """
     if not _is_authenticated(user):
         return False
     if getattr(user, "is_superuser", False):
@@ -113,46 +129,27 @@ def is_founder(user) -> bool:
     return ROLE_FOUNDER in get_user_roles(user)
 
 
-def is_head(user) -> bool:
-    return ROLE_HEAD in get_user_roles(user)
-
-
-def is_account(user) -> bool:
-    return ROLE_ACCOUNT in get_user_roles(user)
-
-
-def is_sale(user) -> bool:
-    return ROLE_SALE in get_user_roles(user)
-
-
-def is_operator(user) -> bool:
-    return ROLE_OPERATOR in get_user_roles(user)
-
-
 def is_client(user) -> bool:
     """
-    Client = có shop membership nhưng không có company membership.
+    ✅ Client = có ShopMember (được gán shop) nhưng KHÔNG cần có Membership.
+    Đây là tối ưu onboarding: shop được add vào portal là dùng được ngay.
     """
     if not _is_authenticated(user):
         return False
-
-    try:
-        if get_user_shop_memberships(user).exists() and not get_user_memberships(user).exists():
-            return True
-    except Exception:
-        pass
-
-    return False
+    return user_has_any_shop_membership(user)
 
 
 # =====================================================
-# ROLE RESOLVER (UI/Dashboard)
+# ROLE RESOLVER (UI/API)
 # =====================================================
-
 def resolve_user_role(user) -> str:
     """
     Priority:
       superuser/founder > head > account > sale > operator > client > none
+
+    ✅ Nâng cấp:
+    - Nếu không có Membership nhưng có ShopMember => ROLE_CLIENT
+      (khỏi bị 403 missing ability khi portal 2 chiều)
     """
     if not _is_authenticated(user):
         return ROLE_NONE
@@ -160,38 +157,60 @@ def resolve_user_role(user) -> str:
     if getattr(user, "is_superuser", False) or is_founder(user):
         return ROLE_FOUNDER
 
-    if is_head(user):
+    roles = get_user_roles(user)
+    if ROLE_HEAD in roles:
         return ROLE_HEAD
-
-    if is_account(user):
+    if ROLE_ACCOUNT in roles:
         return ROLE_ACCOUNT
-
-    if is_sale(user):
+    if ROLE_SALE in roles:
         return ROLE_SALE
-
-    if is_operator(user):
+    if ROLE_OPERATOR in roles:
         return ROLE_OPERATOR
 
+    # ✅ auto client từ ShopMember
     if is_client(user):
         return ROLE_CLIENT
 
     return ROLE_NONE
 
 
+def role_has_ability(role: str, ability: str) -> bool:
+    role = (role or ROLE_NONE).lower()
+    return ability in ROLE_TO_ABILITIES.get(role, set())
+
+
+class AbilityPermission(BasePermission):
+    """
+    View cần set: required_ability = "api:view_dashboard" ...
+    """
+    message = "Bạn không có quyền truy cập chức năng này"
+
+    def has_permission(self, request, view):
+        required = getattr(view, "required_ability", None)
+        if not required:
+            return True
+        role = resolve_user_role(getattr(request, "user", None))
+        return role_has_ability(role, required)
+
+
+class FounderOnlyPermission(BasePermission):
+    message = "Chỉ Founder mới được truy cập"
+
+    def has_permission(self, request, view):
+        u = getattr(request, "user", None)
+        if not getattr(u, "is_authenticated", False):
+            return False
+        return bool(getattr(u, "is_superuser", False) or is_founder(u))
+
+
 # =====================================================
 # COMPANY SCOPE RESOLVER (X-Company-Id)
 # =====================================================
-
 def resolve_company_scope_for_request(request) -> Tuple[Optional[int], List[int]]:
     """
     Trả về:
-      (selected_company_id, allowed_company_ids)
-
-    Rule:
-    - superuser/founder: allowed = all Company trong tenant hiện tại
-      selected lấy từ header X-Company-Id (nếu có và hợp lệ), nếu không có => None
-    - user thường: allowed = company_ids từ Membership (is_active=True)
-      selected bắt buộc phải nằm trong allowed, nếu header có mà ngoài scope => PermissionDenied
+    - selected_company_id (có thể None)
+    - allowed_company_ids
     """
     user = getattr(request, "user", None)
     if not _is_authenticated(user):
@@ -199,10 +218,8 @@ def resolve_company_scope_for_request(request) -> Tuple[Optional[int], List[int]
 
     tenant = get_current_tenant()
     if tenant is None:
-        # an toàn: chưa set tenant thì coi như không scope được
         return None, []
 
-    # đọc header
     raw = (request.headers.get("X-Company-Id") or request.META.get("HTTP_X_COMPANY_ID") or "").strip()
     selected: Optional[int] = None
     if raw:
@@ -211,16 +228,13 @@ def resolve_company_scope_for_request(request) -> Tuple[Optional[int], List[int]
         except Exception:
             raise PermissionDenied("Bad X-Company-Id")
 
-    # allowed list
     if getattr(user, "is_superuser", False) or is_founder(user):
         from apps.companies.models import Company
-        allowed = list(Company.objects.filter(tenant=tenant).values_list("id", flat=True))
+        allowed = list(_mgr(Company).filter(tenant=tenant).values_list("id", flat=True))
     else:
-        allowed = list(get_user_company_ids(user) or [])
+        allowed = list(get_user_memberships(user).values_list("company_id", flat=True))
 
-    # validate selected in allowed (nếu có selected)
-    if selected is not None:
-        if selected not in set(allowed):
-            raise PermissionDenied("Forbidden: company out of scope")
+    if selected is not None and selected not in set(allowed):
+        raise PermissionDenied("Forbidden: company out of scope")
 
     return selected, allowed

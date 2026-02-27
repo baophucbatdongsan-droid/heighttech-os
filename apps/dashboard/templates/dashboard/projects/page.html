@@ -1,0 +1,179 @@
+{# apps/dashboard/templates/dashboard/projects/page.html #}
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="x-tenant-id" content="{{ request.tenant_id }}">
+    <title>Bảng điều khiển Dự án</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+    <style>
+      :root{
+        --bg:#f6f7fb; --card:#fff; --text:#111; --muted:#667085; --line:#e6e8ef;
+        --primary:#2563eb; --danger:#b42318; --ok:#027a48; --warn:#b54708;
+        --shadow: 0 1px 2px rgba(16,24,40,.06);
+        --shadow2: 0 18px 40px rgba(16,24,40,.18);
+        --radius:14px;
+      }
+
+      *{ box-sizing:border-box; }
+      body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; padding:16px; background:var(--bg); color:var(--text); }
+      h2 { margin:0 0 10px 0; font-size:20px; }
+      a { text-decoration:none; color:var(--primary); }
+      a:hover { text-decoration:underline; }
+
+      .row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom: 12px; align-items:flex-end; }
+      .grid { display:grid; grid-template-columns: 340px 1fr; gap:12px; align-items:start; }
+      @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+
+      .card { border:1px solid var(--line); border-radius:var(--radius); padding:12px; background:var(--card); box-shadow:var(--shadow); }
+      .card h4 { margin:0 0 8px 0; font-size:14px; }
+
+      .muted { color:var(--muted); font-size:13px; }
+      .mini { font-size:12px; color:var(--muted); }
+      .hint { font-size:12px; color:var(--muted); margin-top:6px; }
+
+      .danger { color:var(--danger); }
+      .ok { color:var(--ok); }
+      .warn { color:var(--warn); }
+      .nowrap { white-space:nowrap; }
+
+      input, select, button, textarea {
+        padding:9px 10px;
+        border:1px solid #d0d5dd;
+        border-radius:12px;
+        background:#fff;
+        outline:none;
+      }
+      input:focus, select:focus, textarea:focus{
+        border-color: rgba(37,99,235,.6);
+        box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+      }
+      button { cursor:pointer; }
+      button:hover { background:#f8fafc; }
+
+      .chip{
+        display:inline-flex; align-items:center; gap:8px;
+        padding:7px 12px; border-radius:999px;
+        border:1px solid #d0d5dd;
+        background:#fff;
+        font-size:13px;
+      }
+      .chip:hover { background:#f8fafc; }
+      .chip.active { border-color:var(--primary); box-shadow:0 0 0 4px rgba(37,99,235,.12); }
+      .btn-primary { border-color:var(--primary); background:#eff6ff; }
+
+      .badge{
+        display:inline-flex; align-items:center; gap:6px;
+        padding:3px 8px; border-radius:999px;
+        border:1px solid var(--line);
+        font-size:12px; background:#fff;
+      }
+
+      /* Filters / bulk layout */
+      .toolbar { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+      .toolbar .field { display:flex; flex-direction:column; gap:6px; min-width:160px; }
+      .chipbar { display:flex; gap:8px; flex-wrap:wrap; }
+
+      .bulkbar { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
+      .bulkbar .field { display:flex; flex-direction:column; gap:6px; min-width:160px; }
+
+      .stickybar{
+        position: sticky;
+        top: 10px;
+        z-index: 20;
+        border:1px solid #d0d5dd;
+        background: rgba(255,255,255,.92);
+        backdrop-filter: blur(8px);
+      }
+
+      /* Table */
+      table { border-collapse: collapse; width:100%; background:#fff; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
+      th, td { border-bottom:1px solid var(--line); padding:10px 10px; text-align:left; vertical-align:top; }
+      th { background:#fbfcfe; position:sticky; top:0; z-index:2; font-size:12px; color:#344054; text-transform:uppercase; letter-spacing:.02em; }
+      tbody tr:hover{ background:#fbfcff; }
+
+      .progress{ height:8px; background:#f2f4f7; border-radius:999px; overflow:hidden; }
+      .progress > div{ height:8px; background:var(--primary); }
+
+      /* Drawer */
+      .drawer-mask{ position:fixed; inset:0; background:rgba(16,24,40,.35); display:none; z-index:9998; }
+      .drawer{
+        position:fixed; top:0; right:0; height:100%; width:520px; max-width:96vw;
+        background:#fff; border-left:1px solid var(--line);
+        box-shadow:var(--shadow2);
+        transform: translateX(100%);
+        transition: transform .18s ease;
+        z-index:9999;
+        display:flex; flex-direction:column;
+      }
+      .drawer.open{ transform: translateX(0); }
+      .drawer-mask.open{ display:block; }
+
+      .drawer-head{
+        padding:12px; border-bottom:1px solid var(--line);
+        display:flex; justify-content:space-between; align-items:center; gap:10px;
+      }
+      .drawer-body{ padding:12px; overflow:auto; }
+      .drawer-foot{ padding:12px; border-top:1px solid var(--line); display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+
+      /* Kanban */
+      .kanbanWrap{ overflow:auto; }
+      .kanbanRow{ display:flex; gap:12px; min-width: 1100px; padding-bottom: 6px; }
+      .kanbanCol{ min-width:260px; flex:1; }
+      .kanbanColHead{
+        display:flex; align-items:center; justify-content:space-between; gap:10px;
+        margin-bottom:10px;
+      }
+      .kanbanCard{ border:1px solid var(--line); border-radius:14px; padding:10px; background:#fff; cursor:pointer; }
+      .kanbanCard:hover{ box-shadow: var(--shadow); }
+      .workTitle{ font-weight:700; }
+      .pill{ display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid #d0d5dd; font-size:12px; background:#fff; }
+    </style>
+  </head>
+
+  <body>
+    {% include "dashboard/projects/_toast.html" %}
+
+    <div class="row" style="justify-content:space-between;">
+      <div>
+        <h2>Bảng điều khiển Dự án</h2>
+        <div class="muted">
+          Tenant: <b>{{ tenant_id }}</b> | Vai trò: <b>{{ role_label }}</b>
+          {% if sort %} | Sắp xếp: <b>{{ sort }}</b> ({{ dir }}){% endif %}
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="chip" href="{% url 'dashboard_projects:projects_dashboard' %}{% if qs_keep %}?{{ qs_keep }}{% endif %}">↻ Refresh</a>
+        <a class="chip" href="{% url 'dashboard_projects:projects_dashboard_export_csv' %}{% if qs_keep %}?{{ qs_keep }}{% endif %}">⬇️ CSV</a>
+        <button type="button" class="chip btn-primary" onclick="openDrawer('help')">❓ HDSD</button>
+      </div>
+    </div>
+
+    {% if error %}
+      <div class="card" style="border-color:#ffd3d8; background:#fff5f6;">
+        <div class="danger"><b>Lỗi:</b> {{ error }}</div>
+      </div>
+    {% endif %}
+
+    <div class="grid">
+      {% include "dashboard/projects/_scope.html" %}
+
+      <div>
+        {% include "dashboard/projects/_kpi_bar.html" %}
+        {% include "dashboard/projects/_filters.html" %}
+        {% include "dashboard/projects/_bulkbar.html" %}
+        {% include "dashboard/projects/_inbox.html" %}
+
+        {# Work board #}
+        {% include "dashboard/projects/_work_board.html" %}
+
+        {% include "dashboard/projects/_table.html" %}
+      </div>
+    </div>
+
+    {% include "dashboard/projects/_drawer.html" %}
+    {% include "dashboard/projects/_scripts.html" %}
+  </body>
+</html>

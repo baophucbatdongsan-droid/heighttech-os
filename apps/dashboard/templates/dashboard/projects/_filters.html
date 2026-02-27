@@ -1,0 +1,80 @@
+<h4>Bộ lọc</h4>
+
+<form method="get" class="toolbar" style="width:100%;">
+  {% if selected_company_id %}<input type="hidden" name="company_id" value="{{ selected_company_id }}"/>{% endif %}
+  {% if sort %}<input type="hidden" name="sort" value="{{ sort }}"/>{% endif %}
+  {% if dir %}<input type="hidden" name="dir" value="{{ dir }}"/>{% endif %}
+
+  <div class="field">
+    <div class="muted">Tìm theo tên / ID</div>
+    <input name="q" value="{{ filters.q }}" placeholder="Ví dụ: 'Dự án A' hoặc '123'..." style="min-width:240px;"/>
+  </div>
+
+  <div class="field">
+    <div class="muted">Trạng thái</div>
+    <select name="status">
+      <option value="" {% if not filters.status %}selected{% endif %}>(Tất cả)</option>
+      <option value="active" {% if filters.status == "active" %}selected{% endif %}>active</option>
+      <option value="paused" {% if filters.status == "paused" %}selected{% endif %}>paused</option>
+      <option value="done" {% if filters.status == "done" %}selected{% endif %}>done</option>
+      <option value="inactive" {% if filters.status == "inactive" %}selected{% endif %}>inactive</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <div class="muted">Loại (type)</div>
+    <input name="type" value="{{ filters.type }}" placeholder="shop_operation/build_channel/..." style="min-width:200px;"/>
+  </div>
+
+  <div class="field">
+    <div class="muted">Health từ - đến</div>
+    <div style="display:flex; gap:8px;">
+      <input name="health_min" value="{{ filters.health_min }}" placeholder="min" style="width:90px;"/>
+      <input name="health_max" value="{{ filters.health_max }}" placeholder="max" style="width:90px;"/>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="muted">Cập nhật từ - đến</div>
+    <div style="display:flex; gap:8px;">
+      <input name="updated_from" value="{{ filters.updated_from }}" placeholder="YYYY-MM-DD" style="width:140px;"/>
+      <input name="updated_to" value="{{ filters.updated_to }}" placeholder="YYYY-MM-DD" style="width:140px;"/>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="muted">Số dòng / trang</div>
+    <select name="page_size">
+      <option value="25" {% if filters.page_size == 25 %}selected{% endif %}>25</option>
+      <option value="50" {% if filters.page_size == 50 %}selected{% endif %}>50</option>
+      <option value="100" {% if filters.page_size == 100 %}selected{% endif %}>100</option>
+      <option value="200" {% if filters.page_size == 200 %}selected{% endif %}>200</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <button type="submit">Áp dụng</button>
+  </div>
+
+  <div class="field">
+    <div class="muted">&nbsp;</div>
+    <a class="chip" href="{% url 'dashboard_projects:projects_dashboard_export_csv' %}{% if qs_keep %}?{{ qs_keep }}{% endif %}">
+      ⬇️ Xuất CSV
+    </a>
+  </div>
+</form>
+
+<div style="margin-top:12px;">
+  <div class="muted" style="margin-bottom:8px;">Lọc nhanh theo trạng thái</div>
+  <div class="chipbar">
+    <a class="chip {% if not filters.status %}active{% endif %}"
+       href="?{% if selected_company_id %}company_id={{ selected_company_id }}&{% endif %}{% if filters.q %}q={{ filters.q|urlencode }}&{% endif %}{% if filters.type %}type={{ filters.type|urlencode }}&{% endif %}{% if filters.health_min != None %}health_min={{ filters.health_min }}&{% endif %}{% if filters.health_max != None %}health_max={{ filters.health_max }}&{% endif %}{% if filters.updated_from %}updated_from={{ filters.updated_from|urlencode }}&{% endif %}{% if filters.updated_to %}updated_to={{ filters.updated_to|urlencode }}&{% endif %}page_size={{ filters.page_size }}{% if sort %}&sort={{ sort }}&dir={{ dir }}{% endif %}">
+      Tất cả
+    </a>
+
+    <a class="chip {% if filters.status == 'active' %}active{% endif %}" href="?status=active{% if qs_keep %}&{{ qs_keep }}{% endif %}">active</a>
+    <a class="chip {% if filters.status == 'paused' %}active{% endif %}" href="?status=paused{% if qs_keep %}&{{ qs_keep }}{% endif %}">paused</a>
+    <a class="chip {% if filters.status == 'done' %}active{% endif %}" href="?status=done{% if qs_keep %}&{{ qs_keep }}{% endif %}">done</a>
+    <a class="chip {% if filters.status == 'inactive' %}active{% endif %}" href="?status=inactive{% if qs_keep %}&{{ qs_keep }}{% endif %}">inactive</a>
+  </div>
+</div>

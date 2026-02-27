@@ -1,0 +1,22 @@
+{# apps/dashboard/templates/dashboard/projects/_toast.html #}
+<div class="toast-wrap" id="toastWrap" style="
+  position: fixed; right: 14px; top: 14px;
+  display:flex; flex-direction:column; gap:10px; z-index: 9999;">
+  {% if messages %}
+    {% for m in messages %}
+      <div class="toast {% if m.tags == 'error' %}error{% else %}success{% endif %}" style="
+        min-width: 280px; max-width: 420px;
+        border: 1px solid #eee; border-radius: 12px; padding: 12px;
+        box-shadow: 0 6px 18px rgba(0,0,0,.08);
+        background:#fff;">
+        <span onclick="this.parentElement.remove()" style="float:right; cursor:pointer; color:#777;">✕</span>
+        <div style="font-weight:700; margin-bottom:6px;">
+          {% if m.tags == 'error' %}Có lỗi{% else %}Thành công{% endif %}
+        </div>
+        <div class="{% if m.tags == 'error' %}danger{% else %}muted{% endif %}">
+          {{ m }}
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+</div>

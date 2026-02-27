@@ -1,0 +1,23 @@
+{# apps/dashboard/templates/dashboard/projects/_drawer.html #}
+<div id="drawerMask" class="drawer-mask" aria-hidden="true"></div>
+
+<aside id="drawer" class="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <div style="min-width:0;">
+      <div id="drawerTitle" style="font-weight:800;">Drawer</div>
+      <div id="drawerSubtitle" class="mini" style="margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <button type="button" class="chip" onclick="closeDrawer()">Đóng</button>
+      <button type="button" class="chip btn-primary" onclick="drawerPrimaryAction()">OK</button>
+    </div>
+  </div>
+
+  <div id="drawerBody" class="drawer-body">
+    <div class="muted">Không có nội dung.</div>
+  </div>
+
+  <div class="drawer-foot">
+    <button type="button" class="chip" onclick="closeDrawer()">Đóng</button>
+  </div>
+</aside>

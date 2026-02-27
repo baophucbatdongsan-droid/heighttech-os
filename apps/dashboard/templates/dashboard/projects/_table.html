@@ -1,0 +1,184 @@
+{# apps/dashboard/templates/dashboard/projects/_table.html #}
+<div class="card" style="padding:0; overflow:hidden;">
+  <div style="padding:12px 12px 0 12px;">
+    <h4 style="margin:0;">Danh sách dự án</h4>
+    <div class="muted" style="margin-top:4px;">
+      Trang {{ page_obj.number }} / {{ paginator.num_pages }}
+    </div>
+  </div>
+
+  <table id="projectsTable">
+    <thead>
+      <tr>
+        <th style="width:44px;">
+          <input type="checkbox" id="chkAllPage" onclick="toggleAll(this.checked)"/>
+        </th>
+
+        <th style="width:80px;">
+          <a href="?sort=id&dir={% if sort == 'id' and dir == 'asc' %}desc{% else %}asc{% endif %}{% if qs_keep %}&{{ qs_keep }}{% endif %}">
+            ID
+          </a>
+        </th>
+
+        <th>
+          <a href="?sort=name&dir={% if sort == 'name' and dir == 'asc' %}desc{% else %}asc{% endif %}{% if qs_keep %}&{{ qs_keep }}{% endif %}">
+            Tên
+          </a>
+        </th>
+
+        <th style="width:170px;">
+          <a href="?sort=type&dir={% if sort == 'type' and dir == 'asc' %}desc{% else %}asc{% endif %}{% if qs_keep %}&{{ qs_keep }}{% endif %}">
+            Loại
+          </a>
+        </th>
+
+        <th style="width:120px;">
+          <a href="?sort=status&dir={% if sort == 'status' and dir == 'asc' %}desc{% else %}asc{% endif %}{% if qs_keep %}&{{ qs_keep }}{% endif %}">
+            Trạng thái
+          </a>
+        </th>
+
+        <th style="width:90px;">
+          <a href="?sort=health&dir={% if sort == 'health' and dir == 'asc' %}desc{% else %}asc{% endif %}{% if qs_keep %}&{{ qs_keep }}{% endif %}">
+            Health
+          </a>
+        </th>
+
+        <th style="width:120px;">Shops</th>
+        <th style="width:160px;">Progress</th>
+
+        <th style="width:220px;">
+          <a href="?sort=updated&dir={% if sort == 'updated' and dir == 'asc' %}desc{% else %}asc{% endif %}{% if qs_keep %}&{{ qs_keep }}{% endif %}">
+            Cập nhật
+          </a>
+        </th>
+
+        <th style="width:200px;">Tác vụ</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for p in items %}
+        {% with hs=p.health_score|default_if_none:100 %}
+        <tr
+          data-project-id="{{ p.id }}"
+          data-project-name="{{ p.name|escapejs }}"
+          data-project-status="{{ p.status }}"
+          data-project-type="{{ p.type }}"
+          data-project-health="{{ hs }}"
+          data-project-progress="{{ p.progress_percent|default_if_none:'0' }}"
+          data-project-updated="{{ p.updated_at|default:'' }}"
+        >
+          <td>
+            <input
+              form="bulkForm"
+              type="checkbox"
+              name="project_ids"
+              value="{{ p.id }}"
+              class="rowchk"
+              onchange="syncHeaderCheck()"
+            />
+          </td>
+
+          <td>
+            <a href="{% url 'dashboard_projects:project_detail' p.id %}{% if qs_keep %}?{{ qs_keep }}{% endif %}">
+              {{ p.id }}
+            </a>
+          </td>
+
+          <td>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <b>{{ p.name }}</b>
+
+              {% if hs <= 40 %}
+                <span class="badge danger">⚠ low</span>
+              {% elif hs <= 70 %}
+                <span class="badge warn">⚠ mid</span>
+              {% else %}
+                <span class="badge ok">✅ ok</span>
+              {% endif %}
+            </div>
+
+            <div class="mini">
+              Owner: {{ p.owner_id|default:"-" }} • Last: {{ p.last_activity_at|default:"-" }}
+            </div>
+          </td>
+
+          <td>
+            <b>{{ p.type }}</b>
+            <div class="mini">{{ p.type_code }}</div>
+          </td>
+
+          <td>{{ p.status }}</td>
+
+          <td>{{ hs }}</td>
+
+          <td><span class="muted">-</span></td>
+
+          <td>
+            <div class="mini">({{ p.progress_percent|default_if_none:"0" }}%)</div>
+            <div class="progress">
+              <div style="width:{{ p.progress_percent|default_if_none:'0' }}%"></div>
+            </div>
+          </td>
+
+          <td class="muted">{{ p.updated_at }}</td>
+
+          <td>
+            <a
+              href="#"
+              class="chip"
+              style="padding:6px 10px;"
+              data-open-project-board="{{ p.id }}"
+              data-open-label="{{ p.name|escapejs }}"
+            >
+              Board
+            </a>
+
+            <a
+              class="chip"
+              style="padding:6px 10px;"
+              href="/api/v1/work/board/?scope=project&project_id={{ p.id }}"
+              target="_blank"
+            >
+              API
+            </a>
+
+            <a
+              class="chip"
+              style="padding:6px 10px;"
+              href="{% url 'dashboard_projects:project_detail' p.id %}{% if qs_keep %}?{{ qs_keep }}{% endif %}"
+            >
+              Detail
+            </a>
+          </td>
+        </tr>
+        {% endwith %}
+      {% empty %}
+        <tr>
+          <td colspan="10" class="muted">Không có dự án nào.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div style="display:flex; justify-content:space-between; align-items:center; padding:12px;">
+    <div class="muted">
+      Trang <b>{{ page_obj.number }}</b> / <b>{{ paginator.num_pages }}</b>
+    </div>
+
+    <div style="display:flex; gap:8px;">
+      {% if page_obj.has_previous %}
+        <a class="chip" href="?page={{ page_obj.previous_page_number }}{% if qs_keep %}&{{ qs_keep }}{% endif %}">
+          ← Trước
+        </a>
+      {% endif %}
+
+      {% if page_obj.has_next %}
+        <a class="chip" href="?page={{ page_obj.next_page_number }}{% if qs_keep %}&{{ qs_keep }}{% endif %}">
+          Sau →
+        </a>
+      {% endif %}
+    </div>
+  </div>
+</div>

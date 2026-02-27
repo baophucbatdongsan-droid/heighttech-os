@@ -21,6 +21,7 @@ def _is_authed(user) -> bool:
 
 
 def _is_all_access(user) -> bool:
+    # founder/superuser => ALL access (nhưng vẫn bị chặn theo tenant nếu request set tenant context)
     return bool(getattr(user, "is_superuser", False)) or is_founder(user)
 
 
@@ -40,9 +41,49 @@ def _filter_tenant(qs, tid: Optional[int]):
     if _has_field(qs.model, "tenant_id"):
         return qs.filter(tenant_id=tid)
     if _has_field(qs.model, "tenant"):
-        # Django FK sẽ có tenant_id anyway, nhưng để an toàn
         return qs.filter(tenant_id=tid)
     return qs
+
+
+def _mgr(model_cls):
+    """
+    Ưu tiên objects_all (soft-delete friendly), fallback objects.
+    """
+    return getattr(model_cls, "objects_all", model_cls.objects)
+
+
+# =====================================================
+# SCOPE RAW RESOLVERS (NO RECURSION)
+# =====================================================
+
+def _membership_company_ids(user, tid: Optional[int]) -> Set[int]:
+    """
+    Company scope lấy từ Membership (company membership).
+    """
+    qs = Membership.objects.filter(user=user, is_active=True)
+    if tid:
+        qs = qs.filter(company__tenant_id=tid)
+    return set(qs.values_list("company_id", flat=True))
+
+
+def _shopmember_shop_ids(user, tid: Optional[int]) -> Set[int]:
+    """
+    Shop scope lấy trực tiếp từ ShopMember.
+    Dùng objects_all nếu có để tránh mất record do soft-delete/custom manager.
+    """
+    sm = _mgr(ShopMember).filter(user=user, is_active=True)
+    sm = _filter_tenant(sm, tid)
+    return set(sm.values_list("shop_id", flat=True))
+
+
+def _shopmember_company_ids(user, tid: Optional[int]) -> Set[int]:
+    """
+    Company scope suy ra từ ShopMember -> shop.brand.company.
+    Dùng objects_all nếu có để tránh mất record do soft-delete/custom manager.
+    """
+    sm = _mgr(ShopMember).filter(user=user, is_active=True)
+    sm = _filter_tenant(sm, tid)
+    return set(sm.values_list("shop__brand__company_id", flat=True).distinct())
 
 
 # =====================================================
@@ -52,8 +93,10 @@ def _filter_tenant(qs, tid: Optional[int]):
 def get_scope_company_ids(user) -> List[int]:
     """
     Return list company_ids user được phép truy cập trong tenant hiện tại.
-    - superuser / founder: return [] (nghĩa là ALL trong tenant)
-    - còn lại: lấy từ Membership + suy ra từ ShopMember
+
+    QUY ƯỚC:
+    - superuser/founder: return []  (meaning ALL within tenant)
+    - user thường: union(Membership.company_id, ShopMember -> shop.brand.company_id)
     """
     if not _is_authed(user):
         return []
@@ -63,28 +106,21 @@ def get_scope_company_ids(user) -> List[int]:
 
     tid = get_current_tenant_id()
 
-    # 1) Company memberships
-    qs = Membership.objects.filter(user=user, is_active=True)
-    if tid:
-        qs = qs.filter(company__tenant_id=tid)
-    company_ids: Set[int] = set(qs.values_list("company_id", flat=True))
+    company_ids = _membership_company_ids(user, tid)
+    company_ids |= _shopmember_company_ids(user, tid)
 
-    # 2) From shop memberships -> company via shop.brand.company
-    sm = ShopMember.objects.filter(user=user, is_active=True)
-    sm = _filter_tenant(sm, tid)
-    shop_company_ids: Set[int] = set(
-        sm.values_list("shop__brand__company_id", flat=True).distinct()
-    )
-
-    return list(company_ids | shop_company_ids)
+    return list(company_ids)
 
 
 def get_scope_shop_ids(user) -> List[int]:
     """
     Return list shop_ids user được phép truy cập trong tenant hiện tại.
-    - superuser / founder: return [] (ALL shops in tenant)
-    - Membership company -> toàn bộ shop thuộc company đó
-    - ShopMember -> shop cụ thể
+
+    QUY ƯỚC:
+    - superuser/founder: return []  (meaning ALL shops in tenant)
+    - user thường:
+        - ShopMember -> shop cụ thể
+        - Membership company -> toàn bộ shops thuộc companies đó
     """
     if not _is_authed(user):
         return []
@@ -95,17 +131,19 @@ def get_scope_shop_ids(user) -> List[int]:
     tid = get_current_tenant_id()
 
     # 1) Direct shop memberships
-    sm = ShopMember.objects.filter(user=user, is_active=True)
-    sm = _filter_tenant(sm, tid)
-    shop_ids: Set[int] = set(sm.values_list("shop_id", flat=True))
+    shop_ids: Set[int] = _shopmember_shop_ids(user, tid)
 
-    # 2) Shops from company memberships
-    company_ids = get_scope_company_ids(user)
+    # 2) Shops from company memberships (không gọi get_scope_company_ids để tránh vòng)
+    company_ids = _membership_company_ids(user, tid)
+
+    # Nếu bạn muốn: user được vào 1 shop thì auto mở cả company:
+    # company_ids |= _shopmember_company_ids(user, tid)
+
     if company_ids:
-        shops_qs = Shop.objects.all()
+        shops_qs = _mgr(Shop).all()
         shops_qs = _filter_tenant(shops_qs, tid)
         shop_ids |= set(
-            shops_qs.filter(brand__company_id__in=company_ids).values_list("id", flat=True)
+            shops_qs.filter(brand__company_id__in=list(company_ids)).values_list("id", flat=True)
         )
 
     return list(shop_ids)
@@ -125,7 +163,6 @@ def filter_shops_queryset_for_user(user, qs):
 
     tid = get_current_tenant_id()
 
-    # ALL access (nhưng vẫn trong tenant nếu có)
     if _is_all_access(user):
         return _filter_tenant(qs, tid)
 
@@ -139,7 +176,7 @@ def filter_shops_queryset_for_user(user, qs):
 
 def filter_perf_queryset_for_user(user, qs):
     """
-    Apply scope to MonthlyPerformance queryset (or any perf-like qs with shop_id/shop FK).
+    Apply scope to MonthlyPerformance queryset (hoặc model có shop/shop_id).
     - Founder/superuser: vẫn bị giữ trong tenant hiện tại (nếu model có tenant)
     """
     if not _is_authed(user):
@@ -156,7 +193,6 @@ def filter_perf_queryset_for_user(user, qs):
 
     qs = _filter_tenant(qs, tid)
 
-    # support both shop FK and shop_id int
     if _has_field(qs.model, "shop_id"):
         return qs.filter(shop_id__in=shop_ids)
     return qs.filter(shop__id__in=shop_ids)
@@ -171,18 +207,18 @@ def ensure_can_access_shop(user, shop: Shop) -> None:
     Double-check object-level (chống leak khi ai đó truyền shop_id bậy).
     """
     if not _is_authed(user):
-        raise PermissionDenied("Forbidden")
+        raise PermissionDenied("Bạn không có quyền truy cập")
 
     tid = get_current_tenant_id()
     if tid and getattr(shop, "tenant_id", None) and int(shop.tenant_id) != int(tid):
-        raise PermissionDenied("Forbidden: shop out of tenant")
+        raise PermissionDenied("Shop không thuộc tenant hiện tại")
 
     if _is_all_access(user):
         return
 
     shop_ids = set(get_scope_shop_ids(user))
     if shop.id not in shop_ids:
-        raise PermissionDenied("Forbidden: shop out of scope")
+        raise PermissionDenied("Shop nằm ngoài phạm vi được phép")
 
 
 # =====================================================
@@ -206,12 +242,12 @@ def resolve_company_id_for_request(user, company_id_raw: Optional[str]) -> Optio
 
     tid = get_current_tenant_id()
 
-    # Validate company thuộc tenant hiện tại (cả founder cũng không được “nhảy tenant”)
+    # Validate company thuộc tenant hiện tại
     c_qs = Company.objects.all()
     if tid:
         c_qs = c_qs.filter(tenant_id=tid)
     if not c_qs.filter(id=cid).exists():
-        raise PermissionDenied("Forbidden: company out of tenant")
+        raise PermissionDenied("Công ty không thuộc tenant hiện tại")
 
     if _is_all_access(user):
         return cid
@@ -220,4 +256,4 @@ def resolve_company_id_for_request(user, company_id_raw: Optional[str]) -> Optio
     if cid in allowed:
         return cid
 
-    raise PermissionDenied("Forbidden: company out of scope")
+    raise PermissionDenied("Công ty nằm ngoài phạm vi được phép")

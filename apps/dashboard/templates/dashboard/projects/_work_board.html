@@ -1,0 +1,23 @@
+{# apps/dashboard/templates/dashboard/projects/_work_board.html #}
+<div class="card" id="workBoardWrap">
+  <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+    <div>
+      <h4 style="margin:0;">WORK BOARD (KANBAN)</h4>
+      <div class="mini">
+        Dữ liệu: <code>/api/v1/work/board/</code> (auto gắn <b>X-Tenant-Id</b>)
+      </div>
+    </div>
+
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button id="btnLoadWorkBoard" type="button" class="chip">↻ Load board</button>
+      <button type="button" class="chip" onclick="openDrawer('work_help')">Work Help</button>
+    </div>
+  </div>
+
+  <div class="mini" id="workBoardHint" style="margin-top:8px;"></div>
+  <div style="height:10px;"></div>
+
+  <div id="kanbanRoot" class="kanbanWrap">
+    <div class="muted">Chưa load board. Bấm “Load board”.</div>
+  </div>
+</div>
