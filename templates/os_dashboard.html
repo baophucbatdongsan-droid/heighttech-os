@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>HeightTech OS</title>
+<style>
+  body{
+    font-family:Arial;
+    background:#0f172a;
+    color:white;
+    margin:0;
+  }
+  .header{
+    background:#020617;
+    padding:15px;
+    font-size:20px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+  }
+  .header .right{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    font-size:12px;
+    opacity:.95;
+  }
+  .pill{
+    background:#111827;
+    border:1px solid #1f2937;
+    padding:6px 10px;
+    border-radius:999px;
+  }
+  .container{
+    padding:20px;
+  }
+  .cards{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:15px;
+  }
+  .card{
+    background:#1e293b;
+    padding:20px;
+    border-radius:10px;
+    border:1px solid #243244;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:2fr 1fr;
+    gap:20px;
+    margin-top:20px;
+  }
+  .panel{
+    background:#1e293b;
+    padding:20px;
+    border-radius:10px;
+    border:1px solid #243244;
+  }
+
+  .timeline-item{
+    border-bottom:1px solid #334155;
+    padding:10px 0;
+  }
+  .notification{
+    background:#334155;
+    padding:10px;
+    margin-bottom:10px;
+    border-radius:6px;
+  }
+
+  /* ===== Kanban ===== */
+  .kanbanWrap{
+    margin-top:20px;
+  }
+  .kanbanHead{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:10px;
+  }
+  .kanbanHead .left{
+    display:flex;
+    gap:10px;
+    align-items:center;
+  }
+  .btn{
+    background:#0b1220;
+    color:white;
+    border:1px solid #263244;
+    padding:8px 10px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:700;
+  }
+  .btn:active{ transform: translateY(1px); }
+  .btn.mini{ padding:6px 8px; border-radius:7px; font-weight:700; font-size:12px; }
+  .input{
+    background:#0b1220;
+    color:white;
+    border:1px solid #263244;
+    padding:8px 10px;
+    border-radius:8px;
+    outline:none;
+  }
+  .muted{ opacity:.7; }
+
+  .kanban{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+  }
+  .col{
+    background:#111827;
+    border:1px solid #243244;
+    border-radius:12px;
+    padding:10px;
+    min-height:240px;
+  }
+  .colHead{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:8px;
+  }
+  .colTitle{
+    font-weight:900;
+    letter-spacing:.4px;
+  }
+  .colCount{
+    font-size:12px;
+    opacity:.8;
+  }
+  .dropzone{
+    min-height:200px;
+    padding:6px;
+    border-radius:10px;
+  }
+  .dropzone.dragover{
+    outline:2px dashed #3b82f6;
+    outline-offset:2px;
+    background:rgba(59,130,246,.08);
+  }
+  .task{
+    background:#1e293b;
+    border:1px solid #243244;
+    border-radius:12px;
+    padding:10px;
+    margin:8px 0;
+    cursor:grab;
+    user-select:none;
+  }
+  .task:active{ cursor:grabbing; }
+  .task .t{
+    font-weight:900;
+    margin-bottom:6px;
+  }
+  .task .meta{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    font-size:12px;
+    opacity:.9;
+  }
+  .tag{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:#0b1220;
+    border:1px solid #263244;
+    padding:3px 8px;
+    border-radius:999px;
+  }
+  .row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:10px;
+  }
+  .flash{
+    animation: flash 900ms ease-in-out;
+  }
+  @keyframes flash{
+    0%{ box-shadow:0 0 0 rgba(59,130,246,0); }
+    40%{ box-shadow:0 0 0 3px rgba(59,130,246,.35); }
+    100%{ box-shadow:0 0 0 rgba(59,130,246,0); }
+  }
+
+  .modal{
+    position:fixed;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background:rgba(0,0,0,.55);
+    padding:20px;
+  }
+  .modal.open{ display:flex; }
+  .modalBox{
+    width:min(760px, 96vw);
+    background:#0b1220;
+    border:1px solid #243244;
+    border-radius:16px;
+    padding:16px;
+  }
+  .modalBox h3{ margin:0 0 10px 0; }
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <div>HeightTech OS</div>
+  <div class="right">
+    <span class="pill">scope: <b id="scopePill">tenant</b></span>
+    <span class="pill" id="rtPill">realtime</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="cards">
+    <div class="card"><h3>Shops</h3><div id="shops">0</div></div>
+    <div class="card"><h3>Risk</h3><div id="risk">0</div></div>
+    <div class="card"><h3>Open Tasks</h3><div id="tasks">0</div></div>
+    <div class="card"><h3>Actions</h3><div id="actions">0</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h3>Timeline</h3>
+      <div id="timeline"></div>
+      <div class="row">
+        <button class="btn mini" id="btnRefresh">Refresh</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Notifications</h3>
+      <div id="notifications"></div>
+    </div>
+  </div>
+
+  <!-- ===== Kanban ===== -->
+  <div class="kanbanWrap panel" style="margin-top:20px;">
+    <div class="kanbanHead">
+      <div class="left">
+        <h3 style="margin:0;">Work Kanban</h3>
+        <span class="muted" id="workHint">drag & drop để đổi trạng thái</span>
+      </div>
+      <div class="right">
+        <button class="btn" id="btnNewTask">+ New</button>
+        <button class="btn" id="btnRefreshWork">Refresh</button>
+      </div>
+    </div>
+
+    <div class="kanban" id="kanban">
+      <div class="col" data-status="todo">
+        <div class="colHead"><div class="colTitle">TODO</div><div class="colCount" id="cnt_todo">0</div></div>
+        <div class="dropzone" id="col_todo"></div>
+      </div>
+
+      <div class="col" data-status="doing">
+        <div class="colHead"><div class="colTitle">DOING</div><div class="colCount" id="cnt_doing">0</div></div>
+        <div class="dropzone" id="col_doing"></div>
+      </div>
+
+      <div class="col" data-status="blocked">
+        <div class="colHead"><div class="colTitle">BLOCKED</div><div class="colCount" id="cnt_blocked">0</div></div>
+        <div class="dropzone" id="col_blocked"></div>
+      </div>
+
+      <div class="col" data-status="done">
+        <div class="colHead"><div class="colTitle">DONE</div><div class="colCount" id="cnt_done">0</div></div>
+        <div class="dropzone" id="col_done"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal create task -->
+<div class="modal" id="createModal">
+  <div class="modalBox">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <h3>Create Task</h3>
+      <button class="btn mini" id="btnCloseModal">Close</button>
+    </div>
+    <div class="row">
+      <input class="input" style="flex:1;min-width:240px" id="newTitle" placeholder="Task title...">
+      <input class="input" style="width:140px" id="newPriority" placeholder="priority 1-4">
+      <input class="input" style="width:160px" id="newAssignee" placeholder="assignee_id">
+    </div>
+    <div class="row">
+      <button class="btn" id="btnCreate">Create</button>
+      <span class="muted" id="createMsg"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+/**
+ * HeightTech OS Kanban + Dashboard
+ * - dùng session cookie (khuyến nghị) hoặc Token nếu anh muốn giữ như cũ
+ * - endpoints:
+ *   /api/v1/os/control-center/
+ *   /api/v1/os/timeline/
+ *   /api/v1/os/notifications/
+ *   /api/v1/os/work/inbox/
+ *   /api/v1/os/work/create/
+ *   /api/v1/os/work/<id>/move/   <-- em thêm API này ở file os_work.py dưới
+ */
+
+const CFG = {
+  controlCenter: "/api/v1/os/control-center/",
+  timeline: "/api/v1/os/timeline/",
+  notifications: "/api/v1/os/notifications/",
+  workInbox: "/api/v1/os/work/inbox/",
+  workCreate: "/api/v1/os/work/create/",
+  workMoveBase: "/api/v1/os/work/", // + {id}/move/
+  // token: "...." // nếu cần
+};
+
+const SCOPE = {
+  scope: localStorage.getItem("ht_scope") || "tenant",
+  company_id: localStorage.getItem("ht_company_id") || "",
+  shop_id: localStorage.getItem("ht_shop_id") || "",
+  project_id: localStorage.getItem("ht_project_id") || "",
+  hours: localStorage.getItem("ht_hours") || "24",
+};
+
+function scopeParams(){
+  const p = new URLSearchParams();
+  p.set("scope", SCOPE.scope || "tenant");
+  if (SCOPE.company_id) p.set("company_id", SCOPE.company_id);
+  if (SCOPE.shop_id) p.set("shop_id", SCOPE.shop_id);
+  if (SCOPE.project_id) p.set("project_id", SCOPE.project_id);
+  return p;
+}
+
+function $(id){ return document.getElementById(id); }
+
+function getCookie(name){
+  const m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+  return m ? decodeURIComponent(m[2]) : null;
+}
+
+async function http(url, opts={}){
+  const headers = Object.assign({}, opts.headers || {});
+  const method = (opts.method || "GET").toUpperCase();
+
+  // CSRF (nếu dùng session)
+  const csrf = getCookie("csrftoken");
+  if (csrf && method !== "GET") headers["X-CSRFToken"] = csrf;
+
+  // Token (nếu dùng token)
+  if (CFG.token) headers["Authorization"] = "Token " + CFG.token;
+
+  const res = await fetch(url, Object.assign({ credentials: "include", headers }, opts));
+  const ct = res.headers.get("content-type") || "";
+  const data = ct.includes("application/json") ? await res.json() : await res.text();
+  if (!res.ok) {
+    const msg = (data && data.message) ? data.message : (typeof data === "string" ? data : JSON.stringify(data));
+    throw new Error(msg || ("HTTP " + res.status));
+  }
+  return data;
+}
+
+/* ===== Dashboard render ===== */
+function renderDashboard(data){
+  const headline = data.headline || data.kpi || data.headline_block || {};
+  $("shops").innerText = headline.shops_total || 0;
+  $("risk").innerText = headline.shops_risk || 0;
+  $("tasks").innerText = headline.work_open || 0;
+  $("actions").innerText = headline.actions_open || 0;
+
+  renderTimeline(data.timeline);
+  renderNotifications(data.notifications);
+}
+
+function renderTimeline(timeline){
+  const container = $("timeline");
+  container.innerHTML = "";
+  const items = timeline?.items || [];
+  if (!items.length){
+    container.innerHTML = `<div class="muted">Chưa có timeline</div>`;
+    return;
+  }
+  items.forEach(e=>{
+    const el=document.createElement("div");
+    el.className="timeline-item";
+    el.innerHTML=`<b>${e.name || e.tieu_de || "Sự kiện"}</b><br><span class="muted">${e.entity || e.noi_dung || ""}</span>`;
+    container.appendChild(el);
+  });
+}
+
+function renderNotifications(notifications){
+  const container=$("notifications");
+  container.innerHTML="";
+  const items = notifications?.items || [];
+  if(!items.length){
+    container.innerHTML=`<div class="muted">Không có thông báo</div>`;
+    return;
+  }
+  items.forEach(n=>{
+    const el=document.createElement("div");
+    el.className="notification";
+    el.innerHTML=`<b>${n.tieu_de || "Thông báo"}</b><br><span class="muted">${n.noi_dung || ""}</span>`;
+    container.appendChild(el);
+  });
+}
+
+async function loadDashboard(){
+  const p = scopeParams();
+  const data = await http(CFG.controlCenter + "?" + p.toString());
+  renderDashboard(data);
+}
+
+/* ===== Kanban ===== */
+let WORK_CACHE = []; // items open
+
+function groupByStatus(items){
+  const g = { todo:[], doing:[], blocked:[], done:[] };
+  (items||[]).forEach(x=>{
+    const st = (x.status || "todo").toLowerCase();
+    if (g[st]) g[st].push(x);
+    else g.todo.push(x);
+  });
+  return g;
+}
+
+function renderKanban(items){
+  const g = groupByStatus(items);
+
+  const cols = {
+    todo: $("col_todo"),
+    doing: $("col_doing"),
+    blocked: $("col_blocked"),
+    done: $("col_done"),
+  };
+
+  Object.keys(cols).forEach(st=>{
+    cols[st].innerHTML = "";
+    (g[st]||[]).forEach(t=>{
+      const el = document.createElement("div");
+      el.className = "task";
+      el.draggable = true;
+      el.dataset.id = t.id;
+      el.dataset.status = (t.status || st);
+
+      el.innerHTML = `
+        <div class="t">${escapeHtml(t.title || ("Task #" + t.id))}</div>
+        <div class="meta">
+          <span class="tag">#${t.id}</span>
+          <span class="tag">p:${t.priority ?? "-"}</span>
+          <span class="tag">asg:${t.assignee_id ?? "-"}</span>
+        </div>
+      `;
+
+      el.addEventListener("dragstart", (e)=>{
+        e.dataTransfer.setData("text/plain", String(t.id));
+        e.dataTransfer.effectAllowed = "move";
+        el.classList.add("flash");
+        setTimeout(()=>el.classList.remove("flash"), 600);
+      });
+
+      cols[st].appendChild(el);
+    });
+
+    $("cnt_" + st).innerText = String((g[st]||[]).length);
+  });
+}
+
+function escapeHtml(s){
+  return String(s||"")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+async function refreshWork(){
+  const p = scopeParams();
+  p.set("status","open");
+  p.set("limit","50");
+  const data = await http(CFG.workInbox + "?" + p.toString());
+  WORK_CACHE = data.items || [];
+  renderKanban(WORK_CACHE);
+
+  // update KPI open tasks
+  $("tasks").innerText = data.open_count ?? (WORK_CACHE.length);
+}
+
+async function moveTask(taskId, toStatus){
+  const url = `${CFG.workMoveBase}${taskId}/move/`;
+  await http(url, {
+    method: "POST",
+    headers: {"content-type":"application/json"},
+    body: JSON.stringify({ status: toStatus }),
+  });
+  await refreshWork();
+}
+
+function bindDropzones(){
+  document.querySelectorAll(".col").forEach(col=>{
+    const toStatus = col.dataset.status;
+    const dz = col.querySelector(".dropzone");
+
+    dz.addEventListener("dragover", (e)=>{
+      e.preventDefault();
+      dz.classList.add("dragover");
+      e.dataTransfer.dropEffect = "move";
+    });
+
+    dz.addEventListener("dragleave", ()=>{
+      dz.classList.remove("dragover");
+    });
+
+    dz.addEventListener("drop", async (e)=>{
+      e.preventDefault();
+      dz.classList.remove("dragover");
+      const id = e.dataTransfer.getData("text/plain");
+      if (!id) return;
+
+      try{
+        await moveTask(id, toStatus);
+      }catch(err){
+        alert("Move lỗi: " + err.message);
+      }
+    });
+  });
+}
+
+/* ===== Create task ===== */
+function openModal(){ $("createModal").classList.add("open"); $("newTitle").focus(); }
+function closeModal(){ $("createModal").classList.remove("open"); $("createMsg").innerText=""; }
+
+async function createTask(){
+  const title = ($("newTitle").value || "").trim();
+  const pr = ($("newPriority").value || "").trim();
+  const assignee = ($("newAssignee").value || "").trim();
+  if(!title){ $("createMsg").innerText = "Nhập title nha anh"; return; }
+
+  const payload = { title };
+  if (pr) payload.priority = pr;
+  if (assignee) payload.assignee_id = assignee;
+
+  // scope ids
+  const p = scopeParams();
+  if (p.get("company_id")) payload.company_id = p.get("company_id");
+  if (p.get("shop_id")) payload.shop_id = p.get("shop_id");
+  if (p.get("project_id")) payload.project_id = p.get("project_id");
+
+  $("createMsg").innerText = "Creating...";
+  await http(CFG.workCreate, {
+    method:"POST",
+    headers: {"content-type":"application/json"},
+    body: JSON.stringify(payload),
+  });
+
+  $("newTitle").value="";
+  $("newPriority").value="";
+  $("newAssignee").value="";
+  $("createMsg").innerText = "Created ✅";
+  closeModal();
+  await refreshWork();
+}
+
+/* ===== Boot ===== */
+async function boot(){
+  $("scopePill").innerText = SCOPE.scope || "tenant";
+
+  $("btnRefresh").addEventListener("click", loadDashboard);
+  $("btnRefreshWork").addEventListener("click", refreshWork);
+  $("btnNewTask").addEventListener("click", openModal);
+  $("btnCloseModal").addEventListener("click", closeModal);
+  $("btnCreate").addEventListener("click", createTask);
+
+  bindDropzones();
+
+  await loadDashboard();
+  await refreshWork();
+}
+
+boot();
+</script>
+
+</body>
+</html>

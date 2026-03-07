@@ -108,3 +108,9 @@ def serialize_shop_health_row(row: Any) -> Dict[str, Any]:
         "roi_percent": _to_float(_get(row, "roi_percent")),
         "early_warning": bool(_get(row, "early_warning", False)),
     }
+
+# apps/api/v1/serializers.py
+from rest_framework import serializers
+
+class WorkItemTransitionSerializer(serializers.Serializer):
+    to = serializers.ChoiceField(choices=["todo", "doing", "done"])

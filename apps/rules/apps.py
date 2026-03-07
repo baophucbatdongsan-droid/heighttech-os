@@ -1,3 +1,4 @@
+# apps/rules/apps.py
 from __future__ import annotations
 
 from django.apps import AppConfig
@@ -9,7 +10,5 @@ class RulesConfig(AppConfig):
     verbose_name = "Rules"
 
     def ready(self):
-        # Import registry để nó tự register rules khi Django boot
-        # (tránh import lung tung ở module level gây vòng import)
-        from . import registry  # noqa: F401s
-        from .policies import v1_default  # noqa
+        # Import policies package so @register decorators run and engines are registered.
+        import apps.rules.policies  # noqa: F401

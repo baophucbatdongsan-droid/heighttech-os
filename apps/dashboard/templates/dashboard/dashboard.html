@@ -1,240 +1,216 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Dashboard</title>
+<!-- FILE: apps/dashboard/templates/dashboard/dashboard.html -->
+{% extends "dashboard/layouts/base.html" %}
+{% load static %}
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% block title %}Dashboard • HeightTech OS{% endblock %}
+{% block page_title %}📊 Control Dashboard{% endblock %}
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background:#f6f7fb;
-            padding:24px;
-        }
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
 
-        h1 { margin-top:0; }
-
-        .row {
-            display:flex;
-            gap:16px;
-            flex-wrap:wrap;
-        }
-
-        .card {
-            background:#fff;
-            border-radius:12px;
-            padding:16px;
-            box-shadow:0 2px 10px rgba(0,0,0,.06);
-            min-width:220px;
-            flex:1;
-        }
-
-        .k { color:#777; font-size:12px; }
-        .v { font-size:22px; font-weight:700; margin-top:6px; }
-
-        table {
-            width:100%;
-            border-collapse:collapse;
-            background:#fff;
-            border-radius:12px;
-            overflow:hidden;
-            box-shadow:0 2px 10px rgba(0,0,0,.06);
-            margin-top:20px;
-        }
-
-        th, td {
-            padding:12px;
-            border-bottom:1px solid #eee;
-            text-align:left;
-        }
-
-        th {
-            background:#fafafa;
-        }
-
-        .danger { color:#e74c3c; font-weight:700; }
-        .warning { color:#f39c12; font-weight:700; }
-        .success { color:#2ecc71; font-weight:700; }
-
-        .section { margin-top:30px; }
-    </style>
-</head>
-
-<body>
-
-<h1>📊 Control Dashboard</h1>
+{% block content %}
 
 {% if role == "founder" %}
-<div class="section">
-    <form method="get">
-        <select name="company">
-            <option value="">-- All Companies --</option>
-            {% for c in companies %}
-                <option value="{{ c.id }}" {% if selected_company == c.id %}selected{% endif %}>
-                    {{ c.name }}
-                </option>
-            {% endfor %}
-        </select>
-        <button type="submit">Filter</button>
-    </form>
+<div class="card" style="margin-bottom:14px;">
+  <form method="get" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <div class="k" style="min-width:120px;">Bộ lọc Company</div>
+    <select name="company" class="btn" style="min-width:260px;">
+      <option value="">-- Tất cả Companies --</option>
+      {% for c in companies %}
+        <option value="{{ c.id }}" {% if selected_company == c.id %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn primary" type="submit">Lọc</button>
+    <a class="btn" href="/dashboard/">Reset</a>
+  </form>
 </div>
 {% endif %}
 
-<!-- KPI -->
-<div class="section row">
-    <div class="card">
-        <div class="k">Total Clients</div>
-        <div class="v">{{ total_clients }}</div>
-    </div>
+<div class="grid-3">
+  <div class="card">
+    <div class="k">Tổng khách hàng</div>
+    <div class="v">{{ total_clients }}</div>
+    <div class="muted" style="margin-top:6px;">Scope theo quyền (role/tenant/shop)</div>
+  </div>
 
-    <div class="card">
-        <div class="k">Revenue</div>
-        <div class="v">{{ total_revenue|floatformat:0 }}</div>
-    </div>
+  <div class="card">
+    <div class="k">Doanh thu</div>
+    <div class="v">{{ total_revenue|floatformat:0 }}</div>
+    <div class="muted" style="margin-top:6px;">GMV tổng</div>
+  </div>
 
-    <div class="card">
-        <div class="k">Profit</div>
-        <div class="v">{{ total_profit|floatformat:0 }}</div>
+  <div class="card">
+    <div class="k">Net</div>
+    <div class="v">{{ total_net|floatformat:0 }}</div>
+    <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      {% if margin < 5 %}
+        <span class="badge b-red">Margin {{ margin }}%</span>
+      {% elif margin < 12 %}
+        <span class="badge b-ylw">Margin {{ margin }}%</span>
+      {% else %}
+        <span class="badge b-grn">Margin {{ margin }}%</span>
+      {% endif %}
+      <span class="muted">Forecast: <b>{{ forecast|floatformat:0 }}</b></span>
     </div>
-
-    <div class="card">
-        <div class="k">Net</div>
-        <div class="v">{{ total_net|floatformat:0 }}</div>
-    </div>
-
-    <div class="card">
-        <div class="k">Margin</div>
-        <div class="v">
-            {% if margin < 5 %}
-                <span class="danger">{{ margin }}%</span>
-            {% elif margin < 12 %}
-                <span class="warning">{{ margin }}%</span>
-            {% else %}
-                <span class="success">{{ margin }}%</span>
-            {% endif %}
-        </div>
-    </div>
+  </div>
 </div>
 
+<div class="grid-2" style="margin-top:14px;">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;">
+      <div>
+        <div style="font-weight:950;">📈 Timeline Doanh thu & Net</div>
+        <div class="muted">Theo tháng (Chart.js)</div>
+      </div>
+      <div>
+        {% if growth < 0 %}
+          <span class="badge b-red">MoM {{ growth }}%</span>
+        {% elif growth < 8 %}
+          <span class="badge b-ylw">MoM {{ growth }}%</span>
+        {% else %}
+          <span class="badge b-grn">MoM {{ growth }}%</span>
+        {% endif %}
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <canvas id="revenueChart" height="110"></canvas>
+    </div>
+  </div>
 
-<!-- CHART -->
-<div class="section">
-    <canvas id="revenueChart" height="100"></canvas>
+  <div class="card">
+    <div style="font-weight:950;">⚠ Radar tín hiệu rủi ro</div>
+    <div class="muted" style="margin-top:4px;">Cảnh báo nhanh để “đánh nhau” trong beta</div>
+
+    <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px;">
+      {% if risk_loss %}<div class="toast">🔥 Có company/shop đang âm Net (Loss Companies).</div>{% endif %}
+      {% if risk_growth %}<div class="toast">⚠ Tăng trưởng MoM âm — cần soi giảm doanh thu / tăng cost.</div>{% endif %}
+      {% if anomalies %}<div class="toast">📌 Anomaly doanh thu: <b>{{ anomalies|join:", " }}</b></div>{% endif %}
+      {% if not risk_loss and not risk_growth and not anomalies %}<div class="toast">✅ Hệ thống đang ổn định theo tín hiệu cơ bản.</div>{% endif %}
+    </div>
+
+    <div style="margin-top:14px;">
+      <div class="k">Hành động OS</div>
+      <div class="muted" style="margin-top:6px;">
+        1) Click shop → War Room<br/>
+        2) Tạo task xử lý ở Work OS<br/>
+        3) Founder theo dõi margin / loss
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:14px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+    <div>
+      <div style="font-weight:950;">🏪 Shop Table (tháng mới nhất)</div>
+      <div class="muted">Tháng: <b>{{ latest_month|default:"-" }}</b></div>
+    </div>
+    <div class="muted">Mobile: kéo ngang bảng</div>
+  </div>
+
+  {% if shop_table %}
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Company</th>
+            <th>Brand</th>
+            <th>Shop</th>
+            <th style="text-align:right;">Revenue</th>
+            <th style="text-align:right;">Net</th>
+            <th>Gợi ý</th>
+          </tr>
+          <td class="muted">
+            {% if r.net < 0 %}Cần cứu net{% elif r.net < 1 %}Cần tối ưu{% else %}Đang ổn{% endif %}
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+                <a class="btn" style="padding:8px 10px;" href="/work/?title={{ r.shop__name|urlencode }} - Fix Net tháng {{ latest_month }}&desc=Revenue {{ r.revenue }} | Net {{ r.net }}">+ Task</a>
+                <a class="btn" style="padding:8px 10px;" href="/intelligence/founder/shop/{{ r.shop__id }}/">War Room</a>
+            </div>
+         </td>
+        </thead>
+
+        <tbody>
+          {% for r in shop_table %}
+          <tr>
+            <td>{{ r.shop__brand__company__name }}</td>
+            <td>{{ r.shop__brand__name }}</td>
+            <td>
+              <a class="link" href="/intelligence/founder/shop/{{ r.shop__id }}/">{{ r.shop__name }}</a>
+            </td>
+            <td style="text-align:right;">{{ r.revenue|floatformat:0 }}</td>
+            <td style="text-align:right;">
+              {% if r.net < 0 %}<span class="badge b-red">{{ r.net|floatformat:0 }}</span>
+              {% elif r.net < 1 %}<span class="badge b-ylw">{{ r.net|floatformat:0 }}</span>
+              {% else %}<span class="badge b-grn">{{ r.net|floatformat:0 }}</span>{% endif %}
+            </td>
+            <td class="muted">{% if r.net < 0 %}Cần cứu net{% elif r.net < 1 %}Cần tối ưu{% else %}Đang ổn{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="muted" style="margin-top:10px;">Chưa có data shop_table (check seed + tenant scope).</div>
+  {% endif %}
+</div>
+
+<div class="grid-2" style="margin-top:14px;">
+  <div class="card">
+    <div style="font-weight:950;">🏢 Top Companies</div>
+    <div class="muted">Top 5 theo doanh thu</div>
+    <div class="tablewrap" style="max-height:320px;">
+      <table>
+        <thead><tr><th>Company</th><th style="text-align:right;">Revenue</th></tr></thead>
+        <tbody>
+          {% for c in top_companies %}
+          <tr>
+            <td>{% if c.shop__brand__company__name %}{{ c.shop__brand__company__name }}{% else %}{{ c.company__name }}{% endif %}</td>
+            <td style="text-align:right;">{{ c.total_revenue|floatformat:0 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="2" class="muted">No data</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:950;">💥 Loss Companies</div>
+    <div class="muted">Top 20 theo net âm</div>
+    <div class="tablewrap" style="max-height:320px;">
+      <table>
+        <thead><tr><th>Company</th><th style="text-align:right;">Net</th></tr></thead>
+        <tbody>
+          {% for c in loss_companies %}
+          <tr>
+            <td>{% if c.shop__brand__company__name %}{{ c.shop__brand__company__name }}{% else %}{{ c.company__name }}{% endif %}</td>
+            <td style="text-align:right;" class="danger">{{ c.total_metric|floatformat:0 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="2" class="muted">Không có company âm</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <script>
-    const months = {{ months|safe }};
-    const revenues = {{ revenues|safe }};
-    const profits = {{ profits|safe }};
+  const months = {{ months|safe }};
+  const revenues = {{ revenues|safe }};
+  const profits = {{ profits|safe }};
 
-    const ctx = document.getElementById('revenueChart').getContext('2d');
-
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: months,
-            datasets: [
-                {
-                    label: 'Revenue',
-                    data: revenues,
-                    borderWidth: 2
-                },
-                {
-                    label: 'Profit',
-                    data: profits,
-                    borderWidth: 2
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { position: 'top' }
-            }
-        }
-    });
+  const ctx = document.getElementById('revenueChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: { labels: months, datasets: [
+      { label: 'Revenue', data: revenues, borderWidth: 2 },
+      { label: 'Net', data: profits, borderWidth: 2 }
+    ]},
+    options: { responsive: true, plugins: { legend: { position: 'top' } } }
+  });
 </script>
 
-
-<!-- TOP COMPANIES -->
-<div class="section">
-    <h3>🏢 Top Companies</h3>
-    <table>
-        <tr>
-            <th>Company</th>
-            <th>Total Revenue</th>
-        </tr>
-        {% for c in top_companies %}
-        <tr>
-            <td>
-                {% if c.shop__brand__company__name %}
-                    {{ c.shop__brand__company__name }}
-                {% else %}
-                    {{ c.company__name }}
-                {% endif %}
-            </td>
-            <td>{{ c.total_revenue|floatformat:0 }}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="2">No data</td></tr>
-        {% endfor %}
-    </table>
-</div>
-
-
-<!-- LOSS COMPANIES -->
-<div class="section">
-    <h3>💥 Loss Companies</h3>
-    <table>
-        <tr>
-            <th>Company</th>
-            <th>Net</th>
-        </tr>
-        {% for c in loss_companies %}
-        <tr>
-            <td>
-                {% if c.shop__brand__company__name %}
-                    {{ c.shop__brand__company__name }}
-                {% else %}
-                    {{ c.company__name }}
-                {% endif %}
-            </td>
-            <td class="danger">
-                {% if c.total_metric %}
-                    {{ c.total_metric|floatformat:0 }}
-                {% endif %}
-            </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="2">No loss companies</td></tr>
-        {% endfor %}
-    </table>
-</div>
-
-<!-- ALERTS -->
-<div class="section">
-    <h3>⚠ Risk Signals</h3>
-
-    {% if risk_loss %}
-        <div class="danger">⚠ Some companies are losing money</div>
-    {% endif %}
-
-    {% if risk_growth %}
-        <div class="warning">⚠ Revenue growth is negative</div>
-    {% endif %}
-
-    {% if anomalies %}
-        <div class="warning">
-            ⚠ Revenue anomalies detected:
-            {{ anomalies|join:", " }}
-        </div>
-    {% endif %}
-
-    {% if not risk_loss and not risk_growth and not anomalies %}
-        <div class="success">System stable</div>
-    {% endif %}
-</div>
-
-</body>
-</html>
+{% endblock %}

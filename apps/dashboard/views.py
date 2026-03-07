@@ -1,4 +1,4 @@
-# apps/dashboard/views.py
+# FILE: apps/dashboard/views.py
 from __future__ import annotations
 
 import json
@@ -53,7 +53,10 @@ def _resolve_role(user) -> str:
 
     if getattr(user, "is_superuser", False):
         return "founder"
-    return "none"
+    # staff mặc định head/admin nếu hệ thống chưa có permissions.py
+    if getattr(user, "is_staff", False):
+        return "admin"
+    return "client"
 
 
 def _has_field(model, field_name: str) -> bool:
@@ -104,7 +107,6 @@ def _get_shop_ids_for_user(user) -> List[int]:
         except Exception:
             pass
 
-    # fallback via ShopMember
     try:
         from apps.shops.models import ShopMember  # local import
         return list(
@@ -122,7 +124,6 @@ def _get_company_ids_for_user(user) -> List[int]:
         except Exception:
             pass
 
-    # fallback via shops -> brand -> company
     try:
         from apps.shops.models import ShopMember  # local import
         return list(
@@ -160,16 +161,14 @@ def dashboard_view(request):
     user = request.user
     role = _resolve_role(user)
 
-    # Founder có thể filter company
     company_filter = (request.GET.get("company") or "").strip()
-    cache_key = f"dashboard_ctx:u{user.id}:{role}:c{company_filter}"
+    cache_key = f"dashboard_ctx:u{user.id}:{role}:c{company_filter}:s{request.session.get('active_shop_id')}"
 
     cached = cache.get(cache_key)
     if cached:
         template = cached.pop("_template", "dashboard/dashboard.html")
         return render(request, template, cached)
 
-    # base querysets
     clients = Client.objects.none()
     performances = MonthlyPerformance.objects.none()
 
@@ -179,8 +178,8 @@ def dashboard_view(request):
         clients = Client.objects.all()
         performances = MonthlyPerformance.objects.all()
 
-    # ---------- HEAD ----------
-    elif role == "head":
+    # ---------- HEAD/ADMIN ----------
+    elif role in {"head", "admin"}:
         company_ids = _get_company_ids_for_user(user)
         clients = Client.objects.filter(company_id__in=company_ids)
         performances = _filter_perf_by_company_ids(MonthlyPerformance.objects.all(), company_ids)
@@ -198,11 +197,21 @@ def dashboard_view(request):
         performances = _filter_perf_by_company_ids(MonthlyPerformance.objects.all(), company_ids)
 
     # ---------- CLIENT (SHOP PORTAL) ----------
-    elif role == "client":
+    else:
+        role = "client"
         shop_ids = _get_shop_ids_for_user(user)
 
+        active_shop_id = request.session.get("active_shop_id")
+        try:
+            active_shop_id = int(active_shop_id) if active_shop_id else None
+        except Exception:
+            active_shop_id = None
+
         if _has_field(MonthlyPerformance, "shop"):
-            performances = MonthlyPerformance.objects.filter(shop_id__in=shop_ids)
+            if active_shop_id:
+                performances = MonthlyPerformance.objects.filter(shop_id=active_shop_id)
+            else:
+                performances = MonthlyPerformance.objects.filter(shop_id__in=shop_ids)
         else:
             company_ids = _get_company_ids_from_shops(user)
             performances = _filter_perf_by_company_ids(MonthlyPerformance.objects.all(), company_ids)
@@ -210,11 +219,8 @@ def dashboard_view(request):
         company_ids = _get_company_ids_from_shops(user)
         clients = Client.objects.filter(company_id__in=company_ids)
 
-    else:
-        role = "none"
-
     # =====================================================
-    # FOUNDER FILTER BY COMPANY (optional)
+    # FOUNDER FILTER BY COMPANY
     # =====================================================
     selected_company_id: Optional[int] = None
     if role == "founder" and company_filter:
@@ -244,14 +250,16 @@ def dashboard_view(request):
     revenues: List[float] = []
     profits: List[float] = []
 
-    if (
-        _has_field(MonthlyPerformance, "month")
-        and _has_field(MonthlyPerformance, "revenue")
-        and _has_field(MonthlyPerformance, "profit")
-    ):
+    profit_field = None
+    if _has_field(MonthlyPerformance, "company_net_profit"):
+        profit_field = "company_net_profit"
+    elif _has_field(MonthlyPerformance, "profit"):
+        profit_field = "profit"
+
+    if _has_field(MonthlyPerformance, "month") and _has_field(MonthlyPerformance, "revenue") and profit_field:
         monthly = (
             performances.values("month")
-            .annotate(revenue=Sum("revenue"), profit=Sum("profit"))
+            .annotate(revenue=Sum("revenue"), profit=Sum(profit_field))
             .order_by("month")
         )
         for row in monthly:
@@ -313,6 +321,50 @@ def dashboard_view(request):
         )
 
     # =====================================================
+    # SHOP TABLE (beta “ra sản phẩm”)
+    # =====================================================
+    latest_month = None
+    shop_table = []
+    if _has_field(MonthlyPerformance, "shop") and _has_field(MonthlyPerformance, "month"):
+        latest_month = performances.order_by("-month").values_list("month", flat=True).first()
+        if latest_month:
+            net_field = "company_net_profit" if _has_field(MonthlyPerformance, "company_net_profit") else "profit"
+            rows = (
+                performances.filter(month=latest_month)
+                .select_related("shop", "shop__brand", "shop__brand__company")
+                .values(
+                    "shop__id",
+                    "shop__name",
+                    "shop__brand__name",
+                    "shop__brand__company__name",
+                )
+                .annotate(
+                    revenue=Sum("revenue"),
+                    net=Sum(net_field),
+                )
+                .order_by("-revenue")[:200]
+            )
+            shop_table = list(rows)
+
+    # =====================================================
+    # CLIENT monthly table
+    # =====================================================
+    monthly_rows = []
+    if role == "client" and _has_field(MonthlyPerformance, "month"):
+        net_field = "company_net_profit" if _has_field(MonthlyPerformance, "company_net_profit") else "profit"
+        # group by month
+        rows = (
+            performances.values("month")
+            .annotate(
+                revenue=Sum("revenue"),
+                cost=Sum("cost") if _has_field(MonthlyPerformance, "cost") else Sum("revenue") * 0,
+                net=Sum(net_field),
+            )
+            .order_by("-month")[:24]
+        )
+        monthly_rows = list(rows)
+
+    # =====================================================
     # ANOMALY (simple)
     # =====================================================
     anomalies: List[str] = []
@@ -329,9 +381,6 @@ def dashboard_view(request):
         risk_loss = bool(loss_companies)
     risk_growth = growth < 0
 
-    # =====================================================
-    # TEMPLATE SWITCH
-    # =====================================================
     template = "dashboard/dashboard.html"
     if role == "client":
         template = "dashboard/client_dashboard.html"
@@ -339,11 +388,9 @@ def dashboard_view(request):
     context: Dict[str, Any] = {
         "role": role,
 
-        # filters (founder)
         "companies": Company.objects.all() if role == "founder" else [],
         "selected_company": selected_company_id,
 
-        # KPI
         "total_clients": total_clients,
         "total_revenue": total_revenue,
         "total_profit": total_profit,
@@ -352,17 +399,19 @@ def dashboard_view(request):
         "growth": growth,
         "forecast": round(forecast, 0),
 
-        # Chart.js
         "months": json.dumps(months),
         "revenues": json.dumps(revenues),
         "profits": json.dumps(profits),
 
-        # Tables
         "top_companies": top_companies,
         "loss_companies": loss_companies,
         "expiring_clients": expiring_clients,
 
-        # Alerts
+        "latest_month": latest_month,
+        "shop_table": shop_table,
+
+        "monthly_rows": monthly_rows,
+
         "anomalies": anomalies,
         "risk_loss": risk_loss,
         "risk_growth": risk_growth,

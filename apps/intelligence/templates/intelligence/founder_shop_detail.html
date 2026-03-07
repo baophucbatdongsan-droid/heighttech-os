@@ -2,34 +2,26 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Founder — Shop Detail</title>
+  <title>Founder — Chi tiết Shop</title>
 
   <style>
-    body { font-family: Arial, sans-serif; background:#f6f7fb; padding:24px; }
-    .row { display:flex; gap:16px; flex-wrap:wrap; }
-    .card { background:#fff; border-radius:12px; padding:16px; box-shadow:0 2px 10px rgba(0,0,0,.06); min-width:220px; }
-    .k { color:#777; font-size:12px; }
-    .v { font-size:22px; font-weight:700; margin-top:6px; }
-    .muted { color:#888; }
-    .section { margin-top:22px; }
-
-    .title { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-    .title h1 { margin:0; }
-    .filters { display:flex; gap:10px; align-items:center; }
-    input, button { padding:8px 10px; border-radius:8px; border:1px solid #ddd; }
-    button { cursor:pointer; background:#111; color:#fff; border-color:#111; }
-
-    a { color:#111; text-decoration:none; }
-    a:hover { text-decoration:underline; }
-
-    table { width:100%; border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.06); }
-    th, td { padding:12px; border-bottom:1px solid #eee; text-align:left; vertical-align:top; }
-    th { background:#fafafa; position:sticky; top:0; z-index:1; }
-
-    .badge { padding:3px 10px; border-radius:999px; color:#fff; font-weight:700; font-size:12px; display:inline-block; }
-    .red { background:#e74c3c; }
-    .yellow { background:#f39c12; }
-    .green { background:#2ecc71; }
+    body{font-family:Arial,sans-serif;background:#f6f7fb;padding:24px}
+    .row{display:flex;gap:16px;flex-wrap:wrap}
+    .card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.06);min-width:220px}
+    .k{color:#777;font-size:12px}
+    .v{font-size:22px;font-weight:700;margin-top:6px}
+    .muted{color:#888}
+    .section{margin-top:22px}
+    .title{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .title h1{margin:0}
+    .filters{display:flex;gap:10px;align-items:center}
+    input,button{padding:8px 10px;border-radius:8px;border:1px solid #ddd}
+    button{cursor:pointer;background:#111;color:#fff;border-color:#111}
+    a{color:#111;text-decoration:none}
+    a:hover{text-decoration:underline}
+    table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+    th,td{padding:12px;border-bottom:1px solid #eee;text-align:left;vertical-align:top}
+    th{background:#fafafa;position:sticky;top:0;z-index:1}
   </style>
 </head>
 
@@ -37,51 +29,44 @@
   {% with m=selected_month|default:"" %}
   <div class="title">
     <div>
-      <h1>🏪 Shop Detail</h1>
+      <h1>🏪 Chi tiết Shop</h1>
       <div class="muted">
-        <a href="/founder/">← Back to Founder War Room</a>
+        <a href="/intelligence/founder/">← Quay lại Phòng điều hành</a>
         &nbsp;•&nbsp;
-        {% if shop %}
-          <b>{{ shop.name }}</b>
-        {% else %}
-          <b>Shop</b>
-        {% endif %}
+        {% if shop %}<b>{{ shop.name }}</b>{% else %}<b>Shop</b>{% endif %}
         &nbsp;•&nbsp;
-        {% if m %} Month: {{ m }} {% else %} All Time {% endif %}
+        {% if m %} Tháng: {{ m }} {% else %} Tất cả thời gian {% endif %}
       </div>
     </div>
 
     <form class="filters" method="get">
       <input name="month" placeholder="YYYY-MM-01" value="{{ selected_month|default:'' }}">
-      <button type="submit">Filter</button>
+      <button type="submit">Lọc</button>
     </form>
   </div>
 
-  <!-- KPI -->
   <div class="section row">
     <div class="card">
-      <div class="k">Total Revenue</div>
+      <div class="k">Tổng doanh thu</div>
       <div class="v">{{ total_revenue|default:0|floatformat:0 }}</div>
     </div>
 
     <div class="card">
-      <div class="k">Total Profit</div>
+      <div class="k">Tổng lợi nhuận</div>
       <div class="v">{{ total_profit|default:0|floatformat:0 }}</div>
     </div>
 
     <div class="card">
-      <div class="k">Total Net</div>
+      <div class="k">Tổng NET</div>
       <div class="v">{{ total_net|default:0|floatformat:0 }}</div>
     </div>
 
     <div class="card">
-      <div class="k">Margin</div>
+      <div class="k">Biên NET</div>
       {% with rev=total_revenue|default:0 net=total_net|default:0 %}
         {% if rev > 0 %}
           {% widthratio net rev 100 as mm %}
-          <div class="v">
-            {{ mm }}%
-          </div>
+          <div class="v">{{ mm }}%</div>
         {% else %}
           <div class="v">0%</div>
         {% endif %}
@@ -89,20 +74,19 @@
     </div>
   </div>
 
-  <!-- DATA TABLE -->
   <div class="section">
-    <h2>📅 Monthly Records</h2>
+    <h2>📅 Bản ghi theo tháng</h2>
 
     <table>
       <tr>
-        <th style="width:120px;">Month</th>
-        <th>Revenue</th>
-        <th>Cost</th>
-        <th>Profit</th>
-        <th>Net</th>
-        <th>Growth %</th>
-        <th>Bonus %</th>
-        <th>Bonus</th>
+        <th style="width:120px;">Tháng</th>
+        <th>Doanh thu</th>
+        <th>Chi phí</th>
+        <th>Lợi nhuận</th>
+        <th>NET</th>
+        <th>Tăng trưởng %</th>
+        <th>Thưởng %</th>
+        <th>Tiền thưởng</th>
       </tr>
 
       {% for x in items %}
@@ -117,7 +101,7 @@
         <td>{{ x.bonus_amount|default:0|floatformat:0 }}</td>
       </tr>
       {% empty %}
-      <tr><td colspan="8" class="muted">No data</td></tr>
+      <tr><td colspan="8" class="muted">Chưa có dữ liệu</td></tr>
       {% endfor %}
     </table>
   </div>

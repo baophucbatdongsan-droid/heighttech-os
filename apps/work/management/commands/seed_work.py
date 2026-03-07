@@ -5,7 +5,7 @@ import random
 import string
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any, Dict, Optional, Tuple, Type
+from typing import Any, Dict, Tuple
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -34,16 +34,16 @@ def _rand_name(prefix: str, n=4):
 def _safe_fields(model, payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     Allow both field.name (e.g. 'tenant') and field.attname (e.g. 'tenant_id').
-    This is critical for FK *_id assignments.
+    Critical for FK *_id assignments.
     """
     allowed = set()
     for f in model._meta.concrete_fields:
-        allowed.add(f.name)       # e.g. 'tenant'
-        allowed.add(f.attname)    # e.g. 'tenant_id'
+        allowed.add(f.name)
+        allowed.add(f.attname)
 
     out = {}
     for k, v in payload.items():
-        if k in allowed:
+        if k in allowed and v is not None:
             out[k] = v
     return out
 
@@ -51,10 +51,6 @@ def _safe_fields(model, payload: Dict[str, Any]) -> Dict[str, Any]:
 def _create_safe(model, **payload):
     safe = _safe_fields(model, payload)
     return _mgr_all(model).create(**safe)
-
-
-def _bulk_get_ids(qs, field="id"):
-    return list(qs.values_list(field, flat=True))
 
 
 @dataclass
@@ -66,6 +62,22 @@ class SeedInfo:
     channels: int = 0
     workitems: int = 0
     comments: int = 0
+
+
+def _resolve_shop_rule_version(project) -> int:
+    """
+    Freeze logic:
+    - if project.shop.rule_version exists => use it
+    - else => 1
+    """
+    try:
+        shop = getattr(project, "shop", None)
+        if shop is None:
+            return 1
+        v = getattr(shop, "rule_version", None)
+        return int(v or 1)
+    except Exception:
+        return 1
 
 
 @transaction.atomic
@@ -87,7 +99,7 @@ def seed_work(
     from apps.channels.models import Channel, ChannelShopLink
     from apps.work.models import WorkItem, WorkComment
 
-    # Booking is optional in your project
+    # Booking optional
     try:
         from apps.booking.models import Booking
     except Exception:
@@ -100,7 +112,6 @@ def seed_work(
     # -------------------------
     company_objs = []
     for i in range(companies):
-        # make name unique-ish
         name = f"Company {i+1} - {_rand_code(3)}"
         c = _create_safe(
             Company,
@@ -115,33 +126,32 @@ def seed_work(
     info.companies = len(company_objs)
 
     # -------------------------
-    # 2) Projects (company required in your db)
+    # 2) Projects
     # -------------------------
     project_objs = []
-    # 5 projects/company
     for c in company_objs:
         for _ in range(5):
-            p = _create_safe(
-                Project,
+            payload = dict(
                 tenant_id=tenant.id,
                 company_id=c.id,
                 name=_rand_name(f"Project - {c.id}", 4),
                 code=f"P{c.id}-{_rand_code(4)}",
-                status="active" if "status" in [f.name for f in Project._meta.concrete_fields] else None,
                 created_at=_now(),
                 updated_at=_now(),
             )
+            # if Project has status field, set it
+            if any(f.name == "status" for f in Project._meta.concrete_fields):
+                payload["status"] = "active"
+            p = _create_safe(Project, **payload)
             project_objs.append(p)
     info.projects = len(project_objs)
 
     # -------------------------
-    # 3) Brands (Brand.company NOT NULL + UNIQUE(tenant, company, name))
+    # 3) Brands (requires company)
     # -------------------------
     brand_objs = []
     for c in company_objs:
-        # 2 brands/company
         for bi in range(2):
-            # ensure unique name within (tenant, company)
             name = f"Brand {c.id}-{bi+1} - {_rand_code(4)}"
             b = _create_safe(
                 Brand,
@@ -157,34 +167,37 @@ def seed_work(
     info.brands = len(brand_objs)
 
     # -------------------------
-    # 4) Shops (Shop has tenant + brand, no company field in your schema)
+    # 4) Shops (tenant + brand)
     # -------------------------
     shop_objs = []
-    # 2-3 shops/brand
     for b in brand_objs:
-        k = random.randint(2, 3)
-        for si in range(k):
-            s = _create_safe(
-                Shop,
+        for _ in range(random.randint(2, 3)):
+            payload = dict(
                 tenant_id=tenant.id,
                 brand_id=b.id,
                 name=_rand_name(f"Shop - {b.id}", 4),
                 code=f"S{b.id}-{_rand_code(4)}",
                 platform=random.choice(["tiktok", "shopee", "lazada", "other"]),
                 description="seed work",
-                status="active" if "status" in [f.name for f in Shop._meta.concrete_fields] else None,
-                is_active=True if "is_active" in [f.name for f in Shop._meta.concrete_fields] else None,
                 created_at=_now(),
                 updated_at=_now(),
             )
+            if any(f.name == "status" for f in Shop._meta.concrete_fields):
+                payload["status"] = "active"
+            if any(f.name == "is_active" for f in Shop._meta.concrete_fields):
+                payload["is_active"] = True
+            # ✅ nếu Shop có rule_version thì seed random nhẹ để test versioning
+            if any(f.name == "rule_version" for f in Shop._meta.concrete_fields):
+                payload["rule_version"] = random.choice([1, 1, 1, 2])  # chủ yếu v1, thỉnh thoảng v2
+
+            s = _create_safe(Shop, **payload)
             shop_objs.append(s)
     info.shops = len(shop_objs)
 
     # -------------------------
-    # 5) Channels (Channel has company)
+    # 5) Channels (tenant + company)
     # -------------------------
     channel_objs = []
-    # 3 channels/company
     for c in company_objs:
         for _ in range(3):
             ch = _create_safe(
@@ -201,14 +214,12 @@ def seed_work(
     info.channels = len(channel_objs)
 
     # -------------------------
-    # 6) ChannelShopLink (map channel -> some shops in same company)
-    #   Shop -> Brand -> Company
+    # 6) ChannelShopLink
+    # Shop -> Brand -> Company
     # -------------------------
-    # helper map: shop_id -> company_id
     brand_company = {b.id: b.company_id for b in brand_objs}
     shop_company = {s.id: brand_company.get(s.brand_id) for s in shop_objs}
 
-    # link each channel to 2-4 shops in its company
     for ch in channel_objs:
         same_company_shops = [sid for sid, cid in shop_company.items() if cid == ch.company_id]
         random.shuffle(same_company_shops)
@@ -223,18 +234,15 @@ def seed_work(
 
     # -------------------------
     # 7) Booking (optional)
-    # Booking fields: tenant, company, shop ...
     # -------------------------
     booking_objs = []
     if Booking is not None:
-        # create 0-10 bookings total
         for _ in range(random.randint(0, 10)):
             shop = random.choice(shop_objs)
             cid = shop_company.get(shop.id)
             if not cid:
                 continue
-            bk = _create_safe(
-                Booking,
+            bk_payload = dict(
                 tenant_id=tenant.id,
                 company_id=cid,
                 shop_id=shop.id,
@@ -247,13 +255,11 @@ def seed_work(
                 created_at=_now(),
                 updated_at=_now(),
             )
+            bk = _create_safe(Booking, **bk_payload)
             booking_objs.append(bk)
 
     # -------------------------
-    # 8) WorkItems
-    # Ensure company_id is always set (no null)
-    # Targets:
-    # - project, brand, shop, channel, booking, company
+    # 8) WorkItems (freeze workflow_version at create)
     # -------------------------
     statuses = ["todo", "doing", "blocked", "done", "cancelled"]
     priorities = [1, 2, 3, 4]
@@ -261,7 +267,6 @@ def seed_work(
     if booking_objs:
         target_types.append("booking")
 
-    # pool by company
     projects_by_company = {}
     for p in project_objs:
         projects_by_company.setdefault(p.company_id, []).append(p)
@@ -284,7 +289,7 @@ def seed_work(
     for bk in booking_objs:
         bookings_by_company.setdefault(bk.company_id, []).append(bk)
 
-    # optional user assignment
+    # optional users
     try:
         from django.contrib.auth import get_user_model
 
@@ -300,14 +305,15 @@ def seed_work(
 
         tt = random.choice(target_types)
         tid = None
+        project = None
         project_id = None
 
         if tt == "project":
             ps = projects_by_company.get(cid) or []
             if ps:
-                p = random.choice(ps)
-                tid = p.id
-                project_id = p.id
+                project = random.choice(ps)
+                tid = project.id
+                project_id = project.id
 
         elif tt == "brand":
             bs = brands_by_company.get(cid) or []
@@ -336,7 +342,6 @@ def seed_work(
         elif tt == "company":
             tid = cid
 
-        # fallback if tid missing (due to empty pools): force company target
         if tid is None:
             tt = "company"
             tid = cid
@@ -346,6 +351,12 @@ def seed_work(
 
         assignee_id = random.choice(users).id if users and random.random() < 0.7 else None
         requester_id = random.choice(users).id if users and random.random() < 0.3 else None
+        created_by_id = random.choice(users).id if users and random.random() < 0.8 else None
+
+        # ✅ freeze workflow_version: ưu tiên project.shop.rule_version (nếu project có shop)
+        workflow_version = 1
+        if project is not None:
+            workflow_version = _resolve_shop_rule_version(project)
 
         wi = _create_safe(
             WorkItem,
@@ -355,13 +366,14 @@ def seed_work(
             title=f"Task {i+1} - {_rand_code(4)}",
             description="seed work",
             status=st,
+            workflow_version=workflow_version,
             priority=random.choice(priorities),
             due_at=due,
             assignee_id=assignee_id,
             requester_id=requester_id,
             target_type=tt,
             target_id=tid,
-            created_by_id=random.choice(users).id if users and random.random() < 0.8 else None,
+            created_by_id=created_by_id,
             created_at=_now() - timedelta(days=random.randint(0, 30)),
             updated_at=_now(),
         )

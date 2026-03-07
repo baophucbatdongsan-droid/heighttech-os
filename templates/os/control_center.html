@@ -1,0 +1,121 @@
+{% load static %}
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HeightTech OS</title>
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=2">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">HT</div>
+      <div class="title">
+        <div class="name">HeightTech OS</div>
+        <div class="sub">Control Center</div>
+      </div>
+    </div>
+
+    <div class="search">
+      <input id="q" type="search" placeholder="Search company / shop / project… (Ctrl+K)" autocomplete="off">
+      <div class="chips">
+        <button class="chip" data-scope="tenant">Tenant</button>
+        <button class="chip" data-scope="company">Company</button>
+        <button class="chip" data-scope="shop">Shop</button>
+        <button class="chip" data-scope="project">Project</button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="themeToggle" class="btn">🌗</button>
+      <button id="helpBtn" class="btn">?</button>
+      <button id="cmdBtn" class="btn primary">Command ⌘K</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="kpis" id="kpis"></section>
+
+    <section class="grid">
+      <div class="card">
+        <div class="card-h">
+          <div class="card-title">Timeline</div>
+          <div class="card-sub" id="timelineMeta">—</div>
+        </div>
+        <div class="card-b">
+          <div id="timeline" class="list"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <div class="card-title">Notifications</div>
+          <div class="badge" id="notifBadge">0</div>
+        </div>
+        <div class="card-b">
+          <div id="notifs" class="list"></div>
+        </div>
+      </div>
+
+      <div class="card span-2">
+        <div class="card-h">
+          <div class="card-title">Shop health monitor</div>
+          <div class="card-sub">Top risk / low health</div>
+        </div>
+        <div class="card-b">
+          <div id="shops" class="table"></div>
+        </div>
+      </div>
+
+      <div class="card span-2">
+        <div class="card-h">
+          <div class="card-title">AI Strategy (V1 rule-based)</div>
+          <div class="card-sub">Deterministic recommendations</div>
+        </div>
+        <div class="card-b">
+          <div id="strategy" class="list"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Command Palette -->
+  <div id="cmdOverlay" class="overlay hidden">
+    <div class="modal">
+      <div class="modal-h">
+        <div class="modal-title">Command Center</div>
+        <button id="cmdClose" class="icon">✕</button>
+      </div>
+      <div class="modal-b">
+        <input id="cmdInput" class="cmd" placeholder="Gõ lệnh… ví dụ: mark-read 123 | open shop 49 | refresh" />
+        <div class="hint">
+          <div><b>mark-read &lt;id&gt;</b> — đánh dấu đã đọc</div>
+          <div><b>refresh</b> — reload dữ liệu</div>
+        </div>
+        <pre id="cmdOut" class="out"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help -->
+  <div id="helpOverlay" class="overlay hidden">
+    <div class="modal">
+      <div class="modal-h">
+        <div class="modal-title">Shortcuts</div>
+        <button id="helpClose" class="icon">✕</button>
+      </div>
+      <div class="modal-b">
+        <div class="hint">
+          <div><b>Ctrl+K</b>: mở Command Palette</div>
+          <div><b>Ctrl+L</b>: focus Search</div>
+          <div><b>Ctrl+R</b>: refresh data</div>
+          <div><b>🌗</b>: theme toggle</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{% static 'os/os.js' %}?v=2"></script>
+</body>
+</html>

@@ -2,157 +2,88 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Founder War Room</title>
+  <title>Phòng điều hành Founder</title>
 
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background:#f6f7fb;
-      padding:24px;
-    }
+    body { font-family: Arial, sans-serif; background:#f6f7fb; padding:24px; }
+    .title{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+    .title h1{margin:0}
+    .muted{color:#888}
+    .filters input,.filters button{padding:8px 10px;border-radius:8px;border:1px solid #ddd}
+    .filters button{background:#111;color:#fff;cursor:pointer}
 
-    .title {
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      margin-bottom:20px;
-    }
+    .row{display:flex;gap:16px;flex-wrap:wrap}
+    .card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.06);min-width:220px;flex:1}
+    .k{color:#777;font-size:12px}
+    .v{font-size:22px;font-weight:700;margin-top:6px}
 
-    .title h1 { margin:0; }
+    table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+    th,td{padding:12px;border-bottom:1px solid #eee;text-align:left}
+    th{background:#fafafa;position:sticky;top:0;z-index:1}
 
-    .muted { color:#888; }
+    .badge{padding:3px 10px;border-radius:999px;color:#fff;font-weight:700;font-size:12px;display:inline-block}
+    .red{background:#e74c3c}
+    .yellow{background:#f39c12}
+    .green{background:#2ecc71}
+    .danger-row{background:#fff5f5}
+    .medium-row{background:#fffaf2}
 
-    .filters input, .filters button {
-      padding:8px 10px;
-      border-radius:8px;
-      border:1px solid #ddd;
-    }
-
-    .filters button {
-      background:#111;
-      color:#fff;
-      cursor:pointer;
-    }
-
-    .row {
-      display:flex;
-      gap:16px;
-      flex-wrap:wrap;
-    }
-
-    .card {
-      background:#fff;
-      border-radius:12px;
-      padding:16px;
-      box-shadow:0 2px 10px rgba(0,0,0,.06);
-      min-width:220px;
-      flex:1;
-    }
-
-    .k { color:#777; font-size:12px; }
-    .v { font-size:22px; font-weight:700; margin-top:6px; }
-
-    table {
-      width:100%;
-      border-collapse:collapse;
-      background:#fff;
-      border-radius:12px;
-      overflow:hidden;
-      box-shadow:0 2px 10px rgba(0,0,0,.06);
-    }
-
-    th, td {
-      padding:12px;
-      border-bottom:1px solid #eee;
-      text-align:left;
-    }
-
-    th {
-      background:#fafafa;
-      position:sticky;
-      top:0;
-      z-index:1;
-    }
-
-    .badge {
-      padding:3px 10px;
-      border-radius:999px;
-      color:#fff;
-      font-weight:700;
-      font-size:12px;
-      display:inline-block;
-    }
-
-    .red { background:#e74c3c; }
-    .yellow { background:#f39c12; }
-    .green { background:#2ecc71; }
-
-    .danger-row { background:#fff5f5; }
-    .medium-row { background:#fffaf2; }
-
-    .section { margin-top:30px; }
-
-    .radar-big {
-      font-size:40px;
-      font-weight:900;
-    }
+    .section{margin-top:30px}
+    .radar-big{font-size:40px;font-weight:900}
+    a{color:#111;text-decoration:none}
+    a:hover{text-decoration:underline}
   </style>
 </head>
 
 <body>
 
-<!-- HEADER -->
 <div class="title">
   <div>
-    <h1>🧠 Founder War Room</h1>
+    <h1>🧠 Phòng điều hành Founder</h1>
     <div class="muted">
-      Internal Control OS — {{ selected_month|default:"All Time" }}
+      Hệ điều hành kiểm soát nội bộ — {{ selected_month|default:"Tất cả thời gian" }}
     </div>
   </div>
 
   <form class="filters" method="get">
     <input name="month" placeholder="YYYY-MM-01" value="{{ selected_month|default:'' }}">
-    <button type="submit">Filter</button>
+    <button type="submit">Lọc</button>
   </form>
 </div>
 
-
-<!-- SYSTEM HEALTH RADAR -->
 <div class="section row">
   <div class="card">
-    <div class="k">SYSTEM HEALTH SCORE</div>
+    <div class="k">TÌNH TRẠNG HỆ THỐNG</div>
     <div class="radar-big">
       {% if margin < 5 %}
-        <span style="color:#e74c3c;">CRITICAL</span>
+        <span style="color:#e74c3c;">NGUY CẤP</span>
       {% elif margin < 12 %}
-        <span style="color:#f39c12;">WARNING</span>
+        <span style="color:#f39c12;">CẢNH BÁO</span>
       {% else %}
-        <span style="color:#2ecc71;">HEALTHY</span>
+        <span style="color:#2ecc71;">ỔN ĐỊNH</span>
       {% endif %}
     </div>
   </div>
 </div>
 
-
-<!-- KPI CARDS -->
 <div class="section row">
   <div class="card">
-    <div class="k">Total Revenue</div>
+    <div class="k">Tổng doanh thu</div>
     <div class="v">{{ total_revenue|floatformat:0 }}</div>
   </div>
 
   <div class="card">
-    <div class="k">Total Profit (GMV fee after tax)</div>
+    <div class="k">Tổng lợi nhuận</div>
     <div class="v">{{ total_profit|floatformat:0 }}</div>
   </div>
 
   <div class="card">
-    <div class="k">Total Net</div>
+    <div class="k">Tổng NET</div>
     <div class="v">{{ total_net|floatformat:0 }}</div>
   </div>
 
   <div class="card">
-    <div class="k">Margin</div>
+    <div class="k">Biên lợi nhuận</div>
     <div class="v"
       {% if margin < 5 %}
         style="color:#e74c3c;"
@@ -167,32 +98,31 @@
   </div>
 
   <div class="card">
-    <div class="k">Burn Rate</div>
+    <div class="k">Burn rate</div>
     <div class="v">{{ burn_rate|floatformat:0 }}</div>
   </div>
 
   <div class="card">
-    <div class="k">Runway (months)</div>
+    <div class="k">Runway (tháng)</div>
     <div class="v">{{ runway_months }}</div>
   </div>
 </div>
 
-<!-- SYSTEM TIMELINE CHART -->
 <div class="section">
-  <h2>📈 System Timeline</h2>
+  <h2>📈 Biểu đồ hệ thống</h2>
   <div class="card">
     <canvas id="sysChart" height="100"></canvas>
   </div>
 </div>
-<!-- ALERTS -->
+
 <div class="section row">
   <div class="card">
-    <h3>🔥 RED Alerts</h3>
+    <h3>🔥 Cảnh báo ĐỎ</h3>
     {% if alerts_red %}
       <ul>
         {% for a in alerts_red %}
           <li>
-            <span class="badge red">RED</span>
+            <span class="badge red">ĐỎ</span>
             <b>{{ a.shop_name }}</b>
             ({{ a.month }}):
             {{ a.title }} — {{ a.message }}
@@ -200,17 +130,17 @@
         {% endfor %}
       </ul>
     {% else %}
-      <div class="muted">No red alerts.</div>
+      <div class="muted">Không có cảnh báo đỏ.</div>
     {% endif %}
   </div>
 
   <div class="card">
-    <h3>⚠️ YELLOW Alerts</h3>
+    <h3>⚠️ Cảnh báo VÀNG</h3>
     {% if alerts_yellow %}
       <ul>
         {% for a in alerts_yellow %}
           <li>
-            <span class="badge yellow">YELLOW</span>
+            <span class="badge yellow">VÀNG</span>
             <b>{{ a.shop_name }}</b>
             ({{ a.month }}):
             {{ a.title }} — {{ a.message }}
@@ -218,28 +148,26 @@
         {% endfor %}
       </ul>
     {% else %}
-      <div class="muted">No yellow alerts.</div>
+      <div class="muted">Không có cảnh báo vàng.</div>
     {% endif %}
   </div>
 </div>
 
-
-<!-- SHOP HEALTH TABLE -->
 <div class="section">
-  <h2>🧠 Shop Health (3M Rolling)</h2>
+  <h2>🧠 Sức khoẻ Shop (Rolling 3 tháng)</h2>
 
   <table>
     <tr>
-      <th>Company</th>
+      <th>Công ty</th>
       <th>Brand</th>
       <th>Shop</th>
-      <th>Revenue 3M</th>
-      <th>Profit 3M</th>
-      <th>Margin</th>
+      <th>Doanh thu 3M</th>
+      <th>Lợi nhuận 3M</th>
+      <th>Biên LN</th>
       <th>MoM</th>
-      <th>Score</th>
-      <th>Risk</th>
-      <th>Note</th>
+      <th>Điểm</th>
+      <th>Rủi ro</th>
+      <th>Ghi chú</th>
     </tr>
 
     {% for s in shop_health %}
@@ -252,7 +180,13 @@
     >
       <td>{{ s.company_name }}</td>
       <td>{{ s.brand_name }}</td>
-      <td><b>{{ s.shop_name }}</b></td>
+      <td>
+        <b>
+          <a href="/intelligence/founder/shop/{{ s.shop_id|default:s.shop_id }}/?month={{ selected_month|default:'' }}">
+            {{ s.shop_name }}
+          </a>
+        </b>
+      </td>
 
       <td>{{ s.revenue_3m|floatformat:0 }}</td>
       <td>{{ s.profit_3m|floatformat:0 }}</td>
@@ -274,52 +208,40 @@
 
       <td>
         {% if s.risk == "HIGH" %}
-          <span class="badge red">HIGH</span>
+          <span class="badge red">CAO</span>
         {% elif s.risk == "MED" %}
-          <span class="badge yellow">MED</span>
+          <span class="badge yellow">TRUNG BÌNH</span>
         {% else %}
-          <span class="badge green">LOW</span>
+          <span class="badge green">THẤP</span>
         {% endif %}
       </td>
 
       <td style="max-width:400px;">{{ s.note }}</td>
     </tr>
     {% empty %}
-    <tr><td colspan="10">No data</td></tr>
+    <tr><td colspan="10">Chưa có dữ liệu</td></tr>
     {% endfor %}
   </table>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   const timeline = JSON.parse('{{ timeline|escapejs }}');
-
   const labels = timeline.map(x => x.month);
   const revenues = timeline.map(x => x.revenue);
   const nets = timeline.map(x => x.net);
 
   const ctx = document.getElementById("sysChart");
-
   new Chart(ctx, {
     type: "line",
     data: {
       labels: labels,
       datasets: [
-        {
-          label: "Revenue",
-          data: revenues,
-          borderWidth: 2
-        },
-        {
-          label: "Net",
-          data: nets,
-          borderWidth: 2
-        }
+        { label: "Doanh thu", data: revenues, borderWidth: 2 },
+        { label: "NET", data: nets, borderWidth: 2 }
       ]
     },
-    options: {
-      responsive: true
-    }
+    options: { responsive: true }
   });
 </script>
 </body>

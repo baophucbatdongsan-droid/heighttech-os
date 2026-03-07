@@ -1,0 +1,378 @@
+<!-- FILE: apps/work/templates/work/os_home.html -->
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>HeightTech • Work OS</title>
+
+  <style>
+    :root{
+      --bg:#070a14;
+      --line:rgba(255,255,255,.10);
+      --text:#eef3ff;
+      --muted:rgba(238,243,255,.68);
+      --brand:#7c3aed;
+      --brand2:#22c55e;
+      --warn:#f59e0b;
+      --bad:#ef4444;
+      --radius:18px;
+      --shadow: 0 18px 55px rgba(0,0,0,.55);
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:
+        radial-gradient(1200px 600px at 20% 0%, rgba(124,58,237,.40), transparent 55%),
+        radial-gradient(1200px 600px at 90% 20%, rgba(34,197,94,.18), transparent 55%),
+        radial-gradient(1000px 600px at 60% 90%, rgba(59,130,246,.16), transparent 55%),
+        var(--bg);
+      color:var(--text);
+      padding:12px;
+    }
+    a{ color:inherit; text-decoration:none; }
+    .wrap{ max-width:1200px; margin:0 auto; }
+
+    .topbar{
+      display:flex; gap:12px; align-items:center; justify-content:space-between;
+      padding:12px 14px;
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+      box-shadow: var(--shadow);
+      position:sticky; top:10px; z-index:20;
+      backdrop-filter: blur(14px);
+    }
+    .brand{ display:flex; gap:10px; align-items:center; }
+    .dot{
+      width:12px; height:12px; border-radius:999px;
+      background: linear-gradient(135deg, var(--brand), #60a5fa);
+      box-shadow: 0 0 0 6px rgba(124,58,237,.16);
+    }
+    .brand h1{ margin:0; font-size:14px; line-height:1.1; letter-spacing:.2px;}
+    .brand p{ margin:2px 0 0; font-size:12px; color:var(--muted); }
+
+    .right{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 10px;
+      border-radius:999px;
+      background: rgba(255,255,255,.06);
+      border:1px solid var(--line);
+      font-size:12px;
+      color:var(--muted);
+    }
+    .pill b{ color:var(--text); }
+
+    .btn{
+      padding:10px 12px;
+      border-radius: 14px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.08);
+      color:var(--text);
+      cursor:pointer;
+      font-weight:900;
+      white-space:nowrap;
+    }
+    .btn.primary{
+      border:none;
+      background: linear-gradient(135deg, var(--brand), #2563eb);
+      box-shadow: 0 10px 26px rgba(124,58,237,.28);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap:12px;
+      margin-top:12px;
+    }
+    .card{
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+      box-shadow: 0 16px 44px rgba(0,0,0,.35);
+      padding:14px;
+      backdrop-filter: blur(14px);
+      overflow:hidden;
+    }
+
+    .kpi{ grid-column: span 3; }
+    .kpi .k{ font-size:12px; color:var(--muted); }
+    .kpi .v{ font-size:22px; font-weight:950; margin-top:6px; letter-spacing:.3px; }
+
+    .filters{ grid-column: 1 / -1; }
+    .filters form{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .input, .select{
+      padding:10px 12px;
+      border-radius: 14px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.20);
+      color: var(--text);
+      outline:none;
+    }
+    .input:focus, .select:focus{
+      border-color: rgba(124,58,237,.65);
+      box-shadow: 0 0 0 4px rgba(124,58,237,.18);
+    }
+    .input{ flex:1; min-width: 220px; }
+
+    .board{ grid-column: 1 / -1; padding:0; }
+    .boardHead{
+      padding:14px;
+      display:flex; gap:12px; flex-wrap:wrap;
+      align-items:center; justify-content:space-between;
+      border-bottom:1px solid var(--line);
+    }
+    .boardHead h2{ margin:0; font-size:14px; letter-spacing:.2px; }
+
+    .quick{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+      width:100%;
+      justify-content:flex-end;
+    }
+
+    .cols{
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:12px;
+      padding:14px;
+    }
+    .col{
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.18);
+      border-radius: 16px;
+      padding:10px;
+      min-height: 320px;
+    }
+    .colTitle{
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:10px;
+      font-size:12px;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.9px;
+    }
+    .count{
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      font-weight:900;
+      font-size:12px;
+    }
+    .item{
+      display:block;
+      border:1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+      border-radius: 14px;
+      padding:10px;
+      margin-bottom:10px;
+      transition: transform .12s ease, border-color .12s ease;
+    }
+    .item:hover{ transform: translateY(-1px); border-color: rgba(124,58,237,.6); }
+    .item .t{ font-size:13px; font-weight:950; line-height:1.25; }
+
+    .item .s{
+      margin-top:8px;
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+      font-size:12px; color: var(--muted);
+    }
+    .tag{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.06);
+      color: rgba(238,243,255,.92);
+    }
+    .dot2{ width:8px; height:8px; border-radius:999px; background: rgba(238,243,255,.35); }
+
+    .prioU{ border-color: rgba(239,68,68,.55); }
+    .prioH{ border-color: rgba(245,158,11,.55); }
+
+    @media (max-width: 980px){
+      .kpi{ grid-column: span 6; }
+      .cols{ grid-template-columns: repeat(2, 1fr); }
+      .topbar{ flex-wrap:wrap; }
+      .right{ justify-content:flex-start; width:100%; }
+      .quick{ justify-content:flex-start; }
+    }
+    @media (max-width: 520px){
+      body{ padding:10px; }
+      .kpi{ grid-column: span 12; }
+      .cols{ grid-template-columns: 1fr; }
+      .btn{ width:100%; }
+      .select{ width:100%; }
+      .input{ width:100%; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="dot"></div>
+      <div>
+        <h1>HeightTech • Work OS</h1>
+        <p>Kanban • Workflow • Logs</p>
+      </div>
+    </div>
+
+    <div class="right">
+      <span class="pill">Tenant <b>{{ tid }}</b></span>
+      <span class="pill">Me <b>{{ me.username }}</b></span>
+      <a class="btn" href="/dashboard/">Dashboard</a>
+      <a class="btn primary" href="/work/my/">My Work</a>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card kpi">
+      <div class="k">Total Work</div>
+      <div class="v">{{ kpi_total }}</div>
+    </div>
+    <div class="card kpi">
+      <div class="k">Overdue</div>
+      <div class="v" style="color:var(--bad)">{{ kpi_overdue }}</div>
+    </div>
+    <div class="card kpi">
+      <div class="k">Urgent</div>
+      <div class="v" style="color:var(--warn)">{{ kpi_urgent }}</div>
+    </div>
+    <div class="card kpi">
+      <div class="k">Done (7d)</div>
+      <div class="v" style="color:var(--brand2)">{{ kpi_done_7d }}</div>
+    </div>
+
+    <div class="card filters">
+      <form method="get">
+        <input class="input" name="q" value="{{ q }}" placeholder="Search title/description…" />
+        <select class="select" name="status">
+          <option value="">All status</option>
+          <option value="todo" {% if filter_status == "todo" %}selected{% endif %}>TODO</option>
+          <option value="doing" {% if filter_status == "doing" %}selected{% endif %}>DOING</option>
+          <option value="blocked" {% if filter_status == "blocked" %}selected{% endif %}>BLOCKED</option>
+          <option value="done" {% if filter_status == "done" %}selected{% endif %}>DONE</option>
+          <option value="cancelled" {% if filter_status == "cancelled" %}selected{% endif %}>CANCELLED</option>
+        </select>
+        <select class="select" name="priority">
+          <option value="">All priority</option>
+          <option value="4" {% if filter_priority == "4" %}selected{% endif %}>Urgent</option>
+          <option value="3" {% if filter_priority == "3" %}selected{% endif %}>High</option>
+          <option value="2" {% if filter_priority == "2" %}selected{% endif %}>Normal</option>
+          <option value="1" {% if filter_priority == "1" %}selected{% endif %}>Low</option>
+        </select>
+        <button class="btn" type="submit">Apply</button>
+        <a class="btn" href="/work/">Reset</a>
+      </form>
+    </div>
+
+    <div class="card board">
+      <div class="boardHead">
+        <h2>OS Board</h2>
+
+        <form class="quick" method="post" action="/work/quick-create/">
+          {% csrf_token %}
+          <input class="input" name="title" placeholder="Quick add task…" style="max-width:460px;" required />
+          <select class="select" name="priority">
+            <option value="2">Normal</option>
+            <option value="3">High</option>
+            <option value="4">Urgent</option>
+            <option value="1">Low</option>
+          </select>
+          <button class="btn primary" type="submit">Create</button>
+        </form>
+      </div>
+
+      <div class="cols">
+
+        <div class="col">
+          <div class="colTitle">
+            <span>TODO</span>
+            <span class="count">{{ status_counts.todo|default:0 }}</span>
+          </div>
+          {% for it in columns.todo %}
+            <a class="item {% if it.priority == 4 %}prioU{% elif it.priority == 3 %}prioH{% endif %}" href="/work/item/{{ it.id }}/">
+              <div class="t">{{ it.title }}</div>
+              <div class="s">
+                <span class="tag"><span class="dot2"></span>#{{ it.id }}</span>
+                <span class="tag"><span class="dot2"></span>P{{ it.priority }}</span>
+                {% if it.assignee %}<span class="tag"><span class="dot2"></span>@{{ it.assignee.username }}</span>{% elif it.requester %}<span class="tag"><span class="dot2"></span>@{{ it.requester.username }}</span>{% endif %}
+                {% if it.due_at %}<span class="tag"><span class="dot2"></span>Due</span>{% endif %}
+              </div>
+            </a>
+          {% empty %}
+            <div style="color:var(--muted);font-size:13px;padding:8px;">No items</div>
+          {% endfor %}
+        </div>
+
+        <div class="col">
+          <div class="colTitle">
+            <span>DOING</span>
+            <span class="count">{{ status_counts.doing|default:0 }}</span>
+          </div>
+          {% for it in columns.doing %}
+            <a class="item {% if it.priority == 4 %}prioU{% elif it.priority == 3 %}prioH{% endif %}" href="/work/item/{{ it.id }}/">
+              <div class="t">{{ it.title }}</div>
+              <div class="s">
+                <span class="tag"><span class="dot2"></span>#{{ it.id }}</span>
+                <span class="tag"><span class="dot2"></span>P{{ it.priority }}</span>
+                {% if it.assignee %}<span class="tag"><span class="dot2"></span>@{{ it.assignee.username }}</span>{% elif it.requester %}<span class="tag"><span class="dot2"></span>@{{ it.requester.username }}</span>{% endif %}
+                {% if it.due_at %}<span class="tag"><span class="dot2"></span>Due</span>{% endif %}
+              </div>
+            </a>
+          {% empty %}
+            <div style="color:var(--muted);font-size:13px;padding:8px;">No items</div>
+          {% endfor %}
+        </div>
+
+        <div class="col">
+          <div class="colTitle">
+            <span>BLOCKED</span>
+            <span class="count">{{ status_counts.blocked|default:0 }}</span>
+          </div>
+          {% for it in columns.blocked %}
+            <a class="item {% if it.priority == 4 %}prioU{% elif it.priority == 3 %}prioH{% endif %}" href="/work/item/{{ it.id }}/">
+              <div class="t">{{ it.title }}</div>
+              <div class="s">
+                <span class="tag"><span class="dot2"></span>#{{ it.id }}</span>
+                <span class="tag"><span class="dot2"></span>P{{ it.priority }}</span>
+                {% if it.assignee %}<span class="tag"><span class="dot2"></span>@{{ it.assignee.username }}</span>{% elif it.requester %}<span class="tag"><span class="dot2"></span>@{{ it.requester.username }}</span>{% endif %}
+                {% if it.due_at %}<span class="tag"><span class="dot2"></span>Due</span>{% endif %}
+              </div>
+            </a>
+          {% empty %}
+            <div style="color:var(--muted);font-size:13px;padding:8px;">No items</div>
+          {% endfor %}
+        </div>
+
+        <div class="col">
+          <div class="colTitle">
+            <span>DONE</span>
+            <span class="count">{{ status_counts.done|default:0 }}</span>
+          </div>
+          {% for it in columns.done %}
+            <a class="item" href="/work/item/{{ it.id }}/">
+              <div class="t">{{ it.title }}</div>
+              <div class="s">
+                <span class="tag"><span class="dot2"></span>#{{ it.id }}</span>
+                <span class="tag"><span class="dot2"></span>P{{ it.priority }}</span>
+                {% if it.assignee %}<span class="tag"><span class="dot2"></span>@{{ it.assignee.username }}</span>{% elif it.requester %}<span class="tag"><span class="dot2"></span>@{{ it.requester.username }}</span>{% endif %}
+              </div>
+            </a>
+          {% empty %}
+            <div style="color:var(--muted);font-size:13px;padding:8px;">No items</div>
+          {% endfor %}
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

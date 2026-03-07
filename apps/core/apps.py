@@ -25,3 +25,11 @@ class CoreConfig(AppConfig):
             import apps.core.audit_signals  # noqa: F401
         except Exception:
             pass
+
+    # apps/core/apps.py (thêm vào ready)
+    def ready(self):
+        try:
+            from apps.events import setup_event_handlers
+            setup_event_handlers()
+        except Exception:
+            pass

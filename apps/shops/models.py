@@ -1,3 +1,4 @@
+# apps/shops/models.py
 from __future__ import annotations
 
 from django.conf import settings
@@ -74,7 +75,7 @@ class Shop(models.Model):
         verbose_name="Trạng thái",
     )
 
-        # =========================
+    # =========================
     # RULE ENGINE (code-based, versioned)
     # =========================
     industry_code = models.CharField(
@@ -132,7 +133,7 @@ class Shop(models.Model):
     def _resolve_tenant_from_brand(self):
         """
         brand -> company -> tenant
-        Ưu tiên không query thêm.
+        Ưu tiên không query thêm nếu object đã load sẵn.
         """
         b = getattr(self, "brand", None)
         if b is None:
@@ -218,13 +219,15 @@ class ShopMember(models.Model):
         ordering = ["-id"]
         indexes = [
             models.Index(fields=["tenant"], name="idx_shopmember_tenant"),
-            models.Index(fields=["user"], name="idx_shopmember_user"),
+            models.Index(fields=["tenant", "user"], name="idx_shopmember_tenant_user"),
+            models.Index(fields=["tenant", "shop"], name="idx_shopmember_tenant_shop"),
             models.Index(fields=["is_active"], name="idx_shopmember_active"),
         ]
         constraints = [
+            # OS-grade: tránh collision khi sau này cross-tenant / import data
             models.UniqueConstraint(
-                fields=["shop", "user"],
-                name="uq_shopmember_shop_user",
+                fields=["tenant", "shop", "user"],
+                name="uq_shopmember_tenant_shop_user",
             ),
         ]
 
@@ -234,16 +237,17 @@ class ShopMember(models.Model):
         return f"{username} -> {shop_name} ({self.role})"
 
     def save(self, *args, **kwargs):
-        # auto sync tenant từ shop nếu chưa set
+        # ✅ FINAL: auto sync tenant từ shop (bỏ hack chain)
         if not self.tenant_id and self.shop_id:
-            # tránh dùng self.shop (có thể bị TenantManager filter mất),
-            # dùng _base_manager + shop_id để chắc chắn lấy được
             try:
-                self.tenant_id = self.__class__._base_manager.model.shop.field.model._base_manager.get(id=self.shop_id).tenant_id  # type: ignore
+                # dùng Shop._base_manager để bypass TenantManager scoping
+                ShopModel = self._meta.get_field("shop").remote_field.model
+                self.tenant_id = ShopModel._base_manager.only("tenant_id").get(id=self.shop_id).tenant_id
             except Exception:
-                # fallback nhẹ: nếu self.shop đã load được
+                # fallback: nếu self.shop đã load được
                 try:
                     self.tenant_id = self.shop.tenant_id
                 except Exception:
                     pass
+
         super().save(*args, **kwargs)

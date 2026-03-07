@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Set
 from rest_framework.permissions import BasePermission
-
+from apps.intelligence.action_runner import run_actions
 # ===============================
 # HẰNG SỐ ROLE
 # ===============================

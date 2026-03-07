@@ -1,9 +1,9 @@
-from django.urls import include, path
+# apps/dashboard/urls.py
+from django.urls import path
 from .views import dashboard_view
+
+app_name = "dashboard"
 
 urlpatterns = [
     path("", dashboard_view, name="dashboard"),
-
-    # projects pages
-    path("", include("apps.dashboard.urls_projects")),
 ]

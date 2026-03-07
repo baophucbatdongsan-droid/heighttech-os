@@ -10,7 +10,7 @@ from .views import (
     BillingOverviewAPI,
 )
 
-app_name = "billing"
+app_name = "api_v1_billing"
 
 urlpatterns = [
     # HTML pages

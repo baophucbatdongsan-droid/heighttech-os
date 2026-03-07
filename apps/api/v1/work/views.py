@@ -2,29 +2,32 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Any, Dict, Optional, Tuple
+from typing import Optional
 
+from django.db import transaction
 from django.db.models import Q
-from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from rest_framework import generics, status
+from rest_framework import generics, status, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.api.v1.base import TenantRequiredMixin
-from apps.api.v1.guards import get_scope_company_ids, get_scope_shop_ids
 from apps.core.permissions import (
     AbilityPermission,
     VIEW_API_DASHBOARD,
     resolve_user_role,
-    ROLE_FOUNDER,
     ROLE_CLIENT,
 )
-from apps.projects.models import Project
 from apps.work.models import WorkItem, WorkComment
 from apps.work.services_move import move_work_item
+from apps.work.permissions import (
+    scope_workitem_queryset,
+    validate_write_scope,
+    require_company_if_no_resolve_fields,
+    get_scoped_workitem_or_404,
+)
 
 from .serializers import (
     WorkItemSerializer,
@@ -49,7 +52,15 @@ def _parse_int(s: Optional[str], default: int) -> int:
 
 def _paginate(request: Request, qs):
     page = max(_parse_int(request.query_params.get("page"), 1), 1)
-    page_size = _parse_int(request.query_params.get("page_size"), 50)
+
+    # hỗ trợ cả page_size và limit để FE OS gọi ổn
+    raw_page_size = (
+        request.query_params.get("page_size")
+        or request.query_params.get("limit")
+        or "50"
+    )
+    page_size = _parse_int(raw_page_size, 50)
+
     if page_size <= 0:
         page_size = 50
     page_size = min(page_size, MAX_PAGE_SIZE)
@@ -68,11 +79,12 @@ def _safe_sort(sort: str) -> str:
 
 def _apply_filters(request: Request, qs):
     q = (request.query_params.get("q") or "").strip()
-    status_v = (request.query_params.get("status") or "").strip()
+    status_v = (request.query_params.get("status") or "").strip().lower()
     priority_v = (request.query_params.get("priority") or "").strip()
     assignee_v = (request.query_params.get("assignee") or "").strip()
     requester_v = (request.query_params.get("requester") or "").strip()
     company_v = (request.query_params.get("company_id") or "").strip()
+    shop_v = (request.query_params.get("shop_id") or "").strip()
     project_v = (request.query_params.get("project_id") or "").strip()
     target_type = (request.query_params.get("target_type") or "").strip()
     target_id = (request.query_params.get("target_id") or "").strip()
@@ -82,7 +94,10 @@ def _apply_filters(request: Request, qs):
         qs = qs.filter(Q(title__icontains=q) | Q(description__icontains=q))
 
     if status_v:
-        qs = qs.filter(status=status_v)
+        if status_v == "open":
+            qs = qs.exclude(status__in=["done", "cancelled"])
+        else:
+            qs = qs.filter(status=status_v)
 
     if priority_v:
         try:
@@ -108,12 +123,19 @@ def _apply_filters(request: Request, qs):
         except Exception:
             pass
 
+    if shop_v:
+        try:
+            qs = qs.filter(shop_id=int(shop_v))
+        except Exception:
+            pass
+
     if project_v:
         try:
             qs = qs.filter(project_id=int(project_v))
         except Exception:
             pass
 
+    # legacy filters (target)
     if target_type:
         qs = qs.filter(target_type=target_type)
 
@@ -134,172 +156,29 @@ def _is_client(user) -> bool:
     return resolve_user_role(user) == ROLE_CLIENT
 
 
-# =========================
-# scope
-# =========================
-def _scope_queryset_for_user(request: Request, qs):
-    user = request.user
-    tenant_id = getattr(request, "tenant_id", None)
-
-    if tenant_id:
-        qs = qs.filter(tenant_id=int(tenant_id))
-
-    role = resolve_user_role(user)
-    if role == ROLE_FOUNDER or getattr(user, "is_superuser", False):
-        return qs
-
-    if role == ROLE_CLIENT:
-        qs = qs.filter(is_internal=False)
-
-    allowed_company_ids = set(get_scope_company_ids(user) or [])
-    allowed_shop_ids = set(get_scope_shop_ids(user) or [])
-
-    q_company = Q()
-    if allowed_company_ids:
-        q_company = Q(company_id__in=list(allowed_company_ids))
-
-    q_client = Q()
-    if allowed_shop_ids:
-        q_client |= Q(target_type="shop", target_id__in=list(allowed_shop_ids))
-
-        # channel -> shop
-        try:
-            from apps.channels.models import ChannelShopLink
-
-            channel_ids = set(
-                ChannelShopLink.objects_all.filter(shop_id__in=list(allowed_shop_ids))
-                .values_list("channel_id", flat=True)
-                .distinct()
-            )
-            if channel_ids:
-                q_client |= Q(target_type="channel", target_id__in=list(channel_ids))
-        except Exception:
-            pass
-
-        # booking -> shop
-        try:
-            from apps.booking.models import Booking
-
-            booking_ids = set(
-                Booking.objects_all.filter(shop_id__in=list(allowed_shop_ids))
-                .values_list("id", flat=True)
-                .distinct()
-            )
-            if booking_ids:
-                q_client |= Q(target_type="booking", target_id__in=list(booking_ids))
-        except Exception:
-            pass
-
-    combined = q_company | q_client
-    if combined.children:
-        return qs.filter(combined)
-
-    return qs.none()
-
-
-def _validate_write_scope(request: Request, payload: Dict[str, Any]) -> Tuple[bool, str]:
-    user = request.user
-    role = resolve_user_role(user)
-
-    if role == ROLE_FOUNDER or getattr(user, "is_superuser", False):
-        return True, ""
-
-    if role == ROLE_CLIENT:
-        return False, "Khách hàng không được thao tác ghi công việc"
-
-    allowed_company_ids = set(get_scope_company_ids(user) or [])
-    allowed_shop_ids = set(get_scope_shop_ids(user) or [])
-
-    company_id = payload.get("company_id")
-    project_id = payload.get("project_id")
-    target_type = (payload.get("target_type") or "").strip()
-    target_id = payload.get("target_id")
-
-    if company_id is not None:
-        try:
-            cid = int(company_id)
-            if allowed_company_ids and cid not in allowed_company_ids:
-                return False, "Forbidden: company out of scope"
-        except Exception:
-            return False, "Bad company_id"
-
-    if project_id is not None:
-        try:
-            pid = int(project_id)
-        except Exception:
-            return False, "Bad project_id"
-
-        tenant_id = getattr(request, "tenant_id", None)
-        p_qs = Project.objects_all.all()
-        if tenant_id:
-            p_qs = p_qs.filter(tenant_id=int(tenant_id))
-
-        p = p_qs.filter(id=pid).only("id", "company_id").first()
-        if not p:
-            return False, "Forbidden: project not found in tenant"
-        if allowed_company_ids and p.company_id not in allowed_company_ids:
-            return False, "Forbidden: project out of company scope"
-
-    if target_id is not None:
-        try:
-            t_id = int(target_id)
-        except Exception:
-            return False, "Bad target_id"
-
-        if target_type == "shop":
-            if allowed_shop_ids and t_id not in allowed_shop_ids:
-                return False, "Forbidden: shop target out of scope"
-
-        elif target_type == "channel":
-            try:
-                from apps.channels.models import ChannelShopLink
-
-                ok = ChannelShopLink.objects_all.filter(
-                    shop_id__in=list(allowed_shop_ids),
-                    channel_id=t_id,
-                ).exists()
-                if allowed_shop_ids and not ok:
-                    return False, "Forbidden: channel target out of scope"
-            except Exception:
-                if allowed_shop_ids:
-                    return False, "Forbidden: channel target out of scope"
-
-        elif target_type == "booking":
-            try:
-                from apps.booking.models import Booking
-
-                ok = Booking.objects_all.filter(id=t_id, shop_id__in=list(allowed_shop_ids)).exists()
-                if allowed_shop_ids and not ok:
-                    return False, "Forbidden: booking target out of scope"
-            except Exception:
-                if allowed_shop_ids:
-                    return False, "Forbidden: booking target out of scope"
-
-    return True, ""
-
-
-def _require_company_if_no_resolve_fields(payload: Dict[str, Any]) -> Tuple[bool, str]:
+def _apply_client_scope(request: Request, qs):
     """
-    ✅ FINAL guard (anti-rác):
-    Create WorkItem phải có:
-      - company_id
-      HOẶC
-      - project_id
-      HOẶC
-      - (target_type & target_id)
+    Client chỉ thấy task public:
+    - visible_to_client=True
+    - is_internal=False
     """
-    company_id = payload.get("company_id")
-    project_id = payload.get("project_id")
-    target_type = (payload.get("target_type") or "").strip()
-    target_id = payload.get("target_id")
+    if _is_client(request.user):
+        qs = qs.filter(visible_to_client=True, is_internal=False)
+    return qs
 
-    if company_id:
-        return True, ""
-    if project_id:
-        return True, ""
-    if target_type and target_id:
-        return True, ""
-    return False, "company_id là bắt buộc nếu không có project_id hoặc target (target_type/target_id)"
+
+def _with_related(qs):
+    return qs.select_related(
+        "assignee",
+        "requester",
+        "created_by",
+        "project",
+        "shop",
+    )
+
+
+def _client_forbidden_item(item: WorkItem) -> bool:
+    return (not bool(getattr(item, "visible_to_client", False))) or bool(getattr(item, "is_internal", False))
 
 
 # =========================
@@ -311,7 +190,9 @@ class WorkItemListCreateView(generics.GenericAPIView):
     required_ability = VIEW_API_DASHBOARD
 
     def get(self, request: Request, *args, **kwargs):
-        qs = _scope_queryset_for_user(request, WorkItem.objects_all.all())
+        qs = scope_workitem_queryset(request, WorkItem.objects_all.all())
+        qs = _with_related(qs)
+        qs = _apply_client_scope(request, qs)
         qs = _apply_filters(request, qs)
 
         sort = _safe_sort(request.query_params.get("sort") or "updated_at")
@@ -329,11 +210,11 @@ class WorkItemListCreateView(generics.GenericAPIView):
 
         payload = dict(request.data or {})
 
-        ok_basic, msg_basic = _require_company_if_no_resolve_fields(payload)
+        ok_basic, msg_basic = require_company_if_no_resolve_fields(payload)
         if not ok_basic:
             return Response({"ok": False, "message": msg_basic}, status=status.HTTP_400_BAD_REQUEST)
 
-        ok, msg = _validate_write_scope(request, payload)
+        ok, msg = validate_write_scope(request, payload)
         if not ok:
             return Response({"ok": False, "message": msg}, status=status.HTTP_403_FORBIDDEN)
 
@@ -349,10 +230,7 @@ class WorkItemListCreateView(generics.GenericAPIView):
         obj._actor = request.user  # type: ignore[attr-defined]
         obj.save()
 
-        return Response(
-            {"ok": True, "item": WorkItemSerializer(obj, context={"request": request}).data},
-            status=status.HTTP_201_CREATED,
-        )
+        return Response({"ok": True, "item": WorkItemSerializer(obj, context={"request": request}).data}, status=status.HTTP_201_CREATED)
 
 
 class WorkItemDetailView(generics.GenericAPIView):
@@ -361,11 +239,12 @@ class WorkItemDetailView(generics.GenericAPIView):
     required_ability = VIEW_API_DASHBOARD
 
     def _get_obj(self, request: Request, pk: int) -> WorkItem:
-        qs = _scope_queryset_for_user(request, WorkItem.objects_all.all())
-        return get_object_or_404(qs, pk=pk)
+        return get_scoped_workitem_or_404(request, pk)
 
     def get(self, request: Request, pk: int, *args, **kwargs):
         obj = self._get_obj(request, pk)
+        if _is_client(request.user) and _client_forbidden_item(obj):
+            return Response({"ok": False, "message": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
         return Response({"ok": True, "item": WorkItemSerializer(obj, context={"request": request}).data})
 
     def patch(self, request: Request, pk: int, *args, **kwargs):
@@ -374,11 +253,9 @@ class WorkItemDetailView(generics.GenericAPIView):
 
         obj = self._get_obj(request, pk)
         payload = dict(request.data or {})
-
-        # ✅ không cho đổi tenant_id bằng API
         payload.pop("tenant_id", None)
 
-        ok, msg = _validate_write_scope(request, payload)
+        ok, msg = validate_write_scope(request, payload)
         if not ok:
             return Response({"ok": False, "message": msg}, status=status.HTTP_403_FORBIDDEN)
 
@@ -408,8 +285,9 @@ class WorkItemTimelineView(generics.GenericAPIView):
     required_ability = VIEW_API_DASHBOARD
 
     def get(self, request: Request, pk: int, *args, **kwargs):
-        qs = _scope_queryset_for_user(request, WorkItem.objects_all.all())
-        item = get_object_or_404(qs, pk=pk)
+        item = get_scoped_workitem_or_404(request, pk)
+        if _is_client(request.user) and _client_forbidden_item(item):
+            return Response({"ok": False, "message": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
         cqs = WorkComment.objects_all.filter(work_item_id=item.id).order_by("-id")[:200]
         data = WorkCommentSerializer(cqs, many=True).data
@@ -417,16 +295,14 @@ class WorkItemTimelineView(generics.GenericAPIView):
 
 
 class WorkItemAddCommentView(generics.GenericAPIView):
-    """
-    Client được phép comment (trên task public).
-    """
     permission_classes = [IsAuthenticated, AbilityPermission]
     required_ability = VIEW_API_DASHBOARD
     serializer_class = WorkCommentCreateSerializer
 
     def post(self, request: Request, pk: int, *args, **kwargs):
-        qs = _scope_queryset_for_user(request, WorkItem.objects_all.all())
-        item = get_object_or_404(qs, pk=pk)
+        item = get_scoped_workitem_or_404(request, pk)
+        if _is_client(request.user) and _client_forbidden_item(item):
+            return Response({"ok": False, "message": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
         ser = self.get_serializer(data=request.data or {})
         ser.is_valid(raise_exception=True)
@@ -455,7 +331,8 @@ class WorkMySummaryView(generics.GenericAPIView):
 
     def get(self, request: Request, *args, **kwargs):
         user = request.user
-        base = _scope_queryset_for_user(request, WorkItem.objects_all.all())
+        base = scope_workitem_queryset(request, WorkItem.objects_all.all())
+        base = _apply_client_scope(request, base)
 
         def _count(st: str) -> int:
             return base.filter(status=st).count()
@@ -488,18 +365,10 @@ class WorkMySummaryView(generics.GenericAPIView):
                 "my": {
                     "assigned_total": my_assigned.count(),
                     "requested_total": my_requested.count(),
-                    "assigned_items": WorkItemSerializer(
-                        my_assigned.order_by("-updated_at", "-id")[:20],
-                        many=True,
-                        context={"request": request},
-                    ).data,
-                    "requested_items": WorkItemSerializer(
-                        my_requested.order_by("-updated_at", "-id")[:20],
-                        many=True,
-                        context={"request": request},
-                    ).data,
+                    "assigned_items": WorkItemSerializer(_with_related(my_assigned.order_by("-updated_at", "-id")[:20]), many=True, context={"request": request}).data,
+                    "requested_items": WorkItemSerializer(_with_related(my_requested.order_by("-updated_at", "-id")[:20]), many=True, context={"request": request}).data,
                 },
-                "due_soon": WorkItemSerializer(due_soon, many=True, context={"request": request}).data,
+                "due_soon": WorkItemSerializer(_with_related(due_soon), many=True, context={"request": request}).data,
                 "recent_timeline": WorkCommentSerializer(comment_qs, many=True).data,
             }
         )
@@ -510,7 +379,8 @@ class WorkPortalSummaryView(generics.GenericAPIView):
     required_ability = VIEW_API_DASHBOARD
 
     def get(self, request: Request, *args, **kwargs):
-        base = _scope_queryset_for_user(request, WorkItem.objects_all.all())
+        base = scope_workitem_queryset(request, WorkItem.objects_all.all())
+        base = _apply_client_scope(request, base)
 
         counts = {st: base.filter(status=st).count() for st in STATUSES}
         counts["total"] = base.count()
@@ -537,8 +407,8 @@ class WorkPortalSummaryView(generics.GenericAPIView):
                 "ok": True,
                 "role": resolve_user_role(request.user),
                 "counts": counts,
-                "recent_items": WorkItemSerializer(recent_items, many=True, context={"request": request}).data,
-                "due_soon": WorkItemSerializer(due_soon, many=True, context={"request": request}).data,
+                "recent_items": WorkItemSerializer(_with_related(recent_items), many=True, context={"request": request}).data,
+                "due_soon": WorkItemSerializer(_with_related(due_soon), many=True, context={"request": request}).data,
                 "recent_timeline": WorkCommentSerializer(cqs, many=True).data,
             }
         )
@@ -549,7 +419,9 @@ class WorkBoardView(generics.GenericAPIView):
     required_ability = VIEW_API_DASHBOARD
 
     def get(self, request: Request, *args, **kwargs):
-        qs = _scope_queryset_for_user(request, WorkItem.objects_all.all())
+        qs = scope_workitem_queryset(request, WorkItem.objects_all.all())
+        qs = _with_related(qs)
+        qs = _apply_client_scope(request, qs)
 
         scope = (request.query_params.get("scope") or "all").strip().lower()
 
@@ -557,7 +429,7 @@ class WorkBoardView(generics.GenericAPIView):
             shop_id = request.query_params.get("shop_id")
             if shop_id:
                 try:
-                    qs = qs.filter(target_type="shop", target_id=int(shop_id))
+                    qs = qs.filter(shop_id=int(shop_id))
                 except Exception:
                     return Response({"ok": False, "message": "Bad shop_id"}, status=400)
 
@@ -581,10 +453,7 @@ class WorkBoardView(generics.GenericAPIView):
             target_type = (request.query_params.get("target_type") or "").strip()
             target_id = request.query_params.get("target_id")
             if not target_type or not target_id:
-                return Response(
-                    {"ok": False, "message": "target_type and target_id are required for scope=target"},
-                    status=400,
-                )
+                return Response({"ok": False, "message": "target_type and target_id are required for scope=target"}, status=400)
             try:
                 qs = qs.filter(target_type=target_type, target_id=int(target_id))
             except Exception:
@@ -616,37 +485,16 @@ class WorkBoardView(generics.GenericAPIView):
             columns.append({"status": st, "total": total, "items": items})
             totals[st] = total
 
-        return Response(
-            {
-                "ok": True,
-                "scope": scope,
-                "limit": limit,
-                "sort": sort,
-                "dir": direction,
-                "totals": totals,
-                "columns": columns,
-            }
-        )
+        return Response({"ok": True, "scope": scope, "limit": limit, "sort": sort, "dir": direction, "totals": totals, "columns": columns})
 
 
 class WorkItemMoveView(TenantRequiredMixin, APIView):
-    """
-    POST /api/v1/work/items/<pk>/move/
-    body:
-      {
-        "to_status": "doing",
-        "to_position": 2
-      }
-    """
     permission_classes = [IsAuthenticated, AbilityPermission]
     required_ability = VIEW_API_DASHBOARD
 
     def post(self, request, pk: int):
         if _is_client(request.user):
-            return Response(
-                {"ok": False, "detail": "Khách hàng không được thay đổi trạng thái"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return Response({"ok": False, "detail": "Khách hàng không được thay đổi trạng thái"}, status=status.HTTP_403_FORBIDDEN)
 
         tenant = self.get_tenant()
 
@@ -658,8 +506,9 @@ class WorkItemMoveView(TenantRequiredMixin, APIView):
         if not to_status:
             return Response({"ok": False, "detail": "to_status is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        base = _scope_queryset_for_user(request, WorkItem.objects_all.all())
-        item = get_object_or_404(base, pk=pk, tenant_id=tenant.id)
+        item = get_scoped_workitem_or_404(request, pk)
+        if int(item.tenant_id) != int(tenant.id):
+            return Response({"ok": False, "detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
         try:
             res = move_work_item(
@@ -672,7 +521,6 @@ class WorkItemMoveView(TenantRequiredMixin, APIView):
             return Response({"ok": False, "detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         item.refresh_from_db()
-
         return Response(
             {
                 "ok": True,
@@ -685,3 +533,81 @@ class WorkItemMoveView(TenantRequiredMixin, APIView):
                 "item": WorkItemSerializer(item, context={"request": request}).data,
             }
         )
+
+
+# =========================
+# ✅ NEW: Assign
+# =========================
+class WorkItemAssignSerializer(serializers.Serializer):
+    assignee_id = serializers.IntegerField(required=False, allow_null=True)
+    requester_id = serializers.IntegerField(required=False, allow_null=True)
+    note = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+    def validate(self, attrs):
+        if "assignee_id" not in attrs and "requester_id" not in attrs:
+            raise serializers.ValidationError("assignee_id hoặc requester_id là bắt buộc")
+        return attrs
+
+
+class WorkItemAssignView(generics.GenericAPIView):
+
+    permission_classes = [IsAuthenticated, AbilityPermission]
+    required_ability = VIEW_API_DASHBOARD
+    serializer_class = WorkItemAssignSerializer
+
+    def post(self, request: Request, pk: int, *args, **kwargs):
+        if _is_client(request.user):
+            return Response({"ok": False, "message": "Khách hàng không được phân công"}, status=status.HTTP_403_FORBIDDEN)
+
+        item = get_scoped_workitem_or_404(request, pk)
+
+        payload = dict(request.data or {})
+        # validate scope write
+        ok, msg = validate_write_scope(request, payload)
+        if not ok:
+            return Response({"ok": False, "message": msg}, status=status.HTTP_403_FORBIDDEN)
+
+        ser = self.get_serializer(data=payload)
+        ser.is_valid(raise_exception=True)
+
+        assignee_id = ser.validated_data.get("assignee_id", None)
+        requester_id = ser.validated_data.get("requester_id", None)
+        note = (ser.validated_data.get("note") or "").strip()
+
+        # Safety: block assign on cancelled/done? (tuỳ anh muốn)
+        # ở đây để "mềm": vẫn cho assign nếu cần audit, không chặn.
+
+        with transaction.atomic():
+            updated = set()
+
+            if "assignee_id" in ser.validated_data:
+                item.assignee_id = assignee_id
+                updated.add("assignee_id")
+
+            if "requester_id" in ser.validated_data:
+                item.requester_id = requester_id
+                updated.add("requester_id")
+
+            item._actor = request.user  # type: ignore[attr-defined]
+            if updated:
+                item.save(update_fields=list(updated) + ["updated_at"])
+            else:
+                item.save()
+
+            # log comment để FE thấy lịch sử giao việc
+            if note or updated:
+                WorkComment.objects_all.create(
+                    tenant_id=item.tenant_id,
+                    work_item_id=item.id,
+                    actor_id=request.user.id,
+                    body=note or "Updated assignment",
+                    meta={
+                        "event": "assign",
+                        "assignee_id": item.assignee_id,
+                        "requester_id": item.requester_id,
+                    },
+                )
+
+        item.refresh_from_db()
+        return Response({"ok": True, "item": WorkItemSerializer(item, context={"request": request}).data})
+

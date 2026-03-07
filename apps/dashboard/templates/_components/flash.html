@@ -1,0 +1,11 @@
+<!-- FILE: templates/_components/flash.html -->
+{% if messages %}
+  <div style="margin-bottom:14px;">
+    {% for m in messages %}
+      <div class="card" style="border-radius:14px; padding:12px; margin-bottom:10px;">
+        <div class="k">Thông báo</div>
+        <div style="margin-top:6px; font-weight:800;">{{ m }}</div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}

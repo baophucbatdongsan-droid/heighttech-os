@@ -62,7 +62,6 @@ def _is_founder_user(user) -> bool:
 
 
 def _get_header(request, key: str) -> Optional[str]:
-    # DRF request.headers ưu tiên, fallback META
     try:
         v = request.headers.get(key)
         if v:
@@ -126,7 +125,6 @@ def _get_project_or_404(tid: int, project_id: int, company_id: Optional[int]) ->
 def _get_shop_or_deny(tid: int, shop_id: int, company_id: Optional[int]) -> Shop:
     qs = Shop._base_manager.select_related("brand", "brand__company").filter(id=shop_id)
 
-    # nếu Shop có tenant_id thì ép tenant
     field_names = {f.name for f in Shop._meta.fields}
     if "tenant" in field_names or "tenant_id" in field_names:
         qs = qs.filter(tenant_id=tid)
@@ -135,7 +133,6 @@ def _get_shop_or_deny(tid: int, shop_id: int, company_id: Optional[int]) -> Shop
     if not shop:
         raise PermissionDenied("Shop matching query does not exist.")
 
-    # ép company qua brand.company_id
     if company_id is not None:
         brand = getattr(shop, "brand", None)
         brand_company_id = getattr(brand, "company_id", None)
@@ -146,8 +143,6 @@ def _get_shop_or_deny(tid: int, shop_id: int, company_id: Optional[int]) -> Shop
 
 
 def _get_type_display_safe(p: Project) -> str:
-    # Django get_FOO_display() nếu không match choices thường sẽ trả raw value,
-    # nhưng mình vẫn wrap try/except cho chắc.
     try:
         if hasattr(p, "get_type_display"):
             return p.get_type_display()
@@ -164,8 +159,8 @@ def serialize_project(p: Project) -> Dict[str, Any]:
         "tenant_id": p.tenant_id,
         "company_id": p.company_id,
         "name": p.name,
-        "type": type_display,  # display (UPPER) cho FE
-        "type_code": type_code,  # canonical (lower) cho filter/summary
+        "type": type_display,      # display (UPPER) cho FE
+        "type_code": type_code,    # canonical (lower) cho filter/summary
         "status": p.status,
         "created_at": getattr(p, "created_at", None),
         "updated_at": getattr(p, "updated_at", None),
@@ -207,7 +202,6 @@ class ProjectListCreateApi(BaseApi):
 
         t_raw = (request.GET.get("type") or "").strip()
         if t_raw:
-            # support legacy upper + canonical lower
             t_norm = normalize_project_type(t_raw)
             candidates: Set[str] = {t_norm, t_raw, t_raw.lower(), t_raw.upper()}
             qs = qs.filter(type__in=list(candidates))
@@ -225,6 +219,7 @@ class ProjectListCreateApi(BaseApi):
             "has_next": page_obj.has_next(),
             "has_prev": page_obj.has_previous(),
         }
+        # ✅ FINAL: data.items nằm đúng tại res.json()["data"]["items"]
         return api_ok(data, meta=meta)
 
     def post(self, request):
@@ -240,13 +235,11 @@ class ProjectListCreateApi(BaseApi):
 
         body_company_id = request.data.get("company_id")
 
-        # company-user: ép company_id theo scope
         if scoped_company_id is not None:
             if body_company_id and str(body_company_id).strip() and int(body_company_id) != int(scoped_company_id):
                 raise PermissionDenied("Forbidden: cannot create project for another company")
             company_id = int(scoped_company_id)
         else:
-            # founder: phải có company_id
             if not body_company_id:
                 return api_error("bad_request", "Thiếu company_id", status=400)
             try:
@@ -260,9 +253,11 @@ class ProjectListCreateApi(BaseApi):
             tenant_id=tid,
             company_id=company.id,
             name=name,
-            type=ptype,  # luôn canonical lowercase
+            type=ptype,  # canonical lowercase
             status=status,
         )
+
+        # ✅ FINAL: data.item nằm đúng tại res.json()["data"]["item"]
         return api_ok({"item": serialize_project(p)})
 
 
@@ -289,7 +284,6 @@ class ProjectDetailApi(BaseApi):
             p.type = normalize_project_type(request.data.get("type"))
 
         if "company_id" in request.data:
-            # company-user: không cho đổi company_id
             if scoped_company_id is not None:
                 raise PermissionDenied("Forbidden: cannot change company_id")
             raw = request.data.get("company_id")
@@ -355,7 +349,6 @@ class ProjectShopListCreateApi(BaseApi):
         except Exception:
             return api_error("bad_request", "shop_id không hợp lệ", status=400)
 
-        # shop phải thuộc company của project
         shop = _get_shop_or_deny(tid, shop_id, project.company_id)
 
         defaults: Dict[str, Any] = {}

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chọn Shop</title>
+  <style>
+    body{font-family:Arial;background:#f6f7fb;padding:24px}
+    .card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.06);max-width:720px}
+    button{padding:10px 12px;border-radius:10px;border:0;cursor:pointer}
+    select{padding:10px;border-radius:10px;border:1px solid #ddd;width:100%}
+    .muted{color:#667085;font-size:14px}
+    .actions{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
+    a.btn{display:inline-block;padding:10px 12px;border-radius:10px;border:1px solid #ddd;text-decoration:none;color:#111;background:#fff}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Chọn Shop để làm việc</h2>
+    <div class="muted">Sau khi chọn, hệ thống sẽ lưu session để vào Dashboard.</div>
+
+    {% if shops %}
+      <form method="post" action="/app/switch/">
+        {% csrf_token %}
+        <label for="shop_id">Shop</label>
+        <select id="shop_id" name="shop_id" required>
+          {% for s in shops %}
+            <option value="{{ s.id }}">{{ s.name }}</option>
+          {% endfor %}
+        </select>
+
+        <div class="actions">
+          <button type="submit">Vào làm việc</button>
+          <a class="btn" href="/admin/" target="_blank" rel="noopener">Mở Admin</a>
+          <a class="btn" href="/logout/">Đăng xuất</a>
+        </div>
+      </form>
+    {% else %}
+      <p>Chưa có shop nào trong tenant này.</p>
+      <p class="muted">Chạy seed_demo hoặc tạo shop trong admin.</p>
+      <div class="actions">
+        <a class="btn" href="/admin/" target="_blank" rel="noopener">Mở Admin</a>
+        <a class="btn" href="/logout/">Đăng xuất</a>
+      </div>
+    {% endif %}
+  </div>
+</body>
+</html>

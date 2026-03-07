@@ -1,4 +1,3 @@
-# apps/core/middleware.py
 from __future__ import annotations
 
 import logging
@@ -10,30 +9,75 @@ from typing import Any, Dict, Optional
 from uuid import uuid4
 
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.utils.deprecation import MiddlewareMixin
 
 from apps.core.audit import log_change
-from apps.core.tenant_context import set_current_tenant, clear_current_tenant
+from apps.core.authz import get_actor_ctx
+from apps.core.tenant_context import clear_current_tenant, set_current_tenant
+
+# =========================================================
+# ACTOR CONTEXT
+# =========================================================
+
+
+class ActorContextMiddleware(MiddlewareMixin):
+    """
+    Attach:
+      request.actor_ctx
+      request.role
+
+    SAFE MODE:
+    - Không được làm hỏng request nếu authz có lỗi
+    - Nếu chưa resolve được thì fallback nhẹ
+    """
+
+    def process_request(self, request):
+        try:
+            ctx = get_actor_ctx(request)
+            request.actor_ctx = ctx
+            request.role = getattr(ctx, "role", None)
+        except Exception:
+            request.actor_ctx = None
+            user = getattr(request, "user", None)
+            if user and getattr(user, "is_authenticated", False):
+                request.role = "admin" if (getattr(user, "is_staff", False) or getattr(user, "is_superuser", False)) else "operator"
+            else:
+                request.role = "anonymous"
+        return None
+
+
+# =========================================================
+# REQUEST META / LOG
+# =========================================================
 
 _thread_locals = local()
 logger = logging.getLogger("apps.request")
 
-# =========================
-# LOG CONFIG
-# =========================
-REQUEST_LOG_SAMPLE_RATE = 0.15  # 15% request OK sẽ log
+REQUEST_LOG_SAMPLE_RATE = 0.15
 SLOW_WARN_MS = 800
 SLOW_ERROR_MS = 2000
-SLOW_REQUEST_MS = 800  # ngưỡng request chậm => log DB (audit)
+SLOW_REQUEST_MS = 800
 
-LOG_PATH_PREFIXES = ("/dashboard/", "/api/")
-SKIP_PATH_PREFIXES = ("/static/", "/media/", "/admin/")
+LOG_PATH_PREFIXES = ("/dashboard/", "/api/", "/os/", "/work/")
+SKIP_PATH_PREFIXES = ("/static/", "/media/")
 SKIP_PATH_EXACT = ("/favicon.ico", "/robots.txt", "/healthz")
 
-# =========================
-# SUSPEND / BILLING GATE (Level 17)
-# =========================
+# route được phép đi tiếp kể cả tenant chưa fully ready
+SAFE_BYPASS_PREFIXES = (
+    "/admin/",
+    "/login/",
+    "/logout/",
+    "/static/",
+    "/media/",
+    "/metrics/",
+    "/favicon.ico",
+    "/robots.txt",
+    "/app/",
+    "/os/",
+    "/api/",
+)
+
 SUSPEND_ALLOW_PREFIXES = (
     "/admin/",
     "/healthz",
@@ -42,8 +86,10 @@ SUSPEND_ALLOW_PREFIXES = (
     "/logout/",
     "/static/",
     "/media/",
+    "/app/",
+    "/os/",
+    "/api/",
 )
-
 SUSPEND_ALLOW_EXACT = ("/",)
 
 
@@ -154,21 +200,6 @@ def get_current_request_meta() -> Dict[str, Any]:
     }
 
 
-def get_current_tenant_id() -> Optional[int]:
-    """
-    Backward-compatible helper for RequestContextFilter.
-    """
-    try:
-        req = getattr(_thread_locals, "request", None)
-        tenant = getattr(req, "tenant", None) if req else None
-        tid = getattr(tenant, "id", None) if tenant else getattr(req, "tenant_id", None)
-        if tid:
-            return int(tid)
-    except Exception:
-        pass
-    return None
-
-
 def _is_allowed_when_suspended(path: str) -> bool:
     if not path:
         return True
@@ -177,102 +208,49 @@ def _is_allowed_when_suspended(path: str) -> bool:
     return any(path.startswith(p) for p in SUSPEND_ALLOW_PREFIXES)
 
 
-# =========================
-# TENANT FALLBACK (FINAL FIX)
-# =========================
-def _pick_tenant_from_headers(request):
-    """
-    Hỗ trợ các header phổ biến cho tenant:
-      - X-Tenant-Id / X-Tenant-ID
-      - X-Tenant
-      - X-Tenant-Name
-    """
-    h = request.headers
-    raw_id = (h.get("X-Tenant-Id") or h.get("X-Tenant-ID") or h.get("X-Tenant") or "").strip()
-    raw_name = (h.get("X-Tenant-Name") or "").strip()
-
-    try:
-        from apps.tenants.models import Tenant
-    except Exception:
-        return None
-
-    if raw_id:
-        try:
-            tid = int(raw_id)
-            t = Tenant.objects.filter(id=tid).first()
-            if t:
-                return t
-        except Exception:
-            pass
-
-    if raw_name:
-        # nếu tenant model bạn dùng field khác (slug/name), đổi ở đây
-        t = Tenant.objects.filter(name__iexact=raw_name).first()
-        if t:
-            return t
-
-    return None
+def _is_safe_bypass_path(path: str) -> bool:
+    if not path:
+        return True
+    return any(path.startswith(p) for p in SAFE_BYPASS_PREFIXES)
 
 
-def _fallback_tenant():
-    """
-    Fallback cứng: DEFAULT_TENANT_ID -> Tenant.first()
-    """
-    try:
-        from apps.tenants.models import Tenant
-    except Exception:
-        return None
-
-    default_tid = getattr(settings, "DEFAULT_TENANT_ID", 1)
-    t = Tenant.objects.filter(id=int(default_tid)).first()
-    if t:
-        return t
-    return Tenant.objects.first()
+# =========================================================
+# CURRENT REQUEST / TENANT / RATE LIMIT
+# =========================================================
 
 
 class CurrentRequestMiddleware(MiddlewareMixin):
     """
-    Level 11: request_id/trace_id + tenant context + audit
-    Level 12: structured log + sampling
-    Level 13: tenant resolver cached + rate limit
-    Level 14: Prometheus metrics
-    Level 15: quota theo plan + feature flags
-    Level 16: Usage metering (Redis) -> invoice-ready
-    Level 17: Billing enforcement (SUSPENDED -> block 402)
+    SAFE FINAL:
+    - TenantResolveMiddleware nên chạy trước
+    - Nhưng nếu path public/system thì không ép tenant
+    - Dev/local không bật rate limit để tránh 429
     """
 
     def process_request(self, request):
         set_current_request(request)
 
-        # ✅ Level 13: tenant resolver cached
-        from apps.core.tenant_resolver import resolve_tenant_cached
-        tenant = resolve_tenant_cached(request)
+        path = getattr(request, "path", "") or ""
 
-        # ✅ FINAL FIX:
-        # 1) nếu resolver fail => thử lấy từ header
-        # 2) vẫn fail => fallback default tenant
-        if tenant is None:
-            tenant = _pick_tenant_from_headers(request)
-        if tenant is None:
-            tenant = _fallback_tenant()
+        # admin / static / login / os / api public -> bypass nhẹ
+        if _is_safe_bypass_path(path):
+            tenant = getattr(request, "tenant", None)
+            if tenant is not None:
+                request.tenant_id = getattr(tenant, "id", None)
+                set_current_tenant(tenant)
+            return None
 
-        request.tenant = tenant
+        tenant = getattr(request, "tenant", None)
+        if tenant is None:
+            raise Http404("Tenant not resolved. Check MIDDLEWARE order.")
+
         request.tenant_id = getattr(tenant, "id", None)
         set_current_tenant(tenant)
 
-        path = getattr(request, "path", "") or ""
-
-        # ✅ Level 17: block suspended tenant (trừ allowlist)
+        # billing gate
         try:
-            status = getattr(tenant, "status", "active") if tenant else "active"
+            status = getattr(tenant, "status", "active")
             if status == "suspended" and not _is_allowed_when_suspended(path):
-                try:
-                    from apps.billing.metering import incr_usage
-                    incr_usage(request.tenant_id, "requests", 1)
-                    incr_usage(request.tenant_id, "errors", 1)
-                except Exception:
-                    pass
-
                 return JsonResponse(
                     {
                         "detail": "Tenant is suspended. Please upgrade or pay invoice.",
@@ -285,29 +263,36 @@ class CurrentRequestMiddleware(MiddlewareMixin):
         except Exception:
             pass
 
-        # ✅ Level 15: rate limit theo plan + feature flags
-        from apps.core.rate_limit import is_rate_limited
-        from apps.core.tenant_quota import get_tenant_quota, has_feature
+        # RATE LIMIT:
+        # local/dev thì tắt hẳn để không bị 429 lúc boot OS
+        try:
+            host = request.get_host().split(":")[0].lower()
+        except Exception:
+            host = ""
 
-        if has_feature(tenant, "rate_limit", True):
-            quota = get_tenant_quota(tenant)
-            if is_rate_limited(request.tenant_id, max_requests=quota.req_per_min):
-                try:
-                    from apps.billing.metering import incr_usage
-                    incr_usage(request.tenant_id, "rate_limited", 1)
-                    incr_usage(request.tenant_id, "requests", 1)
-                except Exception:
-                    pass
+        is_dev_host = host in {"127.0.0.1", "localhost", "testserver"}
+        enable_rate_limit = not settings.DEBUG and not is_dev_host
 
-                return JsonResponse(
-                    {
-                        "detail": "Rate limit exceeded",
-                        "plan": getattr(tenant, "plan", "basic"),
-                        "limit_req_per_min": quota.req_per_min,
-                    },
-                    status=429,
-                    headers={"Retry-After": "60"},
-                )
+        if enable_rate_limit:
+            try:
+                from apps.core.rate_limit import is_rate_limited
+                from apps.core.tenant_quota import get_tenant_quota, has_feature
+
+                if has_feature(tenant, "rate_limit", True):
+                    quota = get_tenant_quota(tenant)
+                    if is_rate_limited(request.tenant_id, max_requests=quota.req_per_min):
+                        return JsonResponse(
+                            {
+                                "detail": "Rate limit exceeded",
+                                "plan": getattr(tenant, "plan", "basic"),
+                                "limit_req_per_min": quota.req_per_min,
+                            },
+                            status=429,
+                            headers={"Retry-After": "60"},
+                        )
+            except Exception:
+                # không để rate limit làm sập app local
+                pass
 
         return None
 
@@ -327,25 +312,12 @@ class CurrentRequestMiddleware(MiddlewareMixin):
         started_at = float(meta.get("started_at") or 0.0)
         duration_ms = int((time.time() - started_at) * 1000) if started_at else 0
 
-        path = (meta.get("path") or "")
-        method = (meta.get("method") or "")
+        path = meta.get("path") or ""
+        method = meta.get("method") or ""
         status_code = int(getattr(response, "status_code", 0) or 0)
 
-        # ✅ Level 16: usage metering (Redis) (không double count 429)
         try:
-            if status_code != 429:
-                from apps.billing.metering import incr_usage
-                incr_usage(tid, "requests", 1)
-                if status_code >= 400:
-                    incr_usage(tid, "errors", 1)
-                if duration_ms >= SLOW_REQUEST_MS:
-                    incr_usage(tid, "slow", 1)
-        except Exception:
-            pass
-
-        # ✅ Level 12: structured log (sampling)
-        try:
-            if (not _should_skip_log(path)) and _should_sample(status_code):
+            if (not _should_skip_log(path)) and (_should_sample(status_code) or _should_force_log(path)):
                 level = logging.INFO
                 if duration_ms >= SLOW_ERROR_MS or status_code >= 500:
                     level = logging.ERROR
@@ -368,41 +340,9 @@ class CurrentRequestMiddleware(MiddlewareMixin):
         except Exception:
             pass
 
-        # ✅ Level 14: Prometheus metrics
-        try:
-            from apps.core.metrics import (
-                REQUEST_COUNT,
-                REQUEST_LATENCY,
-                SLOW_REQUEST_COUNT,
-                path_prefix as _pp,
-            )
-            tenant_label = str(tid or 0)
-            pfx = _pp(path)
-
-            REQUEST_COUNT.labels(
-                method=method,
-                path_prefix=pfx,
-                status=str(status_code),
-                tenant_id=tenant_label,
-            ).inc()
-
-            REQUEST_LATENCY.labels(
-                method=method,
-                path_prefix=pfx,
-                tenant_id=tenant_label,
-            ).observe(float(duration_ms))
-
-            if duration_ms >= SLOW_REQUEST_MS:
-                SLOW_REQUEST_COUNT.labels(path_prefix=pfx, tenant_id=tenant_label).inc()
-        except Exception:
-            pass
-
-        # ✅ Level 11: audit log anti-spam
         try:
             if (not _should_skip_log(path)) and (
-                status_code >= 400
-                or duration_ms >= SLOW_REQUEST_MS
-                or _should_force_log(path)
+                status_code >= 400 or duration_ms >= SLOW_REQUEST_MS or _should_force_log(path)
             ):
                 log_change(
                     action="request",
@@ -429,43 +369,24 @@ class CurrentRequestMiddleware(MiddlewareMixin):
         meta = get_current_request_meta()
         rid = getattr(request, "request_id", "") or meta.get("request_id") or ""
         tid = getattr(request, "tenant_id", None)
+        path = meta.get("path") or ""
 
-        # ✅ Level 16: metering lỗi exception
         try:
-            from apps.billing.metering import incr_usage
-            incr_usage(tid, "errors", 1)
-        except Exception:
-            pass
-
-        # ✅ Level 14: exception metrics
-        try:
-            from apps.core.metrics import EXCEPTION_COUNT, path_prefix as _pp
-            tenant_label = str(tid or 0)
-            pfx = _pp(meta.get("path") or "")
-            EXCEPTION_COUNT.labels(
-                exception_type=type(exception).__name__,
-                path_prefix=pfx,
-                tenant_id=tenant_label,
-            ).inc()
-        except Exception:
-            pass
-
-        # ✅ Level 11: audit exception
-        try:
-            log_change(
-                action="exception",
-                model="system.Exception",
-                object_id=rid or "unknown",
-                tenant_id=tid,
-                meta={
-                    "path": meta.get("path"),
-                    "method": meta.get("method"),
-                    "request_id": meta.get("request_id"),
-                    "trace_id": meta.get("trace_id"),
-                    "exception_type": type(exception).__name__,
-                    "message": str(exception),
-                },
-            )
+            if not _is_safe_bypass_path(path):
+                log_change(
+                    action="exception",
+                    model="system.Exception",
+                    object_id=rid or "unknown",
+                    tenant_id=tid,
+                    meta={
+                        "path": meta.get("path"),
+                        "method": meta.get("method"),
+                        "request_id": meta.get("request_id"),
+                        "trace_id": meta.get("trace_id"),
+                        "exception_type": type(exception).__name__,
+                        "message": str(exception),
+                    },
+                )
         except Exception:
             pass
 

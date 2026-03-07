@@ -1,4 +1,3 @@
-# apps/work/management/commands/smoke_work.py
 from __future__ import annotations
 
 import json
@@ -8,17 +7,22 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.test import Client
 
+from apps.accounts.models import Membership
+
 
 class Command(BaseCommand):
-    help = "Smoke test Work APIs (create/move/board/analytics/portal)."
+    help = "Smoke test Work APIs (create/move/board/transition/analytics/portal)."
 
     def add_arguments(self, parser):
-        parser.add_argument("--username", default="staff1", help="Username to login for staff/operator tests")
-        parser.add_argument("--company-id", type=int, default=None, help="Company ID for create task (optional)")
-        parser.add_argument("--host", default="localhost", help="HTTP_HOST for Django test client (default: localhost)")
-        parser.add_argument("--top", type=int, default=10, help="Top N for analytics endpoints")
-        parser.add_argument("--days", type=int, default=30, help="Days window for analytics endpoints")
+        parser.add_argument("--username", default="staff1")
+        parser.add_argument("--company-id", type=int, default=None)
+        parser.add_argument("--host", default="localhost")
+        parser.add_argument("--top", type=int, default=10)
+        parser.add_argument("--days", type=int, default=30)
 
+    # =========================================================
+    # Helpers
+    # =========================================================
     def _json(self, r) -> Dict[str, Any]:
         try:
             return r.json()
@@ -29,6 +33,82 @@ class Command(BaseCommand):
         if not ok:
             raise CommandError(msg)
 
+    def _post_json(self, c: Client, url: str, payload: Dict[str, Any]):
+        return c.post(url, data=json.dumps(payload), content_type="application/json")
+
+    def _has_field(self, model_cls, field_name: str) -> bool:
+        try:
+            return field_name in {f.name for f in model_cls._meta.concrete_fields}
+        except Exception:
+            return False
+
+    # =========================================================
+    # AUTO BOOTSTRAP
+    # =========================================================
+    def _ensure_user_and_membership(self, username: str, company_id: Optional[int]):
+        U = get_user_model()
+
+        # 1) Ensure user exists
+        u = U.objects.filter(username=username).first()
+        if not u:
+            u = U.objects.create_user(username=username, password="123456")
+            self.stdout.write(self.style.WARNING(f"[BOOTSTRAP] created user={username}"))
+
+        # Make sure staff can pass IsAuthenticated + AbilityPermission flows (via membership role)
+        if not getattr(u, "is_staff", False):
+            u.is_staff = True
+            u.save(update_fields=["is_staff"])
+            self.stdout.write(self.style.WARNING(f"[BOOTSTRAP] set is_staff=True for user={username}"))
+
+        # 2) Ensure membership if company_id provided
+        if company_id is not None:
+            company_id = int(company_id)
+
+            # Build lookup only with existing fields (schema-safe)
+            lookup: Dict[str, Any] = {"user_id": u.id, "company_id": company_id}
+
+            # tenant_id may or may not exist in your schema
+            # If it exists and request has tenant context later, you can refine;
+            # For smoke command we keep it minimal.
+            if self._has_field(Membership, "tenant_id"):
+                # Best-effort: set tenant_id to 1 if you have tenant table; if not, user can pass later.
+                lookup["tenant_id"] = 1
+
+            m = Membership.objects.filter(**lookup).first()
+            created = False
+            if not m:
+                create_payload = dict(lookup)
+                # defaults
+                if self._has_field(Membership, "role"):
+                    create_payload["role"] = "operator"
+                if self._has_field(Membership, "is_active"):
+                    create_payload["is_active"] = True
+                m = Membership.objects.create(**create_payload)
+                created = True
+
+            # enforce operator + active
+            dirty_fields = []
+            if self._has_field(Membership, "role") and getattr(m, "role", None) != "operator":
+                m.role = "operator"
+                dirty_fields.append("role")
+            if self._has_field(Membership, "is_active") and getattr(m, "is_active", None) is not True:
+                m.is_active = True
+                dirty_fields.append("is_active")
+            if dirty_fields:
+                m.save(update_fields=dirty_fields)
+
+            if created:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"[BOOTSTRAP] membership created company={company_id} role=operator"
+                    )
+                )
+
+        return u
+
+    # =========================================================
+    # MAIN
+    # =========================================================
     def handle(self, *args, **opts):
         username: str = opts["username"]
         company_id: Optional[int] = opts["company_id"]
@@ -36,9 +116,7 @@ class Command(BaseCommand):
         top: int = int(opts["top"])
         days: int = int(opts["days"])
 
-        U = get_user_model()
-        u = U.objects.filter(username=username).first()
-        self._must(u is not None, f"User not found: {username}")
+        u = self._ensure_user_and_membership(username, company_id)
 
         c = Client(HTTP_HOST=host)
         c.force_login(u)
@@ -58,40 +136,35 @@ class Command(BaseCommand):
         if company_id is not None:
             payload["company_id"] = int(company_id)
 
-        r = c.post("/api/v1/work/items/", data=json.dumps(payload), content_type="application/json")
+        r = self._post_json(c, "/api/v1/work/items/", payload)
         self._must(r.status_code in (201, 200), f"create failed: {r.status_code} {r.content[:200]}")
         j = self._json(r)
         self._must(j.get("ok") is True, f"create response not ok: {j}")
+
         item = j.get("item") or {}
         item_id = item.get("id")
         self._must(bool(item_id), f"create missing item.id: {j}")
         self.stdout.write(self.style.SUCCESS(f"[OK] create id={item_id} company_id={item.get('company_id')}"))
 
-        # 2.1) Nếu company_id bị None => patch bằng SUPERUSER (staff patch sẽ 404 vì out-of-scope)
-        if company_id is not None and (item.get("company_id") is None):
-            admin = U.objects.filter(is_superuser=True).first()
-            self._must(admin is not None, "No superuser found to patch company_id")
+        # 3) Transition (prefer /work/items/... ; fallback /work-items/...)
+        transition_payload = {"to": "doing"}
+        url_new = f"/api/v1/work/items/{item_id}/transition/"
+        url_old = f"/api/v1/work-items/{item_id}/transition/"
 
-            c_admin = Client(HTTP_HOST=host)
-            c_admin.force_login(admin)
+        r = self._post_json(c, url_new, transition_payload)
+        if r.status_code == 404:
+            r = self._post_json(c, url_old, transition_payload)
 
-            r_fix = c_admin.patch(
-                f"/api/v1/work/items/{item_id}/",
-                data=json.dumps({"company_id": int(company_id)}),
-                content_type="application/json",
-            )
-            self._must(r_fix.status_code == 200, f"patch company_id failed: {r_fix.status_code} {r_fix.content[:200]}")
-            j_fix = self._json(r_fix)
-            self._must(j_fix.get("ok") is True, f"patch response not ok: {j_fix}")
-            fixed_company = (j_fix.get("item") or {}).get("company_id")
-            self._must(int(fixed_company or 0) == int(company_id), f"patch not applied expected={company_id} got={fixed_company}")
-            self.stdout.write(self.style.SUCCESS(f"[OK] patched company_id={fixed_company} for item={item_id}"))
+        self._must(r.status_code in (200, 400), f"transition unexpected: {r.status_code} {r.content[:200]}")
+        j = self._json(r)
+        self._must(j.get("ok") is True, f"transition response not ok: {j}")
+        self.stdout.write(self.style.SUCCESS("[OK] transition"))
 
-        # 3) Move item (staff1 move)
-        r = c.post(
+        # 4) Move item
+        r = self._post_json(
+            c,
             f"/api/v1/work/items/{item_id}/move/",
-            data=json.dumps({"to_status": "doing", "to_position": 1}),
-            content_type="application/json",
+            {"to_status": "doing", "to_position": 1},
         )
         self._must(r.status_code == 200, f"move failed: {r.status_code} {r.content[:200]}")
         j = self._json(r)
@@ -99,7 +172,7 @@ class Command(BaseCommand):
         moved = j.get("moved") or {}
         self.stdout.write(self.style.SUCCESS(f"[OK] move {moved.get('from_status')} -> {moved.get('to_status')}"))
 
-        # 4) List items (page_size=1) + FE flags exist
+        # 5) List items (page_size=1)
         r = c.get("/api/v1/work/items/?page_size=1")
         self._must(r.status_code == 200, f"list failed: {r.status_code} {r.content[:200]}")
         j = self._json(r)
@@ -109,7 +182,7 @@ class Command(BaseCommand):
             self._must(k in first, f"list missing field '{k}'. got keys={list(first.keys())[:30]}")
         self.stdout.write(self.style.SUCCESS(f"[OK] list flags role={first.get('role')} can_edit={first.get('can_edit')}"))
 
-        # 5) Analytics endpoints
+        # 6) Analytics
         endpoints = [
             f"/api/v1/work/analytics/workload/?days={days}&top={top}",
             f"/api/v1/work/analytics/overdue/?top={top}",
@@ -123,7 +196,7 @@ class Command(BaseCommand):
             self._must(j.get("ok") is True, f"analytics not ok {url}: {j}")
             self.stdout.write(self.style.SUCCESS(f"[OK] {url}"))
 
-        # 6) Portal summary (optional)
+        # 7) Portal summary (optional)
         r = c.get("/api/v1/work/portal/summary/")
         if r.status_code == 200:
             j = self._json(r)

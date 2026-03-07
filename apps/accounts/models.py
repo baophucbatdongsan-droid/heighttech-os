@@ -1,5 +1,5 @@
+#apps/accounts/models.py
 from __future__ import annotations
-
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
@@ -55,6 +55,14 @@ class Membership(models.Model):
       - Chủ shop/client: dựa vào shops.ShopMember (không nằm ở đây)
     """
 
+    # ✅ tenant để query nhanh + đảm bảo data consistency multi-tenant
+    tenant = models.ForeignKey(
+        "tenants.Tenant",
+        on_delete=models.CASCADE,
+        related_name="memberships",
+        db_index=True,
+        )
+
     user = models.ForeignKey(
         "accounts.User",
         on_delete=models.CASCADE,
@@ -80,13 +88,30 @@ class Membership(models.Model):
         verbose_name = "Phân quyền công ty"
         verbose_name_plural = "Phân quyền công ty"
         constraints = [
-            models.UniqueConstraint(fields=["user", "company"], name="uq_membership_user_company"),
+            models.UniqueConstraint(
+                fields=["tenant", "user", "company"],
+                name="uq_mship_t_u_c",
+            ),
         ]
         indexes = [
-            models.Index(fields=["user", "is_active"], name="idx_mship_user_active"),
-            models.Index(fields=["company", "is_active"], name="idx_mship_company_active"),
-            models.Index(fields=["role"], name="idx_mship_role"),
+            models.Index(fields=["tenant"], name="msh_t_idx"),
+            models.Index(fields=["user", "is_active"], name="msh_u_act_idx"),
+            models.Index(fields=["company", "is_active"], name="msh_c_act_idx"),
+            models.Index(fields=["tenant", "company", "is_active"], name="msh_t_co_act_idx"),  # < 30 chars ✅
+            models.Index(fields=["role"], name="msh_role_idx"),
         ]
+
+    def save(self, *args, **kwargs):
+        # safety: auto sync tenant từ company nếu chưa set
+        if not getattr(self, "tenant_id", None) and getattr(self, "company_id", None):
+            try:
+                self.tenant_id = self.company.tenant_id
+            except Exception:
+                pass
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.user.username} - {self.company.name} ({self.role})"
+    
+# cuối apps/accounts/models.py
+from .models_invite import InviteCode  # noqa: F401

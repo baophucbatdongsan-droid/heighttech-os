@@ -18,6 +18,9 @@ from apps.dashboard.projects_queries import ProjectsDashboardQuery
 from apps.dashboard.projects_services import ProjectsDashboardService
 
 
+TEMPLATE_PAGE = "dashboard/projects/page.html"
+
+
 @login_required
 def projects_dashboard_page(request):
     """
@@ -29,7 +32,7 @@ def projects_dashboard_page(request):
     if not tid:
         return render(
             request,
-            "dashboard/projects_dashboard_page.html",
+            TEMPLATE_PAGE,
             {"error": "Thiếu ngữ cảnh tenant (tenant_id)."},
             status=400,
         )
@@ -41,18 +44,18 @@ def projects_dashboard_page(request):
     founder_role = is_founder_user(request.user)
     role_label = "Founder" if founder_role else "Company"
 
+    # Non-founder bắt buộc có company scope
     if (not founder_role) and (company_id is None):
         return render(
             request,
-            "dashboard/projects_dashboard_page.html",
+            TEMPLATE_PAGE,
             {"error": "Bạn chưa có Company đang hoạt động trong tenant này."},
             status=403,
         )
 
     query = ProjectsDashboardQuery.from_request(request)
 
-    # ✅ AJAX preview count: dùng cho nút "Áp dụng cho TẤT CẢ theo bộ lọc"
-    # Lưu ý: Service Level 9 không expose filtered_queryset(), nên ta preview bằng cách build trực tiếp QS nội bộ.
+    # ✅ AJAX preview count: cho nút "Áp dụng TẤT CẢ theo bộ lọc"
     if request.GET.get("preview_count") == "1" and request.headers.get("X-Requested-With") == "XMLHttpRequest":
         qs = ProjectsDashboardService._base_qs()
         qs_filtered = ProjectsDashboardService._apply_filters(qs, tid=tid, company_id=company_id, query=query)
@@ -92,7 +95,7 @@ def projects_dashboard_page(request):
         "dir": query.direction,
         "qs_keep": keep_querystring(request, drop=["page"]),
     }
-    return render(request, "dashboard/projects_dashboard_page.html", ctx)
+    return render(request, TEMPLATE_PAGE, ctx)
 
 
 @login_required
@@ -105,7 +108,7 @@ def projects_dashboard_export_csv(request):
     if not tid:
         return render(
             request,
-            "dashboard/projects_dashboard_page.html",
+            TEMPLATE_PAGE,
             {"error": "Thiếu ngữ cảnh tenant (tenant_id)."},
             status=400,
         )
@@ -118,7 +121,7 @@ def projects_dashboard_export_csv(request):
     if (not founder_role) and (company_id is None):
         return render(
             request,
-            "dashboard/projects_dashboard_page.html",
+            TEMPLATE_PAGE,
             {"error": "Bạn chưa có Company đang hoạt động trong tenant này."},
             status=403,
         )
@@ -167,7 +170,6 @@ def projects_dashboard_bulk_update(request):
         back = request.POST.get("back") or request.META.get("HTTP_REFERER") or ""
         return redirect(back or "dashboard_projects:projects_dashboard")
 
-    # query dùng để apply all filtered + audit query_hash
     query = ProjectsDashboardQuery.from_request(request)
 
     result = ProjectsDashboardService.bulk_update(

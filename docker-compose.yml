@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16
+    container_name: ht_pg
+    environment:
+      POSTGRES_DB: heighttech
+      POSTGRES_USER: heighttech_user
+      POSTGRES_PASSWORD: @Haiphuc2001
+    ports:
+      - "5432:5432"
+    volumes:
+      - ht_pg_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: ht_redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  ht_pg_data:

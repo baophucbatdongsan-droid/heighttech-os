@@ -1,0 +1,351 @@
+<!-- FILE: apps/dashboard/templates/dashboard/layouts/base.html -->
+{% load static %}
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>{% block title %}HeightTech OS{% endblock %}</title>
+
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#fff; --line:#e6e8ef; --text:#0f172a; --muted:#667085;
+      --primary:#2563eb; --danger:#ef4444; --warn:#f59e0b; --ok:#22c55e;
+      --shadow: 0 18px 40px rgba(16,24,40,.10);
+      --radius:16px;
+      --sb:#0b1220;
+    }
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:var(--bg);
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+    a{ color:inherit; }
+
+    .app{ display:flex; min-height:100vh; }
+
+    /* ===== Sidebar (desktop) ===== */
+    .sidebar{
+      width:268px; background:var(--sb); color:#fff; padding:18px 14px;
+      position:sticky; top:0; height:100vh;
+    }
+
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      padding:10px 12px; border-radius:14px;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+    }
+    .brand .logo{
+      width:34px; height:34px; border-radius:10px;
+      background:rgba(37,99,235,.95);
+      display:flex; align-items:center; justify-content:center;
+      font-weight:900;
+    }
+    .brand .t1{ font-weight:900; letter-spacing:.2px; }
+    .brand .t2{ font-size:12px; color:rgba(255,255,255,.70); margin-top:2px; }
+
+    .nav{ margin-top:16px; }
+    .nav .hint{ font-size:12px; color:rgba(255,255,255,.58); margin:12px 10px 6px; }
+    .nav a{
+      display:flex; align-items:center; gap:10px;
+      padding:10px 12px; margin:6px 0;
+      border-radius:12px;
+      color:rgba(255,255,255,.90);
+      text-decoration:none;
+      border:1px solid rgba(255,255,255,.06);
+    }
+    .nav a:hover{ background:rgba(255,255,255,.08); }
+    .nav a.active{ background:rgba(37,99,235,.22); border-color:rgba(37,99,235,.35); }
+
+    .sidefoot{
+      position:absolute; left:14px; right:14px; bottom:14px;
+      padding:12px; border-radius:14px;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+      font-size:12px; color:rgba(255,255,255,.78);
+    }
+    .sidefoot a{ color:#fff; text-decoration:none; font-weight:900; }
+
+    /* ===== Main ===== */
+    .main{ flex:1; padding:18px 22px; min-width:0; }
+
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      background:var(--card); border:1px solid var(--line);
+      border-radius:var(--radius); padding:14px 16px;
+      box-shadow:var(--shadow);
+      position:sticky; top:10px; z-index:10;
+      backdrop-filter:saturate(1.2);
+    }
+    .topbar .left{ display:flex; align-items:center; gap:10px; min-width:0; }
+    .hamburger{
+      display:none;
+      width:40px; height:40px; border-radius:12px;
+      border:1px solid var(--line); background:#fff;
+      align-items:center; justify-content:center;
+      cursor:pointer;
+    }
+    .hamburger:active{ transform:scale(.98); }
+    .topbar .titles{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+    .topbar .title{ font-size:16px; font-weight:950; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .topbar .meta{
+      font-size:12px; color:var(--muted);
+      display:flex; gap:10px; flex-wrap:wrap;
+    }
+
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      background:#eef2ff; border:1px solid #e0e7ff;
+      padding:6px 10px; border-radius:999px;
+      font-size:12px; color:#1e3a8a;
+      white-space:nowrap;
+    }
+    .pill b{ color:#0f172a; }
+
+    .actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .btn{
+      appearance:none;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:800;
+      font-size:13px;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+    .btn.primary{ background:var(--primary); color:#fff; border-color:rgba(37,99,235,.8); }
+    .btn:active{ transform:translateY(1px); }
+
+    .container{ margin-top:16px; }
+
+    /* ===== Cards / Grid ===== */
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:14px;
+      box-shadow:var(--shadow);
+      min-width:0;
+    }
+    .grid-3{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+    .grid-2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+
+    .k{ font-size:12px; color:var(--muted); }
+    .v{ font-size:22px; font-weight:950; margin-top:6px; letter-spacing:.2px; }
+    .muted{ color:var(--muted); }
+
+    .badge{ display:inline-flex; padding:5px 10px; border-radius:999px; font-size:12px; font-weight:900; color:#fff; }
+    .b-red{ background:var(--danger); }
+    .b-ylw{ background:var(--warn); }
+    .b-grn{ background:var(--ok); }
+
+    .toast{
+      border:1px dashed #dbeafe; background:#eff6ff; color:#1e3a8a;
+      padding:10px 12px; border-radius:14px; font-size:13px;
+    }
+
+    /* ===== Tables (mobile friendly) ===== */
+    .tablewrap{
+      margin-top:10px;
+      max-height:420px;
+      overflow:auto;
+      border:1px solid #eef2f7;
+      border-radius:14px;
+      background:#fff;
+    }
+    table{ width:100%; border-collapse:collapse; min-width:720px; }
+    th, td{ padding:10px 10px; border-bottom:1px solid #eef2f7; text-align:left; vertical-align:top; }
+    th{ font-size:12px; color:var(--muted); background:#fafafa; position:sticky; top:0; z-index:1; }
+    .link{ color:var(--text); text-decoration:none; font-weight:900; }
+    .link:hover{ text-decoration:underline; }
+
+    /* ===== Drawer for mobile ===== */
+    .overlay{
+      display:none;
+      position:fixed; inset:0;
+      background:rgba(15,23,42,.45);
+      z-index:50;
+    }
+    .drawer{
+      display:none;
+      position:fixed; top:0; left:0; bottom:0;
+      width:86vw; max-width:320px;
+      background:var(--sb);
+      color:#fff;
+      padding:18px 14px;
+      z-index:60;
+      box-shadow: 0 25px 60px rgba(0,0,0,.35);
+      overflow:auto;
+    }
+    .drawer .close{
+      width:40px; height:40px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      color:#fff;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer;
+      margin-left:auto;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 980px){
+      .sidebar{ display:none; }
+      .hamburger{ display:flex; }
+      .main{ padding:14px 12px; }
+      .topbar{ top:0; border-radius:16px; }
+      .grid-3{ grid-template-columns:1fr; }
+      .grid-2{ grid-template-columns:1fr; }
+      .actions .btn{ padding:10px 10px; }
+      .pill{ padding:6px 8px; }
+    }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+<div class="overlay" id="overlay"></div>
+
+<!-- Mobile Drawer -->
+<div class="drawer" id="drawer">
+  <div style="display:flex;gap:10px;align-items:center;">
+    <div class="brand" style="flex:1;">
+      <div class="logo">H</div>
+      <div>
+        <div class="t1">HeightTech OS</div>
+        <div class="t2">Work OS • Permission • Data</div>
+      </div>
+    </div>
+    <button class="close" id="drawerClose" aria-label="Close">✕</button>
+  </div>
+
+  <div class="nav">
+    <div class="hint">CORE</div>
+    <a href="/dashboard/" class="{% if request.path|slice:':11' == '/dashboard/' and 'projects' not in request.path %}active{% endif %}">📊 Dashboard</a>
+    <a href="/dashboard/projects/" class="{% if '/dashboard/projects/' in request.path %}active{% endif %}">🧩 Projects</a>
+    <a href="/work/" class="{% if request.path|slice:':6' == '/work/' %}active{% endif %}">✅ Công việc</a>
+
+    <div class="hint">FOUNDER</div>
+    <a href="/intelligence/founder/" class="{% if '/intelligence/founder/' in request.path %}active{% endif %}">🧠 War Room</a>
+
+    <div class="hint">SYSTEM</div>
+    <a href="/app/select/" class="{% if '/app/select/' in request.path %}active{% endif %}">🏪 Chọn Shop</a>
+    <a href="/admin/" target="_blank">🛠 Admin</a>
+  </div>
+
+  <div class="sidefoot" style="position:static;margin-top:14px;">
+    <div><b>User:</b> {{ request.user.username|default:"-" }}</div>
+    <div><b>Tenant:</b> {{ request.tenant_id|default:"-" }}</div>
+    <div><b>Shop:</b> {{ request.session.active_shop_id|default:"-" }}</div>
+    <div style="margin-top:8px;"><a href="/logout/">Đăng xuất →</a></div>
+  </div>
+</div>
+
+<div class="app">
+  <!-- Desktop Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">H</div>
+      <div>
+        <div class="t1">HeightTech OS</div>
+        <div class="t2">Work OS • Permission • Data</div>
+      </div>
+    </div>
+
+    <div class="nav">
+      <div class="hint">CORE</div>
+      <a href="/dashboard/" class="{% if request.path|slice:':11' == '/dashboard/' and 'projects' not in request.path %}active{% endif %}">📊 Dashboard</a>
+      <a href="/dashboard/projects/" class="{% if '/dashboard/projects/' in request.path %}active{% endif %}">🧩 Projects</a>
+      <a href="/work/" class="{% if request.path|slice:':6' == '/work/' %}active{% endif %}">✅ Công việc</a>
+
+      <div class="hint">FOUNDER</div>
+      <a href="/intelligence/founder/" class="{% if '/intelligence/founder/' in request.path %}active{% endif %}">🧠 War Room</a>
+
+      <div class="hint">SYSTEM</div>
+      <a href="/app/select/" class="{% if '/app/select/' in request.path %}active{% endif %}">🏪 Chọn Shop</a>
+      <a href="/admin/" target="_blank">🛠 Admin</a>
+    </div>
+
+    <div class="sidefoot">
+      <div><b>User:</b> {{ request.user.username|default:"-" }}</div>
+      <div><b>Tenant:</b> {{ request.tenant_id|default:"-" }}</div>
+      <div><b>Shop:</b> {{ request.session.active_shop_id|default:"-" }}</div>
+      <div style="margin-top:8px;"><a href="/logout/">Đăng xuất →</a></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="left">
+        <button class="hamburger" id="hamburger" aria-label="Menu">☰</button>
+
+        <div class="titles">
+          <div class="title">{% block page_title %}HeightTech OS{% endblock %}</div>
+          <div class="meta">
+            <span class="pill">Tenant: <b>{{ request.tenant_id|default:"-" }}</b></span>
+            <span class="pill">Shop: <b>{{ request.session.active_shop_id|default:"-" }}</b></span>
+            <span class="pill">Role: <b>{{ role|default:actor_role|default:"-" }}</b></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <a class="btn" href="/app/select/">🏪 Đổi shop</a>
+        <a class="btn primary" href="/dashboard/">📊 Dashboard</a>
+      </div>
+    </div>
+
+    <div class="container">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+
+<script>
+  (function(){
+    const drawer = document.getElementById('drawer');
+    const overlay = document.getElementById('overlay');
+    const openBtn = document.getElementById('hamburger');
+    const closeBtn = document.getElementById('drawerClose');
+
+    function openDrawer(){
+      if (!drawer) return;
+      drawer.style.display = 'block';
+      overlay.style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    }
+    function closeDrawer(){
+      if (!drawer) return;
+      drawer.style.display = 'none';
+      overlay.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    if (openBtn) openBtn.addEventListener('click', openDrawer);
+    if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+    if (overlay) overlay.addEventListener('click', closeDrawer);
+
+    // close on route click (mobile)
+    if (drawer){
+      drawer.querySelectorAll('a').forEach(a=>{
+        a.addEventListener('click', closeDrawer);
+      });
+    }
+  })();
+</script>
+
+{% block extra_body %}{% endblock %}
+</body>
+</html>

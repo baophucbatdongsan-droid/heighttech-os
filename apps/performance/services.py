@@ -1,231 +1,256 @@
-from decimal import Decimal
+# apps/performance/services.py
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import date
+from decimal import Decimal, ROUND_HALF_UP
+from typing import Optional
+
 from django.db.models import Sum
+from django.utils import timezone
+
 from apps.performance.models import MonthlyPerformance
-from apps.finance.models import AgencyMonthlyFinance
-
-# ============================
-# CONSTANTS
-# ============================
-
-TNDN_TOTAL = Decimal("0.30")        # tổng thuế 30% cho GMV fee
-AFTER_TAX_RATE = Decimal("0.70")    # còn lại 70%
-
-BONUS_BASE = Decimal("20")
-BONUS_GROWTH_15 = Decimal("5")
-BONUS_GROWTH_25 = Decimal("10")
-BONUS_KEEP_6M = Decimal("2")
-
-MAX_BONUS = Decimal("32")           # 20 + 10 + 2
+from apps.rules.resolver import get_engine
+from apps.rules.types import CommissionInput, EngineContext
 
 
-# =====================================================
-# PERFORMANCE CALCULATOR
-# =====================================================
+def d(v) -> Decimal:
+    return Decimal(str(v or "0"))
+
+
+def q2(v: Decimal) -> Decimal:
+    return d(v).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+@dataclass(frozen=True)
+class CommissionSnapshot:
+    # percent numbers, e.g. 4.00 means 4%
+    service_percent: Decimal
+
+    percent_fee_amount: Decimal
+    gmv_fee_after_tax: Decimal
+
+    bonus_percent: Decimal
+    bonus_amount: Decimal
+
+    fixed_fee_net: Decimal
+    fixed_fee_net_after_tax: Decimal
+
+    sale_commission: Decimal
+
+    company_net_profit: Decimal
+
 
 class PerformanceCalculator:
     """
-    Calculator cho MonthlyPerformance
-    Không import model ở top để tránh circular import
+    SINGLE SOURCE OF TRUTH for MonthlyPerformance calculations.
+
+    - Reads inputs from MonthlyPerformance: revenue, cost, fixed_fee, vat_percent, sale_percent, growth_percent
+    - Uses Rule Engine (apps.rules) to compute GMV fee & team bonus
+    - Fills ALL NOT NULL numeric fields to satisfy DB constraints
     """
 
-    def __init__(self, perf):
+    def __init__(self, perf: MonthlyPerformance, months_active: Optional[int] = None):
         self.p = perf
+        self.months_active = int(months_active or 0)
 
-    # ============================
-    # HELPERS
-    # ============================
+    def _ctx(self) -> EngineContext:
+        shop = self.p.shop
+        industry_code = (getattr(shop, "industry_code", None) or "default").strip().lower()
+        rule_version = (getattr(shop, "rule_version", None) or "v1").strip()
 
-    def _d(self, value):
-        return Decimal(value or 0)
-
-    def _q(self, value):
-        return value.quantize(Decimal("0.01"))
-
-    # ============================
-    # SERVICE PERCENT TIERS
-    # ============================
-
-    def resolve_service_percent(self) -> Decimal:
-        """
-        Rule:
-        - GMV < 1B: 4%
-        - 1B - 2B: 3.5%
-        - > 2B: 3%
-        """
-
-        rev = self._d(self.p.revenue)
-
-        if self._d(self.p.service_percent) > 0:
-            return self._d(self.p.service_percent)
-
-        if rev < Decimal("1000000000"):
-            return Decimal("4.00")
-
-        if rev < Decimal("2000000000"):
-            return Decimal("3.50")
-
-        return Decimal("3.00")
-
-    # ============================
-    # GROWTH
-    # ============================
-
-    def resolve_growth_percent(self) -> Decimal:
-        Model = self.p.__class__
-
-        prev = (
-            Model.objects
-            .filter(shop=self.p.shop, month__lt=self.p.month)
-            .order_by("-month")
-            .first()
+        return EngineContext(
+            tenant_id=getattr(self.p, "tenant_id", None),
+            shop_id=getattr(self.p, "shop_id", None),
+            industry_code=industry_code,
+            rule_version=rule_version,
+            request_id="",
         )
 
-        cur_rev = self._d(self.p.revenue)
+    def _ensure_months_active(self) -> int:
+        """
+        Nếu caller chưa truyền months_active thì tự tính an toàn:
+        - exclude self.pk để tránh count sai khi update
+        - nếu create (chưa pk) thì +1
+        """
+        if self.months_active > 0:
+            return self.months_active
 
-        if prev and self._d(prev.revenue) > 0:
-            prev_rev = self._d(prev.revenue)
-            return ((cur_rev - prev_rev) / prev_rev) * Decimal("100")
+        qs = MonthlyPerformance.objects.filter(shop_id=self.p.shop_id)
+        if self.p.pk:
+            qs = qs.exclude(pk=self.p.pk)
+        base = qs.count()
+        return base if self.p.pk else (base + 1)
 
-        if (not prev) and cur_rev > 0:
-            return Decimal("100")
+    def calculate(self) -> MonthlyPerformance:
+        # -------------------------
+        # Ensure required NOT NULL basics
+        # -------------------------
+        if getattr(self.p, "created_at", None) is None:
+            self.p.created_at = timezone.now()
 
-        return Decimal("0")
+        # tenant_id should exist; model.save() usually sync from shop
+        if not getattr(self.p, "tenant_id", None) and getattr(self.p, "shop_id", None):
+            try:
+                self.p.tenant_id = self.p.shop.tenant_id
+            except Exception:
+                pass
 
-    # ============================
-    # BONUS RATE
-    # ============================
+        # Normalize inputs (never None)
+        self.p.revenue = d(getattr(self.p, "revenue", 0))
+        self.p.cost = d(getattr(self.p, "cost", 0))
+        self.p.fixed_fee = d(getattr(self.p, "fixed_fee", 0))
+        self.p.vat_percent = d(getattr(self.p, "vat_percent", 0))
+        self.p.sale_percent = d(getattr(self.p, "sale_percent", 0))
+        self.p.growth_percent = d(getattr(self.p, "growth_percent", 0))
 
-    def resolve_bonus_percent(self, growth: Decimal) -> Decimal:
+        months_active = self._ensure_months_active()
 
-        bonus = BONUS_BASE
+        # -------------------------
+        # Call rule engine (founder controlled)
+        # -------------------------
+        ctx = self._ctx()
+        as_of = self.p.month if isinstance(self.p.month, date) else timezone.now().date()
+        engine = get_engine(ctx, as_of=as_of)
 
-        if growth > Decimal("25"):
-            bonus += BONUS_GROWTH_25
-        elif growth > Decimal("15"):
-            bonus += BONUS_GROWTH_15
+        out = engine.commission_calculate(
+            CommissionInput(
+                revenue=self.p.revenue,
+                growth_percent=self.p.growth_percent,
+                months_active=months_active,
+            )
+        )
 
-        Model = self.p.__class__
-        months_active = Model.objects.filter(shop=self.p.shop).count()
+        # From engine:
+        # - gmv_fee_percent (percent number: 4 / 3.5 / 3)
+        # - gmv_fee_amount
+        # - gmv_net_after_tax
+        # - team_percent
+        # - team_bonus
 
-        if months_active >= 6:
-            bonus += BONUS_KEEP_6M
+        service_percent = d(out.gmv_fee_percent)          # 4.00
+        percent_fee_amount = d(out.gmv_fee_amount)        # gross fee
+        gmv_fee_after_tax = d(out.gmv_net_after_tax)      # after tax (70%)
 
-        if bonus > MAX_BONUS:
-            bonus = MAX_BONUS
+        bonus_percent = d(out.team_percent)
+        bonus_amount = d(out.team_bonus)
 
-        return bonus
-
-    # ============================
-    # MAIN CALCULATION
-    # ============================
-
-    def calculate(self):
-
-        # Service percent
-        self.p.service_percent = self.resolve_service_percent()
-
-        revenue = self._d(self.p.revenue)
-        service_percent = self._d(self.p.service_percent)
-
-        percent_fee_amount = revenue * (service_percent / Decimal("100"))
-        self.p.percent_fee_amount = self._q(percent_fee_amount)
-
-        # GMV fee after tax
-        gmv_fee_after_tax = percent_fee_amount * AFTER_TAX_RATE
-        self.p.gmv_fee_after_tax = self._q(gmv_fee_after_tax)
-
-        # Base profit
-        self.p.profit = self._q(gmv_fee_after_tax)
-
-        # Growth
-        growth = self.resolve_growth_percent()
-        self.p.growth_percent = self._q(growth)
-
-        # Bonus
-        bonus_percent = self.resolve_bonus_percent(growth)
-        self.p.bonus_percent = self._q(bonus_percent)
-
-        bonus_amount = self.p.profit * (bonus_percent / Decimal("100"))
-        self.p.bonus_amount = self._q(bonus_amount)
-
-        # Fixed fee VAT xử lý
-        fixed_fee = self._d(self.p.fixed_fee)
-        vat_percent = self._d(self.p.vat_percent)
+        # -------------------------
+        # Fixed fee & sale commission (from model inputs)
+        # -------------------------
+        fixed_fee = self.p.fixed_fee
+        vat_percent = self.p.vat_percent
+        sale_percent = self.p.sale_percent
 
         fixed_fee_net = fixed_fee * (Decimal("1") - (vat_percent / Decimal("100")))
-        self.p.fixed_fee_net = self._q(fixed_fee_net)
-
-        fixed_fee_net_after_tax = fixed_fee_net * AFTER_TAX_RATE
-        self.p.fixed_fee_net_after_tax = self._q(fixed_fee_net_after_tax)
-
-        # Sale commission
-        sale_percent = self._d(self.p.sale_percent)
+        fixed_fee_net_after_tax = fixed_fee_net * Decimal("0.70")
         sale_commission = fixed_fee_net_after_tax * (sale_percent / Decimal("100"))
-        self.p.sale_commission = self._q(sale_commission)
 
-        # Company net profit
+        # -------------------------
+        # Company net profit (DB field)
+        # -------------------------
         company_net = (
-            self.p.gmv_fee_after_tax
-            + self.p.fixed_fee_net_after_tax
-            - self.p.bonus_amount
-            - self.p.sale_commission
+            gmv_fee_after_tax
+            + fixed_fee_net_after_tax
+            - bonus_amount
+            - sale_commission
         )
 
-        self.p.company_net_profit = self._q(company_net)
+        snap = CommissionSnapshot(
+            service_percent=q2(service_percent),
+            percent_fee_amount=q2(percent_fee_amount),
+            gmv_fee_after_tax=q2(gmv_fee_after_tax),
+            bonus_percent=q2(bonus_percent),
+            bonus_amount=q2(bonus_amount),
+            fixed_fee_net=q2(fixed_fee_net),
+            fixed_fee_net_after_tax=q2(fixed_fee_net_after_tax),
+            sale_commission=q2(sale_commission),
+            company_net_profit=q2(company_net),
+        )
+
+        # -------------------------
+        # Write back to model (ALL NOT NULL)
+        # -------------------------
+        self.p.service_percent = snap.service_percent
+        self.p.percent_fee_amount = snap.percent_fee_amount
+        self.p.gmv_fee_after_tax = snap.gmv_fee_after_tax
+
+        # profit base chart = gmv_fee_after_tax (như bạn đang dùng)
+        self.p.profit = snap.gmv_fee_after_tax
+
+        self.p.bonus_percent = snap.bonus_percent
+        self.p.bonus_amount = snap.bonus_amount
+
+        self.p.fixed_fee_net = snap.fixed_fee_net
+        self.p.fixed_fee_net_after_tax = snap.fixed_fee_net_after_tax
+
+        self.p.sale_commission = snap.sale_commission
+        self.p.company_net_profit = snap.company_net_profit
+
+        # Defensive: ensure absolutely no NOT NULL numeric becomes None
+        for f in (
+            "revenue",
+            "cost",
+            "service_percent",
+            "percent_fee_amount",
+            "profit",
+            "growth_percent",
+            "bonus_percent",
+            "bonus_amount",
+            "fixed_fee",
+            "fixed_fee_net",
+            "fixed_fee_net_after_tax",
+            "gmv_fee_after_tax",
+            "sale_commission",
+            "vat_percent",
+            "sale_percent",
+            "company_net_profit",
+        ):
+            if getattr(self.p, f, None) is None:
+                setattr(self.p, f, Decimal("0.00"))
+
+        return self.p
 
 
 # =====================================================
-# AGENCY FINANCE CALCULATOR
+# AGENCY FINANCE CALCULATOR (optional keep)
 # =====================================================
-
 class AgencyFinanceCalculator:
+    """
+    Aggregate MonthlyPerformance into AgencyMonthlyFinance.
+    """
 
     def __init__(self, month):
         self.month = month
 
     def calculate(self):
+        from apps.finance.models import AgencyMonthlyFinance
 
-        # import local tránh circular
-        from .models import MonthlyPerformance, AgencyMonthlyFinance
+        performances = MonthlyPerformance.objects.filter(month=self.month)
 
-        performances = MonthlyPerformance.objects.filter(
-            month=self.month
-        )
-
-        total_gmv_fee = performances.aggregate(
-            total=Sum("gmv_fee_after_tax")
-        )["total"] or Decimal("0")
-
-        total_fixed_fee = performances.aggregate(
-            total=Sum("fixed_fee_net_after_tax")
-        )["total"] or Decimal("0")
-
-        total_sale = performances.aggregate(
-            total=Sum("sale_commission")
-        )["total"] or Decimal("0")
-
-        total_team = performances.aggregate(
-            total=Sum("bonus_amount")
-        )["total"] or Decimal("0")
+        total_gmv_fee = performances.aggregate(total=Sum("gmv_fee_after_tax"))["total"] or Decimal("0")
+        total_fixed_fee = performances.aggregate(total=Sum("fixed_fee_net_after_tax"))["total"] or Decimal("0")
+        total_sale = performances.aggregate(total=Sum("sale_commission"))["total"] or Decimal("0")
+        total_team = performances.aggregate(total=Sum("bonus_amount"))["total"] or Decimal("0")
 
         operating_cost = Decimal("0")
 
         net = (
-            total_gmv_fee
-            + total_fixed_fee
-            - total_sale
-            - total_team
-            - operating_cost
+            d(total_gmv_fee)
+            + d(total_fixed_fee)
+            - d(total_sale)
+            - d(total_team)
+            - d(operating_cost)
         )
 
         AgencyMonthlyFinance.objects.update_or_create(
             month=self.month,
             defaults={
-                "total_gmv_fee_after_tax": total_gmv_fee,
-                "total_fixed_fee_net": total_fixed_fee,
-                "total_sale_commission": total_sale,
-                "total_team_bonus": total_team,
-                "total_operating_cost": operating_cost,
-                "agency_net_profit": net,
-            }
+                "total_gmv_fee_after_tax": q2(d(total_gmv_fee)),
+                "total_fixed_fee_net": q2(d(total_fixed_fee)),
+                "total_sale_commission": q2(d(total_sale)),
+                "total_team_bonus": q2(d(total_team)),
+                "total_operating_cost": q2(d(operating_cost)),
+                "agency_net_profit": q2(d(net)),
+            },
         )

@@ -1,31 +1,98 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Client Dashboard</title>
-  <style>
-    body { font-family: Arial, sans-serif; background:#f6f7fb; padding:24px; }
-    .card { background:#fff; border-radius:12px; padding:16px; box-shadow:0 2px 10px rgba(0,0,0,.06); max-width:720px; }
-    .k { color:#777; font-size:12px; }
-    .v { font-size:22px; font-weight:700; margin-top:6px; }
-  </style>
-</head>
-<body>
-  <h1>🛍️ Client Portal</h1>
+<!-- FILE: apps/dashboard/templates/dashboard/client_dashboard.html -->
+{% extends "dashboard/layouts/base.html" %}
+{% load static %}
 
+{% block title %}Client Portal • HeightTech OS{% endblock %}
+{% block page_title %}🛍️ Client Portal{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="grid-3">
   <div class="card">
-    <div class="k">Revenue</div>
+    <div class="k">Doanh thu</div>
     <div class="v">{{ total_revenue|floatformat:0 }}</div>
-    <div class="k" style="margin-top:12px;">Profit</div>
-    <div class="v">{{ total_profit|floatformat:0 }}</div>
-    <div class="k" style="margin-top:12px;">Net</div>
-    <div class="v">{{ total_net|floatformat:0 }}</div>
-    <div class="k" style="margin-top:12px;">Margin</div>
-    <div class="v">{{ margin }}%</div>
+    <div class="muted">Theo workspace shop đang chọn</div>
   </div>
+  <div class="card">
+    <div class="k">Profit</div>
+    <div class="v">{{ total_profit|floatformat:0 }}</div>
+    <div class="muted">Tự safe theo schema</div>
+  </div>
+  <div class="card">
+    <div class="k">Net</div>
+    <div class="v">{{ total_net|floatformat:0 }}</div>
+    <div style="margin-top:10px;">
+      {% if margin < 5 %}<span class="badge b-red">Margin {{ margin }}%</span>
+      {% elif margin < 12 %}<span class="badge b-ylw">Margin {{ margin }}%</span>
+      {% else %}<span class="badge b-grn">Margin {{ margin }}%</span>{% endif %}
+    </div>
+  </div>
+</div>
 
-  <p style="margin-top:16px;color:#777;">
-    (Portal bản đầu: chỉ KPI. Sau bạn muốn drill shop, chart, alert… mình nâng tiếp.)
-  </p>
-</body>
-</html>
+<div class="card" style="margin-top:14px;">
+  <div style="font-weight:950;">📈 Timeline (Shop)</div>
+  <div class="muted">Doanh thu & Net theo tháng</div>
+  <div style="margin-top:12px;">
+    <canvas id="cChart" height="110"></canvas>
+  </div>
+</div>
+
+<div class="card" style="margin-top:14px;">
+  <div style="font-weight:950;">📅 Bảng theo tháng</div>
+  <div class="muted">Mobile: kéo ngang bảng</div>
+
+  {% if monthly_rows %}
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tháng</th>
+            <th style="text-align:right;">Revenue</th>
+            <th style="text-align:right;">Cost</th>
+            <th style="text-align:right;">Net</th>
+            <th>Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in monthly_rows %}
+          <tr>
+            <td><b>{{ r.month }}</b></td>
+            <td style="text-align:right;">{{ r.revenue|floatformat:0 }}</td>
+            <td style="text-align:right;">{{ r.cost|floatformat:0 }}</td>
+            <td style="text-align:right;">
+              {% if r.net < 0 %}<span class="badge b-red">{{ r.net|floatformat:0 }}</span>
+              {% elif r.net < 1 %}<span class="badge b-ylw">{{ r.net|floatformat:0 }}</span>
+              {% else %}<span class="badge b-grn">{{ r.net|floatformat:0 }}</span>{% endif %}
+            </td>
+            <td class="muted">{% if r.net < 0 %}Cần tối ưu cost/fee{% else %}Ổn{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="muted" style="margin-top:10px;">Chưa có monthly_rows (check seed + workspace).</div>
+  {% endif %}
+</div>
+
+<script>
+  const months = {{ months|safe }};
+  const revenues = {{ revenues|safe }};
+  const profits = {{ profits|safe }};
+
+  const ctx = document.getElementById('cChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: { labels: months, datasets: [
+      { label: 'Revenue', data: revenues, borderWidth: 2 },
+      { label: 'Net', data: profits, borderWidth: 2 }
+    ]},
+    options: { responsive: true, plugins: { legend: { position: 'top' } } }
+  });
+</script>
+
+{% endblock %}

@@ -25,7 +25,7 @@ def register_projects_dashboard_rules() -> None:
     RuleRegistry.register(
         domain=DOMAIN,
         key="default",
-        rule=RuleSpec(version="v1", effective_from=date(2026, 1, 1), fn=_rule_v1),
+        rule=RuleSpec(version="v1", effective_from=date(2020, 1, 1), fn=_rule_v1),
     )
 
     # Nếu sau này muốn tách theo ngành/type_code:

@@ -1,34 +1,43 @@
+# FILE: apps/work/admin.py
 from __future__ import annotations
 
 from django.contrib import admin
 
-from apps.work.models import WorkItem, WorkComment
+from apps.work.models import WorkItem, WorkComment, WorkItemTransitionLog
 
 
 @admin.register(WorkItem)
 class WorkItemAdmin(admin.ModelAdmin):
     list_display = (
         "id",
-        "tenant_id",
+        "tenant",
         "title",
         "status",
         "priority",
-        "company_id",
-        "project_id",
-        "target_type",
-        "target_id",
-        "assignee_id",
-        "requester_id",
+        "company",
+        "project",
+        "assignee",
         "due_at",
+        "position",
         "updated_at",
     )
-    list_filter = ("status", "priority", "target_type")
-    search_fields = ("title", "description", "target_type", "target_id")
+    list_filter = ("tenant", "status", "priority", "is_internal")
+    search_fields = ("title", "description")
     readonly_fields = ("created_at", "updated_at", "started_at", "done_at")
+    autocomplete_fields = ("company", "project", "assignee", "requester", "created_by")
 
 
 @admin.register(WorkComment)
 class WorkCommentAdmin(admin.ModelAdmin):
-    list_display = ("id", "tenant_id", "work_item_id", "actor_id", "created_at")
+    list_display = ("id", "tenant", "work_item", "actor", "created_at")
     search_fields = ("body",)
     readonly_fields = ("created_at",)
+    autocomplete_fields = ("work_item", "actor")
+
+
+@admin.register(WorkItemTransitionLog)
+class WorkItemTransitionLogAdmin(admin.ModelAdmin):
+    list_display = ("id", "tenant", "workitem", "from_status", "to_status", "workflow_version", "actor", "created_at")
+    list_filter = ("tenant", "workflow_version")
+    readonly_fields = ("created_at",)
+    autocomplete_fields = ("workitem", "actor", "company", "project")

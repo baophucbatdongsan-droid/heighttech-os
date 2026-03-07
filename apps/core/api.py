@@ -70,3 +70,4 @@ class IsFounderOrTenantUser(BasePermission):
         if request.user.is_superuser:
             return True
         return True
+    

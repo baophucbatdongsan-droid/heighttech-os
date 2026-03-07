@@ -1,0 +1,560 @@
+{% load static %}
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>HeightTech OS</title>
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=13" />
+</head>
+
+<body>
+  <!-- ================================= -->
+  <!-- TOP BAR -->
+  <!-- ================================= -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">HT</div>
+      <div class="brand-text">
+        <div class="brand-title">HeightTech OS</div>
+        <div class="brand-sub">Commerce Control Center</div>
+      </div>
+    </div>
+
+    <div class="searchbar" id="searchbar">
+      <span class="kbd">Ctrl+K</span>
+      <input id="q" placeholder="Search company / shop / project…" autocomplete="off" />
+    </div>
+
+    <div class="actions">
+      <div class="scope" id="scopeChips">
+        <button class="chip" data-scope="tenant" type="button">Tenant</button>
+        <button class="chip" data-scope="company" type="button">Company</button>
+        <button class="chip" data-scope="shop" type="button">Shop</button>
+        <button class="chip" data-scope="project" type="button">Project</button>
+      </div>
+
+      <div class="userbox">
+        <div class="user-avatar">
+          {% if request.user.is_authenticated %}
+            {{ request.user.username|default:request.user.email|slice:":1"|upper }}
+          {% else %}
+            G
+          {% endif %}
+        </div>
+
+        <div class="user-meta">
+          <div class="user-name">
+            {% if request.user.is_authenticated %}
+              {{ request.user.username|default:request.user.email }}
+            {% else %}
+              Guest
+            {% endif %}
+          </div>
+          <div class="user-role">
+            {% if request.user.is_authenticated %}
+              Logged in
+            {% else %}
+              Anonymous
+            {% endif %}
+          </div>
+        </div>
+
+        {% if request.user.is_authenticated %}
+          <a class="btn ghost" href="/logout/">Logout</a>
+        {% endif %}
+      </div>
+
+      <button class="btn icon" id="themeToggle" type="button">☾</button>
+      <button class="btn icon" id="helpBtn" type="button">?</button>
+      <button class="btn primary" id="cmdBtn" type="button">Command ⌘K</button>
+    </div>
+  </header>
+
+  <!-- ================================= -->
+  <!-- MAIN -->
+  <!-- ================================= -->
+  <main class="wrap">
+    <section class="kpis" id="kpis"></section>
+
+    <section class="grid">
+      <!-- ================================= -->
+      <!-- TIMELINE -->
+      <!-- ================================= -->
+      <div class="card span2">
+        <div class="card-h">
+          <div class="card-title">System Timeline</div>
+          <div class="card-meta">
+            <span class="pill" id="rtPill">realtime</span>
+            <span class="pill" id="scopePill">tenant</span>
+          </div>
+        </div>
+
+        <div class="card-b">
+          <div class="list" id="timelineList"></div>
+          <div class="list-footer">
+            <button class="btn" id="loadMoreTimeline" type="button">Load more</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================= -->
+      <!-- NOTIFICATIONS -->
+      <!-- ================================= -->
+      <div class="card">
+        <div class="card-h">
+          <div class="card-title">Notifications</div>
+          <div class="card-meta">
+            <span class="badge" id="notifBadge">0</span>
+          </div>
+        </div>
+
+        <div class="card-b">
+          <div class="list" id="notifList"></div>
+        </div>
+      </div>
+
+      <!-- ================================= -->
+      <!-- WORK OS -->
+      <!-- ================================= -->
+      <div class="panel card span3" id="workPanel">
+        <div class="card-h">
+          <div>
+            <div class="card-title">Work OS</div>
+            <div class="brand-sub">Inbox • Kanban • assign • move • company / shop / project</div>
+          </div>
+
+          <div class="panel-actions">
+            <button class="mini btn work-view-tab active" data-view="list" type="button">Inbox</button>
+            <button class="mini btn work-view-tab" data-view="board" type="button">Kanban</button>
+            <button class="mini btn" id="btnNewTask" type="button">+ New</button>
+            <button class="mini btn" id="btnRefreshWork" type="button">Refresh</button>
+          </div>
+        </div>
+
+        <div class="card-b">
+          <!-- filters -->
+          <div class="work-toolbar">
+            <div class="work-toolbar-left">
+              <input
+                id="workAssigneeFilter"
+                class="work-filter"
+                placeholder="Lọc theo assignee_id…"
+                autocomplete="off"
+              />
+            </div>
+
+            <div class="work-toolbar-right">
+              <span class="pill">Scope-aware</span>
+              <span class="pill">Realtime</span>
+            </div>
+          </div>
+
+          <!-- create task -->
+          <div class="work-create" id="workCreateBox" style="display:none;">
+            <input id="newTaskTitle" class="input" placeholder="Task title…" />
+
+            <div class="work-form-row">
+              <input
+                id="newTaskAssignee"
+                class="input"
+                placeholder="assignee_id (optional)"
+                style="flex:1; min-width:180px;"
+              />
+              <input
+                id="newTaskAssigneeBy"
+                class="input"
+                placeholder="email/username (optional)"
+                style="flex:1; min-width:220px;"
+              />
+            </div>
+
+            <div class="work-form-row">
+              <button class="mini btn" id="btnCreateTask" type="button">Create</button>
+              <button class="mini btn ghost" id="btnCancelTask" type="button">Cancel</button>
+            </div>
+
+            <div class="muted" style="margin-top:6px;">
+              Tip: <b>scope shop 12</b> → tạo task → assign → move status trực tiếp.
+            </div>
+          </div>
+
+          <!-- list view -->
+          <div id="workListWrap">
+            <div id="workList" class="list"></div>
+          </div>
+
+          <!-- board view -->
+          <div id="workBoardWrap" style="display:none;">
+            <div class="kanban-board" id="workBoard">
+              <!-- TODO -->
+              <div class="kanban-col" data-status="todo">
+                <div class="kanban-head">
+                  <span>Todo</span>
+                  <span class="pill" id="kbCountTodo">0</span>
+                </div>
+
+                <div class="kanban-quick">
+                  <input
+                    id="kbQuickTodo"
+                    class="kb-quick-title"
+                    placeholder="+ Tạo nhanh việc trong Todo"
+                  />
+                  <div class="kanban-quick-row">
+                    <button class="mini btn kb-quick-btn" data-status="todo" type="button">Create</button>
+                  </div>
+                </div>
+
+                <div class="kanban-list" id="kbTodo" data-drop-status="todo"></div>
+              </div>
+
+              <!-- DOING -->
+              <div class="kanban-col" data-status="doing">
+                <div class="kanban-head">
+                  <span>Doing</span>
+                  <span class="pill" id="kbCountDoing">0</span>
+                </div>
+
+                <div class="kanban-quick">
+                  <input
+                    id="kbQuickDoing"
+                    class="kb-quick-title"
+                    placeholder="+ Tạo nhanh việc trong Doing"
+                  />
+                  <div class="kanban-quick-row">
+                    <button class="mini btn kb-quick-btn" data-status="doing" type="button">Create</button>
+                  </div>
+                </div>
+
+                <div class="kanban-list" id="kbDoing" data-drop-status="doing"></div>
+              </div>
+
+              <!-- BLOCKED -->
+              <div class="kanban-col" data-status="blocked">
+                <div class="kanban-head">
+                  <span>Blocked</span>
+                  <span class="pill" id="kbCountBlocked">0</span>
+                </div>
+
+                <div class="kanban-quick">
+                  <input
+                    id="kbQuickBlocked"
+                    class="kb-quick-title"
+                    placeholder="+ Tạo nhanh việc trong Blocked"
+                  />
+                  <div class="kanban-quick-row">
+                    <button class="mini btn kb-quick-btn" data-status="blocked" type="button">Create</button>
+                  </div>
+                </div>
+
+                <div class="kanban-list" id="kbBlocked" data-drop-status="blocked"></div>
+              </div>
+
+              <!-- DONE -->
+              <div class="kanban-col" data-status="done">
+                <div class="kanban-head">
+                  <span>Done</span>
+                  <span class="pill" id="kbCountDone">0</span>
+                </div>
+
+                <div class="kanban-quick">
+                  <input
+                    id="kbQuickDone"
+                    class="kb-quick-title"
+                    placeholder="+ Tạo nhanh việc trong Done"
+                  />
+                  <div class="kanban-quick-row">
+                    <button class="mini btn kb-quick-btn" data-status="done" type="button">Create</button>
+                  </div>
+                </div>
+
+                <div class="kanban-list" id="kbDone" data-drop-status="done"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================= -->
+      <!-- SHOP HEALTH -->
+      <!-- ================================= -->
+      <div class="card span3">
+        <div class="card-h">
+          <div class="card-title">Shop Health Monitor</div>
+          <div class="card-meta">
+            <span class="pill">Top risk</span>
+          </div>
+        </div>
+
+        <div class="card-b">
+          <div class="table" id="healthTable"></div>
+        </div>
+      </div>
+
+      <!-- ================================= -->
+      <!-- STRATEGY PANEL -->
+      <!-- ================================= -->
+      <div class="card span3">
+        <div class="card-h">
+          <div class="card-title">AI Strategy Panel</div>
+          <div class="card-meta">
+            <span class="pill">deterministic</span>
+          </div>
+        </div>
+
+        <div class="card-b">
+          <div class="list" id="strategyList"></div>
+        </div>
+      </div>
+
+      <!-- ================================= -->
+      <!-- KERNEL -->
+      <!-- ================================= -->
+      <div class="card">
+        <div class="card-h">
+          <div class="card-title">Kernel</div>
+          <div class="card-meta">
+            <button class="btn mini" id="btnRefreshKernel" type="button">Refresh</button>
+          </div>
+        </div>
+
+        <div class="card-b">
+          <div class="table" id="kernelTable"></div>
+        </div>
+      </div>
+
+      <!-- ================================= -->
+      <!-- RAW INSPECTOR -->
+      <!-- ================================= -->
+      <div class="card span2">
+        <div class="card-h">
+          <div class="card-title">Raw API Inspector</div>
+          <div class="card-meta">
+            <button class="btn mini" id="btnRawToggle" type="button">Toggle</button>
+          </div>
+        </div>
+
+        <div class="card-b">
+          <div id="rawBox" style="display:none;">
+            <div class="raw-tabs">
+              <button class="btn mini raw-tab active" data-raw="home" type="button">home</button>
+              <button class="btn mini raw-tab" data-raw="control" type="button">control</button>
+              <button class="btn mini raw-tab" data-raw="timeline" type="button">timeline</button>
+              <button class="btn mini raw-tab" data-raw="notifications" type="button">notifications</button>
+              <button class="btn mini raw-tab" data-raw="work" type="button">work</button>
+            </div>
+
+            <pre id="rawJson" class="raw-json"></pre>
+          </div>
+
+          <div id="rawHint" class="muted">
+            Toggle để xem raw JSON các API.
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================================= -->
+  <!-- MOBILE BAR -->
+  <!-- ================================= -->
+  <nav class="bottombar">
+    <button class="bb-item active" data-tab="home" type="button">
+      <span class="bb-ic">⌂</span>
+      <span class="bb-tx">Home</span>
+    </button>
+
+    <button class="bb-item" data-tab="timeline" type="button">
+      <span class="bb-ic">≡</span>
+      <span class="bb-tx">Timeline</span>
+    </button>
+
+    <button class="bb-item" data-tab="alerts" type="button">
+      <span class="bb-ic">!</span>
+      <span class="bb-tx">Alerts</span>
+      <span class="bb-dot" id="bbDot"></span>
+    </button>
+
+    <button class="bb-item" data-tab="work" type="button">
+      <span class="bb-ic">✓</span>
+      <span class="bb-tx">Work</span>
+    </button>
+
+    <button class="bb-item" data-tab="command" id="bbCmd" type="button">
+      <span class="bb-ic">⌘</span>
+      <span class="bb-tx">Cmd</span>
+    </button>
+  </nav>
+<!-- ================================= -->
+<!-- TASK DRAWER -->
+<!-- ================================= -->
+
+<div class="drawer" id="taskDrawer" aria-hidden="true">
+  <div class="drawer-backdrop" data-drawer-close="1"></div>
+
+  <aside class="drawer-panel">
+    <div class="drawer-head">
+      <div>
+        <div class="drawer-title">Chi tiết công việc</div>
+        <div class="drawer-sub" id="taskDrawerSub">Task detail</div>
+      </div>
+
+      <button class="btn icon" id="btnCloseTaskDrawer" type="button">×</button>
+    </div>
+
+    <div class="drawer-body">
+      <div class="task-detail-grid">
+        <div class="task-main-card">
+          <div class="task-title-row">
+            <input id="taskEditTitle" class="input task-title-input" placeholder="Tên công việc" />
+            <span id="taskPriorityBadge" class="task-badge">Ưu tiên</span>
+          </div>
+
+          <textarea id="taskEditDescription" class="input task-desc-input" rows="5" placeholder="Mô tả công việc..."></textarea>
+
+          <div class="task-meta-grid">
+            <div class="task-field">
+              <label>Trạng thái</label>
+              <select id="taskEditStatus" class="statusSel">
+                <option value="todo">todo</option>
+                <option value="doing">doing</option>
+                <option value="blocked">blocked</option>
+                <option value="done">done</option>
+                <option value="cancelled">cancelled</option>
+              </select>
+            </div>
+
+            <div class="task-field">
+              <label>Ưu tiên</label>
+              <select id="taskEditPriority" class="statusSel">
+                <option value="1">Thấp</option>
+                <option value="2">Vừa</option>
+                <option value="3">Cao</option>
+                <option value="4">Gấp</option>
+              </select>
+            </div>
+
+            <div class="task-field">
+              <label>Deadline</label>
+              <input id="taskEditDueAt" type="datetime-local" class="input" />
+            </div>
+
+            <div class="task-field">
+              <label>Assignee ID</label>
+              <input id="taskEditAssigneeId" class="input" placeholder="assignee_id" />
+            </div>
+
+            <div class="task-field">
+              <label>Email / Username</label>
+              <input id="taskEditAssigneeBy" class="input" placeholder="email / username" />
+            </div>
+
+            <div class="task-field">
+              <label>Công ty</label>
+              <input id="taskEditCompanyId" class="input" placeholder="company_id" />
+            </div>
+
+            <div class="task-field">
+              <label>Shop</label>
+              <input id="taskEditShopId" class="input" placeholder="shop_id" />
+            </div>
+
+            <div class="task-field">
+              <label>Dự án</label>
+              <input id="taskEditProjectId" class="input" placeholder="project_id" />
+            </div>
+          </div>
+
+          <div class="task-inline-meta" id="taskInlineMeta"></div>
+
+          <div class="task-actions-row">
+            <button class="btn primary" id="btnSaveTaskDrawer" type="button">Lưu thay đổi</button>
+            <button class="btn" id="btnMoveNextTaskDrawer" type="button">Đẩy sang bước tiếp</button>
+          </div>
+        </div>
+
+        <div class="task-side-card">
+          <div class="side-card-title">Tổng quan</div>
+          <div class="task-summary-list" id="taskSummaryList"></div>
+
+          <div class="side-card-title" style="margin-top:16px;">Nhật ký gần nhất</div>
+          <div class="task-activity-list" id="taskActivityList"></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+  <!-- ================================= -->
+  <!-- COMMAND MODAL -->
+  <!-- ================================= -->
+  <div class="modal" id="cmdModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close="1"></div>
+
+    <div class="modal-card">
+      <div class="modal-h">
+        <div class="modal-title">Command Center</div>
+        <div class="modal-sub">
+          scope shop 49 • work create ads • work move 12 doing • refresh
+        </div>
+      </div>
+
+      <div class="modal-b">
+        <input id="cmdInput" class="cmd-input" placeholder="Type command" autocomplete="off" />
+        <div class="cmd-hints" id="cmdHints"></div>
+        <div class="cmd-result" id="cmdResult"></div>
+      </div>
+
+      <div class="modal-f">
+        <button class="btn" data-close="1" type="button">Close</button>
+        <button class="btn primary" id="cmdRun" type="button">Run</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================= -->
+  <!-- HELP MODAL -->
+  <!-- ================================= -->
+  <div class="modal" id="helpModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close="1"></div>
+
+    <div class="modal-card">
+      <div class="modal-h">
+        <div class="modal-title">Shortcuts</div>
+        <div class="modal-sub">HeightTech OS keyboard help</div>
+      </div>
+
+      <div class="modal-b">
+        <div class="help-grid">
+          <div class="help-row"><span>Open command</span><code>Ctrl + K</code></div>
+          <div class="help-row"><span>Toggle theme</span><code>Ctrl + /</code></div>
+          <div class="help-row"><span>Refresh</span><code>R</code></div>
+          <div class="help-row"><span>Close modal</span><code>Esc</code></div>
+        </div>
+      </div>
+
+      <div class="modal-f">
+        <button class="btn primary" data-close="1" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+<script>
+  window.HT_TENANT_ID = 1;
+
+  window.HT_OS = {
+    controlCenter: "/api/v1/os/control-center/",
+    timeline: "/api/v1/os/timeline/",
+    notifications: "/api/v1/os/notifications/",
+    home: "/api/v1/os/home/",
+    commandCenter: "/api/v1/os/command-center/",
+    stream: "/api/v1/os/stream/",
+    workInbox: "/api/v1/os/work/inbox/",
+    workCreate: "/api/v1/os/work/create/",
+    workAssignBase: "/api/v1/os/work/",
+    workAssignBy: "/api/v1/os/work/assign-by/",
+    workUpdateBase: "/api/v1/os/work/",
+  };
+</script>
+
+  <script src="{% static 'os/os.js' %}?v=13"></script>
+</body>
+</html>

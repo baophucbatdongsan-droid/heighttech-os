@@ -43,11 +43,11 @@ class FounderProjectsDashboardApi(BaseApi):
         limit = request.GET.get("limit")
         limit = 50 if limit is None else max(1, min(_get_int(limit, 50), 200))
 
-        result = ProjectDashboardService.build(tenant_id=tid, company_id=company_id, limit=limit)
+        result = ProjectDashboardService.build(tenant_id=int(tid), company_id=company_id, limit=limit)
 
         return api_ok(
             {
-                "tenant_id": tid,
+                "tenant_id": int(tid),
                 "company_id": company_id,
                 "summary": result.summary,
                 "items": result.items,

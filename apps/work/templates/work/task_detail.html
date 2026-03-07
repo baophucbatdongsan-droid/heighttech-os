@@ -1,0 +1,92 @@
+<!-- FILE: apps/work/templates/work/task_detail.html -->
+{% extends "dashboard/layouts/base.html" %}
+{% block title %}Task #{{ task.id }} • Work OS{% endblock %}
+{% block page_title %}🧩 Task #{{ task.id }}{% endblock %}
+
+{% block content %}
+
+<div class="grid-2">
+  <div class="card">
+    <div class="k">Tiêu đề</div>
+    <div class="v" style="font-size:18px;">{{ task.title }}</div>
+
+    {% if task.description %}
+      <div class="k" style="margin-top:12px;">Mô tả</div>
+      <div class="muted" style="white-space:pre-wrap;">{{ task.description }}</div>
+    {% endif %}
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center;">
+      <span class="pill">Status: <b>{{ task.status }}</b></span>
+      <span class="pill">Priority: <b>{{ task.priority }}</b></span>
+      <span class="pill">Shop: <b>{{ task.shop_id|default:"-" }}</b></span>
+      <span class="pill">Owner: <b>{% if task.owner %}{{ task.owner.username }}{% else %}-{% endif %}</b></span>
+    </div>
+
+    <form method="post" action="/work/task/{{ task.id }}/status/" style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      {% csrf_token %}
+      <select name="status" class="btn" style="min-width:180px;">
+        {% for k, n in status_choices %}
+          <option value="{{ k }}" {% if task.status == k %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn primary" type="submit">Update status</button>
+      <a class="btn" href="/work/">← Back</a>
+    </form>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:950;">💬 Comment</div>
+    <form method="post" action="/work/task/{{ task.id }}/comment/" style="margin-top:10px;">
+      {% csrf_token %}
+      <textarea name="body" rows="3" placeholder="Nhập comment..."
+        style="width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);"></textarea>
+      <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+        <button class="btn primary" type="submit">Gửi</button>
+      </div>
+    </form>
+
+    <div style="margin-top:12px;">
+      {% for c in comments %}
+        <div class="card" style="box-shadow:none;margin-top:10px;">
+          <div class="k">
+            <b>{% if c.author %}{{ c.author.username }}{% else %}system{% endif %}</b>
+            • {{ c.created_at }}
+          </div>
+          <div style="white-space:pre-wrap;margin-top:6px;">{{ c.body }}</div>
+        </div>
+      {% empty %}
+        <div class="muted" style="margin-top:10px;">Chưa có comment</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:14px;">
+  <div style="font-weight:950;">🧾 Activity Log</div>
+  <div class="tablewrap" style="max-height:420px;margin-top:10px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Actor</th>
+          <th>Action</th>
+          <th>Meta</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in activities %}
+        <tr>
+          <td class="muted">{{ a.created_at }}</td>
+          <td>{% if a.actor %}{{ a.actor.username }}{% else %}system{% endif %}</td>
+          <td><b>{{ a.action }}</b></td>
+          <td class="muted" style="max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ a.meta }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="muted">Chưa có log</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

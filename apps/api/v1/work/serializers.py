@@ -36,14 +36,20 @@ def _clean_int(v: Any) -> Optional[int]:
         return None
 
 
+def _clean_bool(v: Any) -> Optional[bool]:
+    if v is None:
+        return None
+    if isinstance(v, bool):
+        return v
+    s = str(v).strip().lower()
+    if s in {"true", "1", "yes", "y", "on"}:
+        return True
+    if s in {"false", "0", "no", "n", "off"}:
+        return False
+    return None
+
+
 def _clean_tags(v: Any) -> List[str]:
-    """
-    tags: chuẩn list[str]
-    - None -> []
-    - "a,b" -> ["a","b"]
-    - ["a","b"] -> giữ
-    - "[]" -> []
-    """
     if v is None:
         return []
     if isinstance(v, list):
@@ -62,70 +68,88 @@ def _clean_tags(v: Any) -> List[str]:
     return [s]
 
 
+def _raw_manager(Model):
+    """
+    An toàn cho codebase có TenantManager scoping.
+    Nếu có objects_all -> dùng objects_all.
+    Fallback: _base_manager / objects.
+    """
+    if hasattr(Model, "objects_all"):
+        return Model.objects_all
+    if hasattr(Model, "_base_manager") and Model._base_manager is not None:
+        return Model._base_manager
+    return Model.objects
+
+
 def _resolve_company_tenant_from_project(project_id: Optional[int]) -> Dict[str, Optional[int]]:
-    """
-    project -> company_id + tenant_id (nếu có)
-    """
     if not project_id:
-        return {"company_id": None, "tenant_id": None}
+        return {"company_id": None, "tenant_id": None, "shop_id": None}
 
     Project = apps.get_model("projects", "Project")
-    p = Project.objects_all.filter(id=project_id).only("id", "company_id", "tenant_id").first()
+    PM = _raw_manager(Project)
+
+    # NOTE: project có shop_id hay không tùy codebase, nên getattr an toàn
+    p = PM.filter(id=project_id).only("id", "company_id", "tenant_id").first()
     if not p:
-        return {"company_id": None, "tenant_id": None}
+        return {"company_id": None, "tenant_id": None, "shop_id": None}
 
     return {
         "company_id": getattr(p, "company_id", None),
         "tenant_id": getattr(p, "tenant_id", None),
+        "shop_id": getattr(p, "shop_id", None),
     }
 
 
 def _resolve_company_tenant_from_target(target_type: str, target_id: Optional[int]) -> Dict[str, Optional[int]]:
-    """
-    target (shop/channel/booking) -> company_id + tenant_id (nếu có)
-    """
     tt = (target_type or "").strip().lower()
     tid = target_id
     if not tt or not tid:
-        return {"company_id": None, "tenant_id": None}
+        return {"company_id": None, "tenant_id": None, "shop_id": None}
 
-    # shop -> company
+    # shop
     if tt == "shop":
         try:
             Shop = apps.get_model("shops", "Shop")
-            s = Shop.objects_all.filter(id=tid).only("id", "company_id", "tenant_id").first()
+            SM = _raw_manager(Shop)
+            s = SM.filter(id=tid).only("id", "tenant_id").first()
             if s:
-                return {"company_id": getattr(s, "company_id", None), "tenant_id": getattr(s, "tenant_id", None)}
+                return {"company_id": None, "tenant_id": getattr(s, "tenant_id", None), "shop_id": getattr(s, "id", None)}
         except Exception:
             pass
 
-    # channel -> shop -> company
+    # channel -> shop
     if tt == "channel":
         try:
             ChannelShopLink = apps.get_model("channels", "ChannelShopLink")
             Shop = apps.get_model("shops", "Shop")
-            link = ChannelShopLink.objects_all.filter(channel_id=tid).only("shop_id").first()
+            LM = _raw_manager(ChannelShopLink)
+            SM = _raw_manager(Shop)
+
+            link = LM.filter(channel_id=tid).only("shop_id").first()
             if link and getattr(link, "shop_id", None):
-                s = Shop.objects_all.filter(id=link.shop_id).only("company_id", "tenant_id").first()
+                s = SM.filter(id=link.shop_id).only("id", "tenant_id").first()
                 if s:
-                    return {"company_id": getattr(s, "company_id", None), "tenant_id": getattr(s, "tenant_id", None)}
+                    return {"company_id": None, "tenant_id": getattr(s, "tenant_id", None), "shop_id": getattr(s, "id", None)}
         except Exception:
             pass
 
-    # booking -> shop -> company
+    # booking -> shop
     if tt == "booking":
         try:
             Booking = apps.get_model("booking", "Booking")
             Shop = apps.get_model("shops", "Shop")
-            b = Booking.objects_all.filter(id=tid).only("shop_id").first()
+            BM = _raw_manager(Booking)
+            SM = _raw_manager(Shop)
+
+            b = BM.filter(id=tid).only("shop_id").first()
             if b and getattr(b, "shop_id", None):
-                s = Shop.objects_all.filter(id=b.shop_id).only("company_id", "tenant_id").first()
+                s = SM.filter(id=b.shop_id).only("id", "tenant_id").first()
                 if s:
-                    return {"company_id": getattr(s, "company_id", None), "tenant_id": getattr(s, "tenant_id", None)}
+                    return {"company_id": None, "tenant_id": getattr(s, "tenant_id", None), "shop_id": getattr(s, "id", None)}
         except Exception:
             pass
 
-    return {"company_id": None, "tenant_id": None}
+    return {"company_id": None, "tenant_id": None, "shop_id": None}
 
 
 # =====================================================
@@ -133,25 +157,37 @@ def _resolve_company_tenant_from_target(target_type: str, target_id: Optional[in
 # =====================================================
 class WorkItemSerializer(serializers.ModelSerializer):
     """
-    ✅ FINAL FIX (đã PASS smoke_work):
-    - KHAI BÁO EXPLICIT *_id fields để DRF chắc chắn accept input
-      (fix triệt để create bị company_id=None do validated_data thiếu key)
-    - Clean None/null/undefined
-    - Auto-fill company_id từ project/target
-    - Trả role + can_* cho FE
+    FINAL:
+    - Explicit *_id fields để DRF accept input chắc chắn
+    - Expose *_username để FE render assignee/requester/created_by
+    - Support Phase 2: shop_id, visible_to_client, type
+    - Client bị giới hạn bởi visible_to_client + is_internal
     """
 
-    # ✅ Explicit ID fields (chìa khoá fix)
+    # ✅ Explicit ID fields
     tenant_id = serializers.IntegerField(required=False, allow_null=True)
     company_id = serializers.IntegerField(required=False, allow_null=True)
     project_id = serializers.IntegerField(required=False, allow_null=True)
+    shop_id = serializers.IntegerField(required=False, allow_null=True)
+
+    created_by_id = serializers.IntegerField(required=False, allow_null=True)
     assignee_id = serializers.IntegerField(required=False, allow_null=True)
     requester_id = serializers.IntegerField(required=False, allow_null=True)
+
     target_id = serializers.IntegerField(required=False, allow_null=True)
     position = serializers.IntegerField(required=False, allow_null=True)
 
-    # tags: normalize về list[str]
+    # ✅ Phase 2
+    visible_to_client = serializers.BooleanField(required=False)
+    type = serializers.ChoiceField(choices=WorkItem.Type.choices, required=False)
+
+    # tags
     tags = serializers.ListField(child=serializers.CharField(), required=False, allow_null=True)
+
+    # ✅ usernames for UI
+    assignee_username = serializers.CharField(source="assignee.username", read_only=True)
+    requester_username = serializers.CharField(source="requester.username", read_only=True)
+    created_by_username = serializers.CharField(source="created_by.username", read_only=True)
 
     # ===== FE flags =====
     role = serializers.SerializerMethodField()
@@ -168,6 +204,7 @@ class WorkItemSerializer(serializers.ModelSerializer):
             "tenant_id",
             "company_id",
             "project_id",
+            "shop_id",
             "title",
             "description",
             "status",
@@ -177,8 +214,14 @@ class WorkItemSerializer(serializers.ModelSerializer):
             "due_at",
             "started_at",
             "done_at",
+            "type",
+            "visible_to_client",
+            "created_by_id",
             "assignee_id",
             "requester_id",
+            "assignee_username",
+            "requester_username",
+            "created_by_username",
             "target_type",
             "target_id",
             "is_internal",
@@ -192,7 +235,20 @@ class WorkItemSerializer(serializers.ModelSerializer):
             "can_move",
             "can_delete",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "assignee_username",
+            "requester_username",
+            "created_by_username",
+            "role",
+            "can_view",
+            "can_comment",
+            "can_edit",
+            "can_move",
+            "can_delete",
+        ]
 
     # -------------------------
     # role + can_* helpers
@@ -205,16 +261,19 @@ class WorkItemSerializer(serializers.ModelSerializer):
     def get_role(self, obj: WorkItem) -> str:
         return self._get_user_role()
 
+    def _client_can_see(self, obj: WorkItem) -> bool:
+        if bool(getattr(obj, "is_internal", False)):
+            return False
+        return bool(getattr(obj, "visible_to_client", False))
+
     def get_can_view(self, obj: WorkItem) -> bool:
-        role = self._get_user_role()
-        if role == ROLE_CLIENT:
-            return not bool(getattr(obj, "is_internal", False))
+        if self._get_user_role() == ROLE_CLIENT:
+            return self._client_can_see(obj)
         return True
 
     def get_can_comment(self, obj: WorkItem) -> bool:
-        role = self._get_user_role()
-        if role == ROLE_CLIENT:
-            return not bool(getattr(obj, "is_internal", False))
+        if self._get_user_role() == ROLE_CLIENT:
+            return self._client_can_see(obj)
         return True
 
     def get_can_edit(self, obj: WorkItem) -> bool:
@@ -234,9 +293,25 @@ class WorkItemSerializer(serializers.ModelSerializer):
             attrs["target_type"] = _clean_str(attrs.get("target_type"))
 
         # clean ints
-        for k in ["tenant_id", "company_id", "project_id", "assignee_id", "requester_id", "target_id", "position"]:
+        for k in [
+            "tenant_id",
+            "company_id",
+            "project_id",
+            "shop_id",
+            "created_by_id",
+            "assignee_id",
+            "requester_id",
+            "target_id",
+            "position",
+        ]:
             if k in attrs:
                 attrs[k] = _clean_int(attrs.get(k))
+
+        # clean bool
+        if "visible_to_client" in attrs:
+            vb = _clean_bool(attrs.get("visible_to_client"))
+            if vb is not None:
+                attrs["visible_to_client"] = vb
 
         # clean tags
         if "tags" in attrs:
@@ -245,28 +320,35 @@ class WorkItemSerializer(serializers.ModelSerializer):
         company_id = attrs.get("company_id")
         tenant_id = attrs.get("tenant_id")
         project_id = attrs.get("project_id")
+        shop_id = attrs.get("shop_id")
 
-        # 1) project -> company/tenant
-        if project_id and not company_id:
+        # 1) project -> company/tenant/shop
+        if project_id and (not company_id or not tenant_id or not shop_id):
             resolved = _resolve_company_tenant_from_project(project_id)
-            if resolved.get("company_id"):
+            if (not company_id) and resolved.get("company_id"):
                 attrs["company_id"] = resolved["company_id"]
                 company_id = attrs["company_id"]
             if (not tenant_id) and resolved.get("tenant_id"):
                 attrs["tenant_id"] = resolved["tenant_id"]
                 tenant_id = attrs["tenant_id"]
+            if (not shop_id) and resolved.get("shop_id"):
+                attrs["shop_id"] = resolved["shop_id"]
+                shop_id = attrs["shop_id"]
 
-        # 2) target -> company/tenant
-        if not company_id:
+        # 2) target -> tenant/shop (company có thể None)
+        if (not tenant_id) or (not shop_id):
             tt = attrs.get("target_type") or ""
             tid = attrs.get("target_id")
             resolved = _resolve_company_tenant_from_target(tt, tid)
-            if resolved.get("company_id"):
+            if (not company_id) and resolved.get("company_id"):
                 attrs["company_id"] = resolved["company_id"]
                 company_id = attrs["company_id"]
             if (not tenant_id) and resolved.get("tenant_id"):
                 attrs["tenant_id"] = resolved["tenant_id"]
                 tenant_id = attrs["tenant_id"]
+            if (not shop_id) and resolved.get("shop_id"):
+                attrs["shop_id"] = resolved["shop_id"]
+                shop_id = attrs["shop_id"]
 
         return attrs
 

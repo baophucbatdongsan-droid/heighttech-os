@@ -6,18 +6,27 @@ from django.urls import path
 from .views import (
     WorkItemListCreateView,
     WorkItemDetailView,
-    WorkItemAddCommentView,
     WorkItemTimelineView,
+    WorkItemAddCommentView,
     WorkMySummaryView,
+    WorkPortalSummaryView,
     WorkBoardView,
     WorkItemMoveView,
-    WorkPortalSummaryView,
+    WorkItemAssignView,
 )
 
 from . import views_analytics as va
 from .views_dashboard import WorkDashboardV1View
 
+# OS workflow actions
+from .workitems import WorkItemTransitionApi, WorkItemUpgradeWorkflowApi
 
+app_name = "work"
+
+
+# =========================================================
+# helper: optional analytics view loader (không crash import)
+# =========================================================
 def _pick_view(*names):
     for n in names:
         v = getattr(va, n, None)
@@ -45,23 +54,47 @@ WorkFounderDashboardView = _pick_view(
 
 
 urlpatterns = [
+    # =========================
+    # WORK ITEMS CRUD
+    # =========================
     path("items/", WorkItemListCreateView.as_view(), name="work_item_list_create"),
     path("items/<int:pk>/", WorkItemDetailView.as_view(), name="work_item_detail"),
 
+    # =========================
+    # COMMENTS + TIMELINE
+    # =========================
     path("items/<int:pk>/comment/", WorkItemAddCommentView.as_view(), name="work_item_add_comment"),
     path("items/<int:pk>/comments/", WorkItemAddCommentView.as_view(), name="work_item_add_comment_plural"),
-
     path("items/<int:pk>/timeline/", WorkItemTimelineView.as_view(), name="work_item_timeline"),
 
-    path("my-summary/", WorkMySummaryView.as_view(), name="work_my_summary"),
-
+    # =========================
+    # BOARD + MOVE + ASSIGN
+    # =========================
     path("board/", WorkBoardView.as_view(), name="work_board"),
-    path("items/<int:pk>/move/", WorkItemMoveView.as_view(), name="workitem-move"),
+    path("items/<int:pk>/move/", WorkItemMoveView.as_view(), name="work_item_move"),
+    path("items/<int:pk>/assign/", WorkItemAssignView.as_view(), name="work_item_assign"),
 
+    # =========================
+    # USER SUMMARY + PORTAL
+    # =========================
+    path("my-summary/", WorkMySummaryView.as_view(), name="work_my_summary"),
     path("portal/summary/", WorkPortalSummaryView.as_view(), name="work_portal_summary"),
+
+    # =========================
+    # OS WORKFLOW ACTIONS
+    # =========================
+    path("items/<int:workitem_id>/transition/", WorkItemTransitionApi.as_view(), name="work_item_transition"),
+    path(
+        "items/<int:workitem_id>/upgrade-workflow/",
+        WorkItemUpgradeWorkflowApi.as_view(),
+        name="work_item_upgrade_workflow",
+    ),
 ]
 
 
+# =========================
+# ANALYTICS (optional)
+# =========================
 if WorkloadAnalyticsView:
     urlpatterns.append(path("analytics/workload/", WorkloadAnalyticsView.as_view(), name="work_analytics_workload"))
 
@@ -83,4 +116,6 @@ if PerformanceByCompanyAnalyticsView:
 if WorkFounderDashboardView:
     urlpatterns.append(path("analytics/dashboard/", WorkFounderDashboardView.as_view(), name="work_analytics_dashboard"))
 
+
+# dashboard v1 (always available)
 urlpatterns.append(path("analytics/dashboard/v1/", WorkDashboardV1View.as_view(), name="work_analytics_dashboard_v1"))

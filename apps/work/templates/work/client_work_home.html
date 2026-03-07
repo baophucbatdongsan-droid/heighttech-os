@@ -1,0 +1,65 @@
+<!-- FILE: apps/work/templates/work/client_work_home.html -->
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Client • Work</title>
+  <style>
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:#0b1020;color:#eef3ff;padding:12px;}
+    a{color:inherit;text-decoration:none;}
+    .wrap{max-width:1100px;margin:0 auto;}
+    .top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;
+      padding:12px;border:1px solid rgba(255,255,255,.10);border-radius:16px;background:rgba(255,255,255,.06);}
+    .btn{padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.06);font-weight:900;}
+    .btn.primary{border:none;background:linear-gradient(135deg,#7c3aed,#2563eb);}
+    .card{margin-top:12px;border:1px solid rgba(255,255,255,.10);border-radius:16px;background:rgba(255,255,255,.06);padding:12px;}
+    .input{flex:1;min-width:220px;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.22);color:#eef3ff;outline:none;}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+    .item{display:block;border:1px solid rgba(255,255,255,.10);border-radius:14px;background:rgba(0,0,0,.22);padding:12px;margin-top:10px;}
+    .t{font-weight:950;}
+    .m{margin-top:6px;color:rgba(238,243,255,.68);font-size:12px;display:flex;gap:10px;flex-wrap:wrap;}
+    .tag{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.06);}
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div style="font-weight:950;">Client • Work</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <a class="btn" href="/client/sales/">Sales</a>
+      <a class="btn" href="/dashboard/">Dashboard</a>
+      <a class="btn primary" href="/work/">Internal OS</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <form method="get" class="row">
+      <input class="input" name="q" value="{{ q }}" placeholder="Search task…" />
+      <button class="btn primary" type="submit">Search</button>
+      <a class="btn" href="/client/work/">Reset</a>
+    </form>
+  </div>
+
+  <div class="card">
+    {% for it in items %}
+      <div class="item">
+        <div class="t">#{{ it.id }} • {{ it.title }}</div>
+        <div class="m">
+          <span class="tag">Type: <b>{{ it.type }}</b></span>
+          <span class="tag">Status: <b>{{ it.status }}</b></span>
+          <span class="tag">Priority: <b>{{ it.priority }}</b></span>
+          {% if it.assignee %}<span class="tag">Assignee: <b>@{{ it.assignee.username }}</b></span>{% endif %}
+          {% if it.due_at %}<span class="tag">Due: <b>{{ it.due_at }}</b></span>{% endif %}
+          {% if it.shop_id %}<span class="tag">Shop: <b>#{{ it.shop_id }}</b></span>{% endif %}
+        </div>
+      </div>
+    {% empty %}
+      <div style="color:rgba(238,243,255,.68)">No client-visible tasks yet</div>
+    {% endfor %}
+  </div>
+
+</div>
+</body>
+</html>

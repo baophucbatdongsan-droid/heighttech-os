@@ -1,0 +1,27 @@
+{# apps/dashboard/templates/dashboard/_topbar.html #}
+<header class="topbar" role="banner">
+  <div class="topbar-left">
+    <button type="button" class="sidebarToggle" onclick="openSidebar()">☰ Menu</button>
+    <div style="min-width:0;">
+      <div class="topbar-title">
+        {% block topbar_title %}{{ page_title|default:"HeightTech" }}{% endblock %}
+      </div>
+      <div class="topbar-sub">
+        {% block topbar_subtitle %}
+          {% if request.user.is_authenticated %}
+            {{ request.user.username }} • Tenant {{ request.tenant_id }}
+          {% else %}
+            Guest
+          {% endif %}
+        {% endblock %}
+      </div>
+    </div>
+  </div>
+
+  <div class="topbar-right">
+    {% block topbar_actions %}
+      <a class="chip" href="/dashboard/">🏠</a>
+      <a class="chip" href="/dashboard/projects/">📋</a>
+    {% endblock %}
+  </div>
+</header>

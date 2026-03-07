@@ -1,9 +1,52 @@
+from __future__ import annotations
 from decimal import Decimal
 from django.db.models import Avg
 from django.utils import timezone
 
 from apps.performance.models import MonthlyPerformance
 
+
+from typing import Dict, Any, List
+
+
+def detect_risks(context: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Phát hiện rủi ro hệ thống
+    """
+
+    risks: List[Dict[str, Any]] = []
+
+    overdue = context.get("overdue_tasks", 0)
+
+    if overdue >= 10:
+        risks.append(
+            {
+                "ma": "TASK_QUA_HAN",
+                "tieu_de": "Nhiều công việc bị quá hạn",
+                "muc_do": "cao",
+                "mo_ta": f"Có {overdue} công việc quá hạn",
+                "goi_y": "Cần kiểm tra lại tiến độ xử lý",
+            }
+        )
+
+    shops = context.get("shops_health", [])
+
+    for shop in shops:
+        score = shop.get("health_score", 100)
+
+        if score < 50:
+            risks.append(
+                {
+                    "ma": "SHOP_RUI_RO",
+                    "tieu_de": "Shop có dấu hiệu rủi ro",
+                    "muc_do": "trung_binh",
+                    "mo_ta": f"Điểm sức khỏe shop thấp ({score})",
+                    "goi_y": "Cần kiểm tra hoạt động của shop",
+                    "shop_id": shop.get("shop_id"),
+                }
+            )
+
+    return risks
 
 class ShopRiskEngine:
 
