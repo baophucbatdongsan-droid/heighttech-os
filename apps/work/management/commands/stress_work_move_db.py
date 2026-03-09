@@ -11,7 +11,8 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import IntegrityError, close_old_connections, connection, transaction
 
-from apps.work.models import WorkItem, WorkComment, WorkItemTransitionLog
+from apps.work.models import WorkItem, WorkItemTransitionLog
+from apps.work.models_comment import WorkComment
 from apps.work.services_move import create_work_item, move_work_item
 
 

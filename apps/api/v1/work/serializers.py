@@ -7,7 +7,8 @@ from django.apps import apps
 from rest_framework import serializers
 
 from apps.core.permissions import ROLE_CLIENT, resolve_user_role
-from apps.work.models import WorkComment, WorkItem
+from apps.work.models import WorkItem
+from apps.work.models_comment import WorkComment
 
 
 # =====================================================

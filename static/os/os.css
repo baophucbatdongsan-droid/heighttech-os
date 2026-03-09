@@ -1437,3 +1437,111 @@ margin-top:8px;
     max-width:100% !important;
   }
 }
+
+#taskCommentsList .item{
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:12px;
+  padding:10px 12px;
+  background:rgba(255,255,255,.03);
+}
+
+#taskCommentsList .t{
+  font-weight:800;
+  margin-bottom:6px;
+}
+
+#taskCommentsList .d{
+  line-height:1.55;
+  color:var(--text);
+  opacity:.95;
+}
+
+#taskCommentsList .row{
+  margin-top:8px;
+  font-size:12px;
+  color:var(--muted);
+}
+
+#contractWorkBox .card-b{
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+#contractWorkBox .card-b,
+#contractTimelineBox .card-b{
+    max-height:320px;
+    overflow-y:auto;
+}
+
+#contractWorkBox{
+    border-left:4px solid #f59e0b;
+}
+
+#contractTimelineBox{
+    border-left:4px solid #38bdf8;
+}
+
+#founderDashboardBox{
+  border-left:4px solid #22c55e;
+}
+
+.fd-cards{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+}
+
+.fd-card{
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;
+  padding:12px;
+  background:rgba(255,255,255,.03);
+}
+
+.fd-k{
+  font-size:12px;
+  color:var(--muted);
+  margin-bottom:6px;
+}
+
+.fd-v{
+  font-size:20px;
+  font-weight:900;
+}
+
+@media (max-width: 900px){
+  .fd-cards{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+#shopRiskRadarBox{
+  border-left:4px solid #ef4444;
+}
+#aiDecisionBox{
+  border-left:4px solid #14b8a6;
+}
+#contractHealthScoreBox{
+  border-left:4px solid #f97316;
+}
+#productRadarBox{
+  border-left:4px solid #0ea5e9;
+}
+#shopServicesOverviewBox{
+  border-left:4px solid #22c55e;
+}
+#shopServiceTimelineBox{
+  border-left:4px solid #a855f7;
+}
+#shopCommandCenterBox{
+border-left:4px solid #ef4444;
+}
+#shopAIActionsBox{
+  border-left:4px solid #14b8a6;
+}
+#shopMissionDigestBox{
+  border-left:4px solid #f59e0b;
+}
+#shopKPIStripBox{
+  border-left:4px solid #3b82f6;
+}

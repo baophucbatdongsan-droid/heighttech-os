@@ -7,7 +7,8 @@ from typing import Iterable, Optional
 from django.db import transaction
 from django.utils import timezone
 
-from apps.work.models import WorkItem, WorkComment
+from apps.work.models import WorkItem
+from apps.work.models_comment import WorkComment
 
 
 @dataclass

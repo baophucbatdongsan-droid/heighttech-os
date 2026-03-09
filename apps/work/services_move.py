@@ -1,7 +1,8 @@
-# apps/work/services_move.py
+# apps/work/service_move.py
 from __future__ import annotations
 
 import time
+from dataclasses import dataclass
 from typing import Optional, List, Any, Union
 
 from django.db import IntegrityError, transaction, connection
@@ -15,6 +16,14 @@ from apps.work.models import WorkItem
 
 _ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz"
 LockPart = Union[int, str]
+
+
+@dataclass
+class MoveResult:
+    from_status: str
+    to_status: str
+    from_position: int
+    to_position: int
 
 
 def _fnv1a_64(data: bytes) -> int:
@@ -55,10 +64,6 @@ def _advisory_xact_lock(*keys: Any) -> None:
     if getattr(connection, "vendor", "") != "postgresql":
         return
 
-    # pg_advisory_xact_lock supports:
-    #   - (bigint)
-    #   - (int, int)
-    # We'll use (int, int) stable mixing.
     k1 = 0
     k2 = 0
     for i, k in enumerate(keys):
@@ -72,13 +77,20 @@ def _advisory_xact_lock(*keys: Any) -> None:
         cur.execute("SELECT pg_advisory_xact_lock(%s, %s)", [k1, k2])
 
 
-def _lock_column(*, tenant_id: int, company_id: int, status: str) -> None:
+def _company_lock_key(company_id: Optional[int]) -> int:
     """
-    Transaction-scoped lock per (tenant, company, status).
+    company_id=None phải map về 0 để lock và logic unique khớp company_key=0.
+    """
+    return int(company_id or 0)
+
+
+def _lock_column(*, tenant_id: int, company_id: Optional[int], status: str) -> None:
+    """
+    Transaction-scoped lock per (tenant, company_key, status).
     Must be called INSIDE atomic().
     """
     status = (status or "").strip().lower()
-    _advisory_xact_lock("workitem.column", tenant_id, company_id, status)
+    _advisory_xact_lock("workitem.column", tenant_id, _company_lock_key(company_id), status)
 
 
 # =====================================================
@@ -120,10 +132,25 @@ def _tmp_rank_for_id(_id: int, width: int = 10) -> str:
     return ("z" + s)[:width]
 
 
+def _column_qs(*, tenant_id: int, company_id: Optional[int], status: str):
+    """
+    Queryset cột theo logic company_key:
+    - company_id is None => lọc company_id__isnull=True
+    - company_id có giá trị => lọc company_id=<id>
+    """
+    qs = WorkItem.objects_all.filter(
+        tenant_id=tenant_id,
+        status=(status or "").strip().lower(),
+    )
+    if company_id is None:
+        return qs.filter(company_id__isnull=True)
+    return qs.filter(company_id=company_id)
+
+
 def _rebuild_ranks_for_column(
     *,
     tenant_id: int,
-    company_id: int,
+    company_id: Optional[int],
     status: str,
     ordered_ids: List[int],
 ) -> None:
@@ -139,27 +166,27 @@ def _rebuild_ranks_for_column(
         return
 
     status = (status or "").strip().lower()
-
-    # Phase 1: temp ranks
-    tmp_whens = [When(id=_id, then=Value(_tmp_rank_for_id(_id))) for _id in ordered_ids]
-    WorkItem.objects.filter(
+    qs = _column_qs(
         tenant_id=tenant_id,
         company_id=company_id,
         status=status,
-        id__in=ordered_ids,
-    ).update(rank=Case(*tmp_whens, output_field=CharField()))
+    ).filter(id__in=ordered_ids)
 
-    # Phase 2: final ranks 1..N
+    tmp_whens = [When(id=_id, then=Value(_tmp_rank_for_id(_id))) for _id in ordered_ids]
+    qs.update(rank=Case(*tmp_whens, output_field=CharField()))
+
     final_whens = [
         When(id=_id, then=Value(_rank_for_pos(idx)))
         for idx, _id in enumerate(ordered_ids, start=1)
     ]
-    WorkItem.objects.filter(
-        tenant_id=tenant_id,
-        company_id=company_id,
-        status=status,
-        id__in=ordered_ids,
-    ).update(rank=Case(*final_whens, output_field=CharField()))
+    qs.update(rank=Case(*final_whens, output_field=CharField()))
+
+
+def _position_in_ids(ids: List[int], item_id: int) -> int:
+    try:
+        return ids.index(item_id) + 1
+    except ValueError:
+        return 0
 
 
 # =====================================================
@@ -169,7 +196,7 @@ def _rebuild_ranks_for_column(
 def create_work_item(
     *,
     tenant_id: int,
-    company_id: int,
+    company_id: Optional[int],
     title: str,
     status: str = "todo",
     created_by_id: int,
@@ -186,13 +213,13 @@ def create_work_item(
             with transaction.atomic():
                 _lock_column(tenant_id=tenant_id, company_id=company_id, status=status)
 
-                n = WorkItem.objects.filter(
+                n = _column_qs(
                     tenant_id=tenant_id,
                     company_id=company_id,
                     status=status,
                 ).count()
 
-                wi = WorkItem.objects.create(
+                wi = WorkItem.objects_all.create(
                     tenant_id=tenant_id,
                     company_id=company_id,
                     title=title,
@@ -206,12 +233,11 @@ def create_work_item(
         except IntegrityError:
             if attempt == max_retries:
                 raise
-            # Rebuild column then retry
             try:
                 with transaction.atomic():
                     _lock_column(tenant_id=tenant_id, company_id=company_id, status=status)
                     ids = list(
-                        WorkItem.objects.filter(
+                        _column_qs(
                             tenant_id=tenant_id,
                             company_id=company_id,
                             status=status,
@@ -238,13 +264,14 @@ def move_work_item(
     item_id: int,
     to_status: Optional[str] = None,
     to_position: Optional[int] = None,
-) -> None:
+) -> MoveResult:
     """
     Move item to another status/position using rank ordering.
 
-    Guarantees under advisory locks:
-    - lock columns in stable order (reduce deadlock risk)
-    - rebuild ranks 2-phase to avoid unique collisions
+    Fix chính:
+    - dùng objects_all để không bị manager ẩn dữ liệu
+    - nếu đổi cột thì gán rank tạm trước rồi mới đổi status
+    - xử lý đúng cột có company_id=None
     """
     max_retries = 20
 
@@ -252,25 +279,41 @@ def move_work_item(
         try:
             with transaction.atomic():
                 base = (
-                    WorkItem.objects.only("id", "tenant_id", "company_id", "status")
+                    WorkItem.objects_all.only("id", "tenant_id", "company_id", "status", "rank")
                     .get(id=item_id, tenant_id=tenant_id)
                 )
+
                 company_id = base.company_id
                 from_status = (base.status or "").strip().lower()
                 target_status = (to_status or from_status).strip().lower()
+                if not target_status:
+                    target_status = from_status
+
+                current_ids = list(
+                    _column_qs(
+                        tenant_id=tenant_id,
+                        company_id=company_id,
+                        status=from_status,
+                    )
+                    .order_by("rank", "id")
+                    .values_list("id", flat=True)
+                )
+                from_position = _position_in_ids(current_ids, item_id)
 
                 pos = 1 if to_position is None else int(to_position)
                 if pos < 1:
                     pos = 1
 
-                # lock columns in sorted order
                 for st in sorted({from_status, target_status}):
-                    _lock_column(tenant_id=tenant_id, company_id=company_id, status=st)
+                    _lock_column(
+                        tenant_id=tenant_id,
+                        company_id=company_id,
+                        status=st,
+                    )
 
-                # lock row
                 wi = (
-                    WorkItem.objects.select_for_update()
-                    .only("id", "tenant_id", "company_id", "status", "rank")
+                    WorkItem.objects_all.select_for_update()
+                    .only("id", "tenant_id", "company_id", "status", "rank", "updated_at")
                     .get(id=item_id, tenant_id=tenant_id)
                 )
 
@@ -279,11 +322,20 @@ def move_work_item(
                     target_status = from_status
 
                 if target_status != from_status:
-                    WorkItem.objects.filter(id=wi.id).update(status=target_status)
-                    wi.status = target_status
+                    tmp_rank = _tmp_rank_for_id(wi.id)
+
+                    WorkItem.objects_all.filter(
+                        id=wi.id,
+                        tenant_id=tenant_id,
+                    ).update(
+                        rank=tmp_rank,
+                        status=target_status,
+                    )
+
+                    wi.refresh_from_db(fields=["id", "tenant_id", "company_id", "status", "rank"])
 
                 ids = list(
-                    WorkItem.objects.filter(
+                    _column_qs(
                         tenant_id=tenant_id,
                         company_id=company_id,
                         status=target_status,
@@ -302,10 +354,34 @@ def move_work_item(
                     status=target_status,
                     ordered_ids=ids,
                 )
-                return
+
+                if from_status != target_status:
+                    old_ids = list(
+                        _column_qs(
+                            tenant_id=tenant_id,
+                            company_id=company_id,
+                            status=from_status,
+                        )
+                        .order_by("rank", "id")
+                        .values_list("id", flat=True)
+                    )
+
+                    _rebuild_ranks_for_column(
+                        tenant_id=tenant_id,
+                        company_id=company_id,
+                        status=from_status,
+                        ordered_ids=old_ids,
+                    )
+
+                return MoveResult(
+                    from_status=from_status,
+                    to_status=target_status,
+                    from_position=from_position if from_position > 0 else 1,
+                    to_position=insert_idx + 1,
+                )
 
         except WorkItem.DoesNotExist:
-            return
+            raise ValueError(f"WorkItem {item_id} không tồn tại trong tenant {tenant_id}")
 
         except IntegrityError as e:
             if attempt == max_retries:
@@ -325,7 +401,6 @@ def _rank_to_int(rank: str) -> int:
         return 0
     n = 0
     for ch in r:
-        # if dirty ranks exist with prefix 'z', keep them parseable by treating 'z' as 35
         if ch not in _ALPHABET:
             raise ValueError(f"invalid rank char: {ch!r}")
         n = n * 36 + _ALPHABET.index(ch)
@@ -358,7 +433,7 @@ def _pick_rank_between(
 def _rebalance_column(
     *,
     tenant_id: int,
-    company_id: int,
+    company_id: Optional[int],
     status: str,
 ) -> None:
     status = (status or "").strip().lower()
@@ -368,7 +443,7 @@ def _rebalance_column(
     with transaction.atomic():
         _lock_column(tenant_id=tenant_id, company_id=company_id, status=status)
         ids = list(
-            WorkItem.objects.filter(
+            _column_qs(
                 tenant_id=tenant_id,
                 company_id=company_id,
                 status=status,

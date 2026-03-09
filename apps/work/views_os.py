@@ -16,9 +16,10 @@ from django.views.decorators.http import require_http_methods
 from apps.core.decorators import require_ability
 from apps.core.policy import VIEW_DASHBOARD
 from apps.shops.models import ShopMember
-from apps.work.models import WorkItem, WorkComment
-
-
+from apps.work.models import WorkItem
+from apps.work.models_comment import WorkComment
+from apps.work.services.workitem_engine import transition_workitem
+from apps.work.services_move import create_work_item
 User = get_user_model()
 
 
@@ -286,14 +287,13 @@ def os_create_quick(request: HttpRequest):
 
     me = request.user if _can_use_actor(request.user) else None
 
-    item = WorkItem(
+    item = create_work_item(
         tenant_id=tid,
+        company_id=None,
         title=title[:255],
-        priority=priority,
         status=WorkItem.Status.TODO,
-        created_by=me,
-        requester=me,
-        assignee=me,
+        created_by_id=me.id if me else None,
+        requester_id=me.id if me else None,
     )
 
     # ✅ Phase 2: allow shop attach from form later (optional)
@@ -330,7 +330,12 @@ def os_transition(request: HttpRequest, item_id: int):
         return JsonResponse({"ok": False, "error": "TO_STATUS_REQUIRED"}, status=400)
 
     try:
-        item.transition_to(to_status, actor=request.user, note=note)
+        item = transition_workitem(
+            wi=item,
+            to=to_status,
+            actor=request.user,
+            reason=note,
+        )
     except Exception as e:
         return JsonResponse(
             {"ok": False, "error": "TRANSITION_FAILED", "detail": str(e), "to_status": to_status},

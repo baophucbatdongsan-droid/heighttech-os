@@ -9,7 +9,9 @@ from apps.work.views_client import client_work_home
 from apps.sales.views_client_sales import client_sales_home
 from django.views.generic import TemplateView
 from django.http import HttpResponse
-
+admin.site.site_header = "HeightTech OS"
+admin.site.site_title = "HeightTech OS"
+admin.site.index_title = "Bảng điều hành hệ thống HeightTech"
 def root_view(request):
     """
     Root điều hướng theo trạng thái đăng nhập + role.

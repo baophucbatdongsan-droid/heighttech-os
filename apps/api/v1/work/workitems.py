@@ -8,7 +8,8 @@ from rest_framework.exceptions import ValidationError as DRFValidationError
 
 from apps.api.v1.base import BaseApi, api_error, api_ok
 from apps.core.tenant_context import get_current_tenant_id
-from apps.work.models import WorkItem, WorkComment, WorkItemTransitionLog
+from apps.work.models import WorkItem, WorkItemTransitionLog
+from apps.work.models_comment import WorkComment
 
 
 def _current_tenant_id(request) -> Optional[int]:

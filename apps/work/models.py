@@ -14,7 +14,7 @@ from apps.work.engine import WorkflowEngine
 
 # Event bus (outbox)
 from apps.events.bus import emit_event, make_dedupe_key
-
+from apps.work.models_comment import WorkComment
 
 def _raw_manager(Model):
     if hasattr(Model, "_base_manager") and Model._base_manager is not None:
@@ -589,30 +589,6 @@ class WorkItem(models.Model):
         return f"[{self.status}] {self.title}"
 
 
-class WorkComment(models.Model):
-    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE, db_index=True)
-    work_item = models.ForeignKey("work.WorkItem", on_delete=models.CASCADE, related_name="comments", db_index=True)
-
-    actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
-
-    body = models.TextField(blank=True, default="")
-    meta = models.JSONField(default=dict, blank=True)
-
-    created_at = models.DateTimeField(default=timezone.now, db_index=True)
-
-    objects = TenantManager()
-    objects_all = TenantAllManager()
-
-    class Meta:
-        ordering = ["-id"]
-        indexes = [
-            models.Index(fields=["tenant", "work_item"], name="wc_t_wi_idx"),
-            models.Index(fields=["tenant", "created_at"], name="wc_t_ct_idx"),
-        ]
-
-    def __str__(self) -> str:
-        return f"Comment#{self.pk} item={self.work_item_id}"
-
 
 class WorkItemTransitionLog(models.Model):
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE, db_index=True)
@@ -648,3 +624,4 @@ class WorkItemTransitionLog(models.Model):
 
     def __str__(self) -> str:
         return f"TransitionLog#{self.pk} wi={self.workitem_id} {self.from_status}->{self.to_status}"
+    

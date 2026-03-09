@@ -168,7 +168,15 @@
                 style="flex:1; min-width:220px;"
               />
             </div>
-
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+              <input id="newTaskDueAt" class="input" type="datetime-local" style="min-width:220px;">
+              <select id="newTaskPriority" class="input" style="min-width:180px;">
+                <option value="2">Ưu tiên vừa</option>
+                <option value="1">Ưu tiên thấp</option>
+                <option value="3">Ưu tiên cao</option>
+                <option value="4">Ưu tiên gấp</option>
+              </select>
+            </div>
             <div class="work-form-row">
               <button class="mini btn" id="btnCreateTask" type="button">Create</button>
               <button class="mini btn ghost" id="btnCancelTask" type="button">Cancel</button>
@@ -274,7 +282,13 @@
           </div>
         </div>
       </div>
-
+      <div class="kanban-add">
+        <input
+          class="kanban-add-input"
+          placeholder="+ Add task..."
+          data-status="todo"
+        />
+      </div>
       <!-- ================================= -->
       <!-- SHOP HEALTH -->
       <!-- ================================= -->
@@ -480,10 +494,32 @@
           <div class="side-card-title" style="margin-top:16px;">Nhật ký gần nhất</div>
           <div class="task-activity-list" id="taskActivityList"></div>
         </div>
+        <div class="card" style="margin-top:12px;">
+        <div class="card-h">
+          <div>Comments</div>
+        </div>
+        <div class="card-b">
+          <div id="taskCommentsList"></div>
+
+          <div style="margin-top:12px;">
+            <textarea
+              id="taskCommentInput"
+              class="input"
+              placeholder="Viết comment..."
+              style="width:100%; min-height:100px; resize:vertical;"
+            ></textarea>
+
+            <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+              <button id="btnSubmitTaskComment" type="button">Gửi comment</button>
+            </div>
+          </div>
+        </div>
+      </div>
       </div>
     </div>
   </aside>
 </div>
+
   <!-- ================================= -->
   <!-- COMMAND MODAL -->
   <!-- ================================= -->
@@ -539,19 +575,20 @@
   </div>
 <script>
   window.HT_TENANT_ID = 1;
-
   window.HT_OS = {
+    home: "/api/v1/os/home/",
     controlCenter: "/api/v1/os/control-center/",
     timeline: "/api/v1/os/timeline/",
     notifications: "/api/v1/os/notifications/",
-    home: "/api/v1/os/home/",
-    commandCenter: "/api/v1/os/command-center/",
     stream: "/api/v1/os/stream/",
+
     workInbox: "/api/v1/os/work/inbox/",
     workCreate: "/api/v1/os/work/create/",
     workAssignBase: "/api/v1/os/work/",
-    workAssignBy: "/api/v1/os/work/assign-by/",
     workUpdateBase: "/api/v1/os/work/",
+    workAssignBy: "/api/v1/os/work/assign-by/",
+
+    workCommentsBase: "/api/v1/os/work/"
   };
 </script>
 

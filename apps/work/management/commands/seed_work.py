@@ -97,7 +97,8 @@ def seed_work(
     from apps.brands.models import Brand
     from apps.shops.models import Shop
     from apps.channels.models import Channel, ChannelShopLink
-    from apps.work.models import WorkItem, WorkComment
+    from apps.work.models import WorkItem
+    from apps.work.models_comment import WorkComment
 
     # Booking optional
     try:

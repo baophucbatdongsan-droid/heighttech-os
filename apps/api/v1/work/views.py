@@ -20,7 +20,8 @@ from apps.core.permissions import (
     resolve_user_role,
     ROLE_CLIENT,
 )
-from apps.work.models import WorkItem, WorkComment
+from apps.work.models import WorkItem
+from apps.work.models_comment import WorkComment
 from apps.work.services_move import move_work_item
 from apps.work.permissions import (
     scope_workitem_queryset,

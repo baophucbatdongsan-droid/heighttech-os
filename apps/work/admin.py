@@ -1,9 +1,9 @@
-# FILE: apps/work/admin.py
 from __future__ import annotations
 
 from django.contrib import admin
 
-from apps.work.models import WorkItem, WorkComment, WorkItemTransitionLog
+from apps.work.models import WorkItem, WorkItemTransitionLog
+from apps.work.models_comment import WorkComment
 
 
 @admin.register(WorkItem)
@@ -30,7 +30,8 @@ class WorkItemAdmin(admin.ModelAdmin):
 @admin.register(WorkComment)
 class WorkCommentAdmin(admin.ModelAdmin):
     list_display = ("id", "tenant", "work_item", "actor", "created_at")
-    search_fields = ("body",)
+    search_fields = ("body", "work_item__title", "actor__username", "actor__email")
+    list_filter = ("tenant", "created_at")
     readonly_fields = ("created_at",)
     autocomplete_fields = ("work_item", "actor")
 

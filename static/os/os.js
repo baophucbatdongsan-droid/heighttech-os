@@ -92,10 +92,11 @@
       headers["X-CSRFToken"]=csrf;
     }
 
-    const res = await fetch(url,Object.assign({
-        credentials:"include",
-        headers
-    },opts));
+    const res = await fetch(url, Object.assign({
+      credentials: "include",
+      headers,
+      cache: "no-store",
+    }, opts));
 
     const ct = res.headers.get("content-type")||"";
     const data = ct.includes("application/json")
@@ -464,37 +465,185 @@
   }
 
   function renderStrategies(items) {
-    const el = $("strategyList");
-    if (!el) return;
+      const el = $("strategyList");
+      if (!el) return;
 
-    const arr = Array.isArray(items) ? items : [];
+      const arr = Array.isArray(items) ? items : [];
 
-    if (!arr.length) {
-      el.innerHTML = `
-        <div class="item">
-          <div class="t">Chưa có chiến lược</div>
-          <div class="d">Strategy engine sẽ bơm kế hoạch theo rủi ro và mục tiêu.</div>
-        </div>
-      `;
-      return;
+      if (!arr.length) {
+        el.innerHTML = `
+          <div class="item">
+            <div class="t">Chưa có chiến lược</div>
+            <div class="d">Strategy engine sẽ bơm kế hoạch theo rủi ro và mục tiêu.</div>
+          </div>
+        `;
+        return;
+      }
+
+      el.innerHTML = "";
+      arr.slice(0, 10).forEach((p) => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <div class="t">${escapeHtml(p.title || p.ten || "Strategy")}</div>
+          <div class="d">${escapeHtml(p.summary || p.mo_ta || p.message || "")}</div>
+          <div class="row">
+            <span>${escapeHtml(p.priority || "")}</span>
+            <span>${escapeHtml(p.kind || "")}</span>
+          </div>
+        `;
+        el.appendChild(div);
+      });
     }
+    function renderContractWork(data) {
+      const workPanel = $("workPanel");
+      if (!workPanel) return;
 
-    el.innerHTML = "";
-    arr.slice(0, 10).forEach((p) => {
-      const div = document.createElement("div");
-      div.className = "item";
-      div.innerHTML = `
-        <div class="t">${escapeHtml(p.title || p.ten || "Strategy")}</div>
-        <div class="d">${escapeHtml(p.summary || p.mo_ta || p.message || "")}</div>
-        <div class="row">
-          <span>${escapeHtml(p.priority || "")}</span>
-          <span>${escapeHtml(p.kind || "")}</span>
-        </div>
+      let box = $("contractWorkBox");
+      if (!box) {
+        box = document.createElement("div");
+        box.id = "contractWorkBox";
+        box.className = "card";
+        box.style.marginTop = "0";
+        box.style.marginBottom = "12px";
+        box.innerHTML = `
+          <div class="card-h">
+            <div>
+              <div class="card-t">Việc từ hợp đồng</div>
+              <div class="muted">Các việc phát sinh từ payment / milestone / booking</div>
+            </div>
+          </div>
+          <div class="card-b">
+            <div id="contractWorkSummary" class="muted" style="margin-bottom:10px;"></div>
+            <div id="contractWorkList"></div>
+          </div>
+        `;
+      }
+
+      // ÉP block này nằm NGAY TRƯỚC workPanel (cột trái chính)
+      const parent = workPanel.parentNode;
+      if (parent && box.parentNode !== parent) {
+        parent.insertBefore(box, workPanel);
+      } else if (parent && box.nextSibling !== workPanel) {
+        parent.insertBefore(box, workPanel);
+      }
+
+      const summaryEl = $("contractWorkSummary");
+      const listEl = $("contractWorkList");
+      if (!summaryEl || !listEl) return;
+
+      const headline = data?.headline || {};
+      const items = Array.isArray(data?.items) ? data.items : [];
+
+      summaryEl.innerHTML = `
+        Tổng việc mở: <b>${headline.contract_work_open || 0}</b> •
+        Quá hạn: <b>${headline.contract_work_overdue || 0}</b> •
+        Gấp: <b>${headline.contract_work_urgent || 0}</b>
       `;
-      el.appendChild(div);
-    });
-  }
 
+      if (!items.length) {
+        listEl.innerHTML = `
+          <div class="item">
+            <div class="t">Chưa có việc từ hợp đồng</div>
+            <div class="d">Hiện chưa có payment / milestone / booking nào cần xử lý.</div>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = "";
+
+      items.forEach((x) => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <div class="t is-clickable" data-open-task="${escapeHtml(x.id)}">${escapeHtml(x.title || "Task hợp đồng")}</div>
+          <div class="d">${escapeHtml(x.description || "")}</div>
+          <div class="row">
+            <span>Trạng thái: ${escapeHtml(x.status || "todo")}</span>
+            <span>Ưu tiên: ${escapeHtml(x.priority || 0)}</span>
+            <span>Loại: ${escapeHtml(x.target_type || "")}</span>
+            <span>Deadline: ${escapeHtml(fmtTime(x.due_at) || "-")}</span>
+          </div>
+        `;
+        listEl.appendChild(div);
+      });
+    }
+    function timelineIcon(kind){
+      if(kind === "contract_payment") return "💰";
+      if(kind === "contract_milestone") return "📌";
+      if(kind === "contract_booking_item") return "🎬";
+      return "📄";
+    }
+    function renderContractTimeline(data) {
+      const contractWorkBox = $("contractWorkBox");
+      if (!contractWorkBox) return;
+
+      let box = $("contractTimelineBox");
+      if (!box) {
+        box = document.createElement("div");
+        box.id = "contractTimelineBox";
+        box.className = "card";
+        box.style.marginTop = "12px";
+        box.innerHTML = `
+          <div class="card-h">
+            <div>
+              <div class="card-t">Timeline hợp đồng</div>
+              <div class="muted">Theo dõi payment / milestone / booking theo vòng đời</div>
+            </div>
+          </div>
+          <div class="card-b">
+            <div id="contractTimelineSummary" class="muted" style="margin-bottom:10px;"></div>
+            <div id="contractTimelineList"></div>
+          </div>
+        `;
+        contractWorkBox.parentNode.insertBefore(box, contractWorkBox.nextSibling);
+      }
+
+      const summaryEl = $("contractTimelineSummary");
+      const listEl = $("contractTimelineList");
+      if (!summaryEl || !listEl) return;
+
+      const headline = data?.headline || {};
+      const items = Array.isArray(data?.items) ? data.items : [];
+
+      summaryEl.innerHTML = `
+        Tổng mốc: <b>${headline.contract_timeline_total || 0}</b> •
+        Critical: <b>${headline.contract_timeline_critical || 0}</b> •
+        Warning: <b>${headline.contract_timeline_warning || 0}</b> •
+        Info: <b>${headline.contract_timeline_info || 0}</b>
+      `;
+
+      if (!items.length) {
+        listEl.innerHTML = `
+          <div class="item">
+            <div class="t">Chưa có timeline hợp đồng</div>
+            <div class="d">Hiện chưa có payment / milestone / booking trong vòng 14 ngày tới.</div>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = "";
+
+      items.forEach((x) => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <div class="t is-clickable" data-open-task="${escapeHtml(x.target_id || "")}">${timelineIcon(x.kind)} ${escapeHtml(x.title || "Timeline hợp đồng")}</div>
+          <div class="d">${escapeHtml(x.summary || "")}</div>
+          <div class="row">
+            <span>Loại: ${escapeHtml(x.kind || "")}</span>
+            <span class="priority-${escapeHtml(x.priority || "info")}">
+            Mức độ: ${escapeHtml(x.priority || "")}
+            </span>
+            <span>Hợp đồng: ${escapeHtml(x.contract_code || "")}</span>
+            <span>Hạn: ${escapeHtml(fmtTime(x.due_at) || "-")}</span>
+          </div>
+        `;
+        listEl.appendChild(div);
+      });
+    }
   function renderKernel(data) {
     const el = $("kernelTable");
     if (!el) return;
@@ -517,6 +666,17 @@
       ["Decision actions", Array.isArray(qd?.hanh_dong) ? qd.hanh_dong.length : 0],
       ["Risks", risks.length],
       ["Strategies", strategyCount],
+      ["Contract payment overdue", data?.headline?.contract_payment_overdue ?? 0],
+      ["Contract payment due soon", data?.headline?.contract_payment_due_soon ?? 0],
+      ["Contract milestone overdue", data?.headline?.contract_milestone_overdue ?? 0],
+      ["Contract milestone due soon", data?.headline?.contract_milestone_due_soon ?? 0],
+      ["Booking payout overdue", data?.headline?.booking_payout_overdue ?? 0],
+      ["Booking payout due soon", data?.headline?.booking_payout_due_soon ?? 0],
+      ["Booking air soon", data?.headline?.booking_air_soon ?? 0],
+      ["Booking air passed no link", data?.headline?.booking_air_passed_no_link ?? 0],
+      ["Contract work open", data?.headline?.contract_work_open ?? 0],
+      ["Contract work overdue", data?.headline?.contract_work_overdue ?? 0],
+      ["Contract work urgent", data?.headline?.contract_work_urgent ?? 0],
       ["Realtime", $("rtPill")?.textContent || "-"],
     ];
 
@@ -731,7 +891,21 @@
     const el = $("workList");
     if (!el) return;
 
-    const items = filteredTasks(resp?.items || []);
+        const items = filteredTasks(resp?.items || []).sort((a, b) => {
+          const aContract = ["contract_payment", "contract_milestone", "contract_booking_item"].includes(String(a.target_type || ""));
+          const bContract = ["contract_payment", "contract_milestone", "contract_booking_item"].includes(String(b.target_type || ""));
+
+          if (aContract && !bContract) return -1;
+          if (!aContract && bContract) return 1;
+
+          const ap = Number(a.priority || 0);
+          const bp = Number(b.priority || 0);
+          if (bp !== ap) return bp - ap;
+
+          const ad = a.due_at ? new Date(a.due_at).getTime() : Number.MAX_SAFE_INTEGER;
+          const bd = b.due_at ? new Date(b.due_at).getTime() : Number.MAX_SAFE_INTEGER;
+          return ad - bd;
+        });
 
     if (!items.length) {
       el.innerHTML = `
@@ -866,7 +1040,7 @@
       </div>
     `;
   }
-
+  
   function makeQuickCreateBox(groupType, groupKey, label) {
     return `
       <div class="kb-quick-create" style="display:flex; gap:8px; margin-bottom:10px;">
@@ -1062,6 +1236,7 @@
 
     return payload;
   }
+  bindQuickCreateInputs();
 
   async function quickCreateByGroup(groupType, groupKey, inputEl) {
     const title = (inputEl?.value || "").trim();
@@ -1087,8 +1262,10 @@
     if (!CFG.workInbox) return;
 
     const p = scopeParams();
-    p.set("status", "all");
-    p.set("limit", "200");
+    p.set("page", "1");
+    p.set("page_size", "200");
+    // KHÔNG set status=all
+    // KHÔNG dùng limit vì backend không đọc limit ở endpoint này
 
     const data = await http(`${CFG.workInbox}?${p.toString()}`);
     const items = Array.isArray(data?.items) ? data.items : [];
@@ -1102,12 +1279,18 @@
 
     STATE.raw.work = data;
 
-    setKpiValueByLabel("Open Tasks", data?.open_count ?? STATE.work.open.length);
+    setKpiValueByLabel("Open Tasks", STATE.work.open.length);
 
     renderAllWork();
     renderRawJson();
   }
+  async function refreshTaskComments(taskId) {
+    if (!taskId || !CFG.workCommentsBase) return;
 
+    const data = await http(`${CFG.workCommentsBase}${taskId}/comments/`);
+    STATE.raw.comments = data;
+    renderTaskComments(data?.items || []);
+  }
   async function refreshControlCenter() {
     if (!CFG.controlCenter) return;
 
@@ -1234,7 +1417,26 @@
     }
 
     updateHeadline(data.headline || {});
+    renderMissionControl((data.blocks && data.blocks.mission_control) || {});
+    renderFounderDashboard((data.blocks && data.blocks.founder_dashboard) || {});
+    renderShopRiskRadar((data.blocks && data.blocks.shop_risk_radar) || {});
+    renderCashflowRadar((data.blocks && data.blocks.cashflow_radar) || {});
+    renderRevenuePrediction((data.blocks && data.blocks.revenue_prediction) || {});
+    renderAIDecisions((data.blocks && data.blocks.ai_decisions) || {});
+    renderContractHealthScore((data.blocks && data.blocks.contract_health_score) || {});
+    renderAgencyHealth((data.blocks && data.blocks.agency_health) || {});
+    renderShopBrain((data.blocks && data.blocks.shop_brain) || {})
+    renderProductRadar((data.blocks && data.blocks.product_radar) || {});
+    renderShopServicesOverview((data.blocks && data.blocks.shop_services_overview) || {});
+    renderShopServiceTimeline((data.blocks && data.blocks.shop_service_timeline) || {});
+    renderShopKPIStrip((data.blocks && data.blocks.shop_kpi_strip) || {});
+    renderShopMissionDigest((data.blocks && data.blocks.shop_mission_digest) || {});
+    renderShopCommandCenter((data.blocks && data.blocks.shop_command_center) || {});
+    renderShopAIActions((data.blocks && data.blocks.shop_ai_actions) || {});
     renderStrategies(strategies);
+    renderContractWork((data.blocks && data.blocks.contract_work) || {});
+    renderContractTimeline((data.blocks && data.blocks.contract_timeline) || {});
+    renderContractRadar(data.blocks?.contract_radar);
     renderKernel(data);
     renderShopQuickNav(data);
     renderRawJson();
@@ -1248,21 +1450,114 @@
       body: JSON.stringify(payload),
     });
   }
+  function getStatusColumnItems(status) {
+    return STATE.work.all
+      .filter((x) => String(x.status || "").toLowerCase() === String(status || "").toLowerCase())
+      .sort((a, b) => {
+        const ra = String(a.rank || "");
+        const rb = String(b.rank || "");
+        if (ra < rb) return -1;
+        if (ra > rb) return 1;
+        return Number(a.id) - Number(b.id);
+      });
+  }
+
+  function calcDropPosition(col, draggedId) {
+    const cards = qsa(".kcard", col).filter((x) => String(x.dataset.id) !== String(draggedId));
+    if (!cards.length) return 1;
+
+    const y = window.__HT_LAST_DROP_Y__ || 0;
+    let pos = cards.length + 1;
+
+    for (let i = 0; i < cards.length; i++) {
+      const rect = cards[i].getBoundingClientRect();
+      const mid = rect.top + rect.height / 2;
+      if (y < mid) {
+        pos = i + 1;
+        break;
+      }
+    }
+
+    return pos;
+  }
+  function patchTaskLocal(taskId, patch = {}) {
+    const id = String(taskId);
+
+    STATE.work.all = STATE.work.all.map((x) =>
+      String(x.id) === id ? { ...x, ...patch } : x
+    );
+
+    STATE.work.open = STATE.work.all.filter(
+      (x) => !["done", "cancelled"].includes(String(x.status || "").toLowerCase())
+    );
+    STATE.work.todo = STATE.work.all.filter(
+      (x) => String(x.status || "").toLowerCase() === "todo"
+    );
+    STATE.work.doing = STATE.work.all.filter(
+      (x) => String(x.status || "").toLowerCase() === "doing"
+    );
+    STATE.work.blocked = STATE.work.all.filter(
+      (x) => String(x.status || "").toLowerCase() === "blocked"
+    );
+    STATE.work.done = STATE.work.all.filter(
+      (x) => String(x.status || "").toLowerCase() === "done"
+    );
+  }
+  
   let MOVE_LOCK = false;
-  async function moveTask(id, status) {
+
+  async function moveTask(id, status, toPosition = null) {
     if (!CFG.workAssignBase) throw new Error("Thiếu CFG.workAssignBase");
 
-    const url = `${CFG.workAssignBase}${id}/move/`;
+    if (MOVE_LOCK) {
+      console.warn("[moveTask] blocked by MOVE_LOCK");
+      return;
+    }
 
-    await http(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
+    const task = findTaskById(id);
+    if (!task) throw new Error("Không tìm thấy task");
 
-    await refreshWorkData();
-    await refreshTimeline(true);
-    await refreshHome();
+    const oldTask = { ...task };
+    const oldStatus = String(task.status || "todo");
+
+    MOVE_LOCK = true;
+
+    try {
+      patchTaskLocal(id, { status });
+      renderAllWork();
+      setKpiValueByLabel("Open Tasks", STATE.work.open.length);
+
+      const url = `${CFG.workAssignBase}${id}/move/`;
+
+      const resp = await http(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          to_status: status,
+          to_position: toPosition,
+        }),
+      });
+
+      if (resp?.item) {
+        patchTaskLocal(id, resp.item);
+      } else {
+        patchTaskLocal(id, { status });
+      }
+
+      renderAllWork();
+      setKpiValueByLabel("Open Tasks", STATE.work.open.length);
+
+      refreshTimeline(true).catch(console.warn);
+      refreshHome().catch(console.warn);
+      setTimeout(() => refreshWorkData().catch(console.warn), 120);
+    } catch (err) {
+      patchTaskLocal(id, oldTask);
+      renderAllWork();
+      setKpiValueByLabel("Open Tasks", STATE.work.open.length);
+      throw err;
+    } finally {
+      MOVE_LOCK = false;
+    }
   }
 
   async function assignTaskById(id, assigneeId) {
@@ -1316,15 +1611,6 @@
         });
     }
 
-    if("status" in payload){
-
-        await http(`${CFG.workAssignBase}${taskId}/move/`,{
-            method:"POST",
-            headers:{"content-type":"application/json"},
-            body:JSON.stringify({status:payload.status})
-        });
-    }
-
     if("assignee_id" in payload && payload.assignee_id){
 
         await http(`${CFG.workAssignBase}${taskId}/assign/`,{
@@ -1355,6 +1641,8 @@
     const title = ($("newTaskTitle")?.value || "").trim();
     const assigneeId = ($("newTaskAssignee")?.value || "").trim();
     const assigneeBy = ($("newTaskAssigneeBy")?.value || "").trim();
+    const dueAt = ($("newTaskDueAt")?.value || "").trim();
+    const priority = Number(($("newTaskPriority")?.value || "2").trim() || 2);
 
     if (!title) {
       alert("Nhập title task nha anh");
@@ -1362,7 +1650,11 @@
     }
 
     const p = scopeParams();
-    const payload = { title };
+    const payload = {
+      title,
+      priority,
+      due_at: dueAt || null,
+    };
 
     if (p.get("company_id")) payload.company_id = Number(p.get("company_id"));
     if (p.get("shop_id")) payload.shop_id = Number(p.get("shop_id"));
@@ -1387,7 +1679,8 @@
     if ($("newTaskTitle")) $("newTaskTitle").value = "";
     if ($("newTaskAssignee")) $("newTaskAssignee").value = "";
     if ($("newTaskAssigneeBy")) $("newTaskAssigneeBy").value = "";
-    if ($("workCreateBox")) $("workCreateBox").style.display = "none";
+    if ($("newTaskDueAt")) $("newTaskDueAt").value = "";
+    if ($("newTaskPriority")) $("newTaskPriority").value = "2";
 
     await refreshWorkData();
     await refreshTimeline(true);
@@ -1519,7 +1812,9 @@
         <span class="task-badge">Dự án: ${escapeHtml(meta.projectText)}</span>
       `;
     }
-
+    refreshTaskComments(task.id).catch((e) => {
+      console.warn("load comments lỗi:", e);
+    });
     renderTaskSummary(task);
     renderTaskActivity(task);
 
@@ -1591,6 +1886,7 @@
     qsa(".kanban-list").forEach((col) => {
       col.addEventListener("dragover", (e) => {
         e.preventDefault();
+        window.__HT_LAST_DROP_Y__ = e.clientY;
         col.classList.add("drag-over");
       });
 
@@ -1610,13 +1906,14 @@
         if (dropType !== "status") return;
 
         try {
-          await moveTask(taskId, dropKey);
+          const toPosition = calcDropPosition(col, taskId);
+          await moveTask(taskId, dropKey, toPosition);
         } catch (err) {
           alert("Drag move lỗi: " + err.message);
         }
       });
     });
-  }
+}
   let REFRESH_LOCK = false;
 
   async function safeRefreshAll(force = false) {
@@ -1636,8 +1933,7 @@
 
       const shouldRefreshWork =
         force ||
-        STATE.ui.workView === "board" ||
-        STATE.ui.workView === "list" ||
+        STATE.ui.activeTab === "work" ||
         document.visibilityState === "visible";
 
       if (shouldRefreshWork) {
@@ -1693,38 +1989,29 @@
       };
 
       const onTick = async () => {
-
         const now = Date.now();
 
-        if(STATE.isRefreshing) return;
-
-        if(now - STATE.sseCooldownAt < 5000) return;
+        if (STATE.isRefreshing) return;
+        if (now - STATE.sseCooldownAt < 5000) return;
 
         STATE.sseCooldownAt = now;
 
-        try{
-            await refreshTimeline(true);
-            await refreshNotifications();
+        try {
+          await refreshTimeline(true);
+          await refreshNotifications();
 
-            const shouldRefreshWork =
-              STATE.ui.activeTab === "work" &&
-              document.visibilityState === "visible";
-
-            if (shouldRefreshWork) {
-              await refreshWorkData();
-            }
-
-        }catch(e){
-            console.warn("SSE refresh lỗi:",e);
+          // tạm thời KHÔNG auto refresh work ở SSE
+          // vì dễ làm board bị nhảy ngược ngay sau khi move
+          // await refreshWorkData();
+        } catch (e) {
+          console.warn("SSE refresh lỗi:", e);
         }
 
         const first = qs("#timelineList .item");
-
-        if(first){
-            first.classList.add("flash");
-            setTimeout(()=>first.classList.remove("flash"),900);
+        if (first) {
+          first.classList.add("flash");
+          setTimeout(() => first.classList.remove("flash"), 900);
         }
-
       };
 
       STATE.es.onmessage = onTick;
@@ -1865,7 +2152,11 @@
         if (!title) throw new Error("Usage: work create <title>");
 
         const p = scopeParams();
-        const payload = { title };
+        const payload = {
+          title,
+          priority,
+          due_at: dueAt || null,
+        };
 
         if (p.get("company_id")) payload.company_id = Number(p.get("company_id"));
         if (p.get("shop_id")) payload.shop_id = Number(p.get("shop_id"));
@@ -2025,8 +2316,14 @@
     });
 
     qsa(".work-view-tab").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
+        STATE.ui.activeTab = "work";
         switchWorkView(btn.dataset.view || "list");
+
+        if (!STATE.work.all.length) {
+          await refreshWorkData();
+        }
+
         if ((btn.dataset.view || "list") === "board") {
           renderWorkBoard();
         }
@@ -2175,13 +2472,20 @@
         kbMoveBtn.textContent = "…";
 
         try {
-          await updateTask(id, { status, priority });
+          const task = findTaskById(id);
+          const currentPriority = Number(task?.priority || 2);
+
+          if (priority !== currentPriority) {
+            await updateTask(id, { priority });
+            await moveTask(id, status, 1);
+          }
+
+          await moveTask(id, status);
         } catch (err) {
           alert("Move lỗi: " + err.message);
         } finally {
           kbMoveBtn.textContent = "Move";
         }
-        return;
       }
 
       const markReadBtn = e.target.closest(".mark-read-btn");
@@ -2380,6 +2684,32 @@
       STATE.dragTaskId = null;
       qsa(".kanban-list").forEach((x) => x.classList.remove("drag-over"));
     });
+
+    $("btnSubmitTaskComment")?.addEventListener("click", async (e) => {
+      e.preventDefault();
+
+      const btn = $("btnSubmitTaskComment");
+      if (btn) btn.textContent = "Đang gửi...";
+
+      try {
+        await submitTaskComment();
+      } catch (err) {
+        alert("Gửi comment lỗi: " + err.message);
+      } finally {
+        if (btn) btn.textContent = "Gửi comment";
+      }
+    });
+
+    $("taskCommentInput")?.addEventListener("keydown", async (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        try {
+          await submitTaskComment();
+        } catch (err) {
+          alert("Gửi comment lỗi: " + err.message);
+        }
+      }
+    });
   }
 
   function ensureStyles() {
@@ -2394,6 +2724,17 @@
         overflow-x:auto;
         overflow-y:hidden;
         padding-bottom:6px;
+      }
+      .priority-critical{
+        color:#ef4444;
+      }
+
+      .priority-warning{
+        color:#f59e0b;
+      }
+
+      .priority-info{
+        color:#38bdf8;
       }
 
       #workBoard{
@@ -2449,7 +2790,7 @@
         background:rgba(110,168,254,.08);
         border-radius:14px;
       }
-
+      
       .kanban-empty{
         padding:14px;
         border:1px dashed rgba(255,255,255,.10);
@@ -2568,11 +2909,1268 @@
       restartSSE();
     }, 1500);
   }
+  async function quickCreateTasks(text, status="todo"){
+    const resp = await http("/api/v1/os/work/quick-create/",{
+      method:"POST",
+      headers:{"content-type":"application/json"},
+      body:JSON.stringify({
+        text,
+        status
+      })
+    });
 
+    if(resp?.items){
+      resp.items.forEach(x=>{
+        STATE.work.all.push(x);
+      });
+
+      renderAllWork();
+    }
+
+    return resp;
+  }
+
+  async function quickCreateTask(title, status) {
+    const resp = await http("/api/v1/os/work/create/", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title,
+        status,
+      }),
+    });
+
+    if (resp?.item) {
+      STATE.work.all.push(resp.item);
+      renderAllWork();
+    }
+
+    return resp;
+  }
+
+  function bindQuickCreateInputs() {
+    qsa(".kanban-add-input").forEach((input) => {
+      input.addEventListener("keydown", async (e) => {
+        if (e.key !== "Enter") return;
+
+        const title = input.value.trim();
+        const status = input.dataset.status;
+
+        if (!title) return;
+
+        try {
+          await quickCreateTask(title, status);
+          input.value = "";
+        } catch (err) {
+          console.error("create task lỗi", err);
+        }
+      });
+    });
+  }
+
+  function renderTaskComments(items) {
+    const box = $("taskCommentsList");
+    if (!box) return;
+
+    const arr = Array.isArray(items) ? items : [];
+
+    if (!arr.length) {
+      box.innerHTML = `
+        <div class="item">
+          <div class="t">Chưa có comment</div>
+          <div class="d">Viết comment đầu tiên cho công việc này.</div>
+        </div>
+      `;
+      return;
+    }
+
+    box.innerHTML = "";
+
+    arr.forEach((c) => {
+      const actor =
+        c.actor_name ||
+        c.actor_email ||
+        c.user_name ||
+        c.user_email ||
+        "User";
+
+      const body =
+        c.body ||
+        c.content ||
+        "";
+
+      const div = document.createElement("div");
+      div.className = "task-comment-item";
+      div.innerHTML = `
+        <div class="t">${escapeHtml(actor)}</div>
+        <div class="time">${escapeHtml(fmtTime(c.created_at))}</div>
+        <div class="d">${escapeHtml(body)}</div>
+      `;
+      box.appendChild(div);
+    });
+  }
+  async function submitTaskComment() {
+    const taskId = STATE.work.selectedTaskId;
+    if (!taskId) throw new Error("Chưa chọn task");
+
+    const inp = $("taskCommentInput");
+    const body = (inp?.value || "").trim();
+
+    if (!body) {
+      alert("Nhập comment đã anh");
+      return;
+    }
+
+    if (!CFG.workCommentsBase) {
+      throw new Error("Thiếu CFG.workCommentsBase");
+    }
+
+    await http(`${CFG.workCommentsBase}${taskId}/comments/`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ body }),
+    });
+
+    if (inp) inp.value = "";
+
+    await refreshTaskComments(taskId);
+    await refreshTimeline(true);
+  }
+  function renderContractRadar(data){
+
+    const timelineBox = $("contractTimelineBox");
+    if(!timelineBox) return;
+
+    let box = $("contractRadarBox");
+
+    if(!box){
+      box=document.createElement("div");
+      box.id="contractRadarBox";
+      box.className="card";
+
+      box.innerHTML=`
+      <div class="card-h">
+        <div>
+          <div class="card-t">Contract Radar</div>
+          <div class="muted">Theo dõi rủi ro hợp đồng theo Shop</div>
+        </div>
+      </div>
+      <div class="card-b" id="contractRadarList"></div>
+      `;
+
+      timelineBox.parentNode.insertBefore(box,timelineBox.nextSibling);
+    }
+
+    const list=$("contractRadarList");
+    if(!list) return;
+
+    const shops=data?.shops||[];
+
+    if(!shops.length){
+      list.innerHTML=`<div class="muted">Không có rủi ro hợp đồng</div>`;
+      return;
+    }
+
+    list.innerHTML="";
+
+    shops.forEach(shop=>{
+        const div=document.createElement("div");
+        div.className="item";
+
+        let html=`<div class="t">Shop ${shop.shop_id}</div>`;
+
+        shop.contracts.forEach(c=>{
+            html+=`<div class="d"><b>${c.contract_code}</b></div>`;
+
+            c.items.forEach(i=>{
+                html+=`
+                <div class="row">
+                  <span>${i.title}</span>
+                  <span class="priority-${i.priority}">${i.priority}</span>
+                </div>`;
+            });
+
+        });
+
+        div.innerHTML=html;
+        list.appendChild(div);
+    });
+
+  }
+  function renderFounderDashboard(data) {
+    const timelineBox = $("timelineList")?.closest(".card");
+    if (!timelineBox) return;
+
+    let box = $("founderDashboardBox");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "founderDashboardBox";
+      box.className = "card";
+      box.style.marginTop = "12px";
+      box.style.marginBottom = "12px";
+      box.innerHTML = `
+        <div class="card-h">
+          <div>
+            <div class="card-t">Founder Dashboard</div>
+            <div class="muted">Tổng quan tài chính, backlog và mức độ rủi ro vận hành</div>
+          </div>
+        </div>
+        <div class="card-b">
+          <div id="founderSummaryCards" class="fd-cards"></div>
+          <div id="founderFinanceBox" style="margin-top:12px;"></div>
+          <div id="founderRiskBox" style="margin-top:12px;"></div>
+        </div>
+      `;
+      timelineBox.parentNode.insertBefore(box, timelineBox);
+    }
+    box.style.gridColumn = "1 / -1";
+    box.style.width = "100%";
+
+    const cardsEl = $("founderSummaryCards");
+    const financeEl = $("founderFinanceBox");
+    const riskEl = $("founderRiskBox");
+    if (!cardsEl || !financeEl || !riskEl) return;
+
+    const blocks = data?.blocks || {};
+    const cards = Array.isArray(blocks.summary_cards) ? blocks.summary_cards : [];
+    const finance = blocks.finance || {};
+    const risk = blocks.risk || {};
+
+    cardsEl.innerHTML = cards.map((x) => `
+      <div class="fd-card">
+        <div class="fd-k">${escapeHtml(x.label || "")}</div>
+        <div class="fd-v">${escapeHtml(x.value || "0")} ${escapeHtml(x.unit || "")}</div>
+      </div>
+    `).join("");
+
+    financeEl.innerHTML = `
+      <div class="item">
+        <div class="t">Tài chính vận hành</div>
+        <div class="row">
+          <span>Công nợ quá hạn: <b>${escapeHtml(finance.receivable_overdue_total || "0")} đ</b></span>
+          <span>Công nợ 7 ngày tới: <b>${escapeHtml(finance.receivable_due_soon_total || "0")} đ</b></span>
+        </div>
+        <div class="row" style="margin-top:6px;">
+          <span>Payout quá hạn: <b>${escapeHtml(finance.payout_overdue_total || "0")} đ</b></span>
+          <span>Payout 7 ngày tới: <b>${escapeHtml(finance.payout_due_soon_total || "0")} đ</b></span>
+        </div>
+      </div>
+    `;
+
+    riskEl.innerHTML = `
+      <div class="item">
+        <div class="t">Mức độ rủi ro tổng</div>
+        <div class="row">
+          <span class="priority-${escapeHtml(risk.level || "info")}">Level: ${escapeHtml(risk.level || "info")}</span>
+          <span>Score: <b>${escapeHtml(risk.score || 0)}</b></span>
+          <span>Backlog quá hạn: <b>${escapeHtml(risk.backlog_overdue || 0)}</b></span>
+          <span>Task gấp: <b>${escapeHtml(risk.backlog_urgent || 0)}</b></span>
+        </div>
+      </div>
+    `;
+  }
+  function renderShopRiskRadar(data) {
+    const founderBox = $("founderDashboardBox");
+    if (!founderBox) return;
+
+    let box = $("shopRiskRadarBox");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "shopRiskRadarBox";
+      box.className = "card";
+      box.style.marginTop = "12px";
+      box.style.marginBottom = "12px";
+      box.style.gridColumn = "1 / -1";
+      box.style.width = "100%";
+      box.innerHTML = `
+        <div class="card-h">
+          <div>
+            <div class="card-t">Shop Risk Ranking</div>
+            <div class="muted">Xếp hạng shop theo mức độ rủi ro vận hành</div>
+          </div>
+        </div>
+        <div class="card-b">
+          <div id="shopRiskRadarSummary" class="muted" style="margin-bottom:10px;"></div>
+          <div id="shopRiskRadarList"></div>
+        </div>
+      `;
+      founderBox.parentNode.insertBefore(box, founderBox.nextSibling);
+    }
+
+    const summaryEl = $("shopRiskRadarSummary");
+    const listEl = $("shopRiskRadarList");
+    if (!summaryEl || !listEl) return;
+
+    const headline = data?.headline || {};
+    const items = Array.isArray(data?.items) ? data.items : [];
+
+    summaryEl.innerHTML = `
+      Tổng shop có rủi ro: <b>${headline.shop_risk_total || 0}</b> •
+      Critical: <b>${headline.shop_risk_critical || 0}</b> •
+      Warning: <b>${headline.shop_risk_warning || 0}</b> •
+      Info: <b>${headline.shop_risk_info || 0}</b>
+    `;
+
+    if (!items.length) {
+      listEl.innerHTML = `
+        <div class="item">
+          <div class="t">Chưa có shop rủi ro</div>
+          <div class="d">Hiện chưa có shop nào vượt ngưỡng rủi ro.</div>
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = "";
+
+    items.forEach((x, idx) => {
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="t">
+          #${idx + 1} • ${escapeHtml(x.shop_name || ("Shop #" + (x.shop_id || "")))}
+          <span class="priority-${escapeHtml(x.level || "info")}" style="margin-left:8px;">${escapeHtml(x.level || "info")}</span>
+        </div>
+        <div class="row" style="margin-top:6px;">
+          <span>Score: <b>${escapeHtml(x.score || 0)}</b></span>
+          <span>Payment overdue: <b>${escapeHtml(x.payment_overdue || 0)}</b></span>
+          <span>Milestone overdue: <b>${escapeHtml(x.milestone_overdue || 0)}</b></span>
+        </div>
+        <div class="row" style="margin-top:6px;">
+          <span>Payout overdue: <b>${escapeHtml(x.booking_payout_overdue || 0)}</b></span>
+          <span>Air thiếu link: <b>${escapeHtml(x.booking_air_missing || 0)}</b></span>
+          <span>Task overdue: <b>${escapeHtml(x.work_overdue || 0)}</b></span>
+          <span>Task gấp: <b>${escapeHtml(x.work_urgent || 0)}</b></span>
+        </div>
+      `;
+      listEl.appendChild(div);
+    });
+  }
+  function renderCashflowRadar(data) {
+
+    const founderBox = $("founderDashboardBox");
+    if (!founderBox) return;
+
+    let box = $("cashflowRadarBox");
+
+    if (!box) {
+
+      box = document.createElement("div");
+      box.id = "cashflowRadarBox";
+      box.className = "card";
+      box.style.gridColumn = "1 / -1";
+      box.style.marginTop = "12px";
+
+      box.innerHTML = `
+        <div class="card-h">
+          <div>
+            <div class="card-t">Cashflow Radar</div>
+            <div class="muted">Dự báo dòng tiền 30 ngày</div>
+          </div>
+        </div>
+        <div class="card-b">
+          <div id="cashflowRadarList"></div>
+        </div>
+      `;
+
+      founderBox.parentNode.insertBefore(box, founderBox.nextSibling);
+    }
+
+    const list = $("cashflowRadarList");
+    if (!list) return;
+
+    const items = Array.isArray(data?.items) ? data.items : [];
+
+    list.innerHTML = items.map(x => `
+      <div class="item">
+        <div class="t">${escapeHtml(x.label || "")}</div>
+        <div class="row">
+          <b>${escapeHtml(x.value || "0")}</b>
+        </div>
+      </div>
+    `).join("");
+
+  }
+  function renderRevenuePrediction(data){
+
+    const founderBox = $("founderDashboardBox");
+    if(!founderBox) return;
+
+    let box = $("revenuePredictionBox");
+
+    if(!box){
+
+      box = document.createElement("div");
+      box.id = "revenuePredictionBox";
+      box.className = "card";
+      box.style.gridColumn = "1 / -1";
+      box.style.marginTop = "12px";
+
+      box.innerHTML = `
+        <div class="card-h">
+          <div>
+            <div class="card-t">Revenue Prediction</div>
+            <div class="muted">Dự đoán doanh thu 30 ngày</div>
+          </div>
+        </div>
+        <div class="card-b">
+          <div id="revenuePredictionList"></div>
+        </div>
+      `;
+
+      founderBox.parentNode.insertBefore(box, founderBox.nextSibling);
+    }
+
+    const list = $("revenuePredictionList");
+    if(!list) return;
+
+    const items = Array.isArray(data?.items) ? data.items : [];
+
+    list.innerHTML = items.map(x => `
+      <div class="item">
+        <div class="t">${escapeHtml(x.label || "")}</div>
+        <div class="row">
+          <b>${escapeHtml(x.value || "0")}</b>
+        </div>
+      </div>
+    `).join("");
+
+  }
+  function renderAIDecisions(data) {
+    const revenueBox = $("revenuePredictionBox");
+    if (!revenueBox) return;
+
+    let box = $("aiDecisionBox");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "aiDecisionBox";
+      box.className = "card";
+      box.style.gridColumn = "1 / -1";
+      box.style.width = "100%";
+      box.style.marginTop = "12px";
+      box.innerHTML = `
+        <div class="card-h">
+          <div>
+            <div class="card-t">AI Decisions</div>
+            <div class="muted">Gợi ý hành động ưu tiên cho founder / operator</div>
+          </div>
+        </div>
+        <div class="card-b">
+          <div id="aiDecisionSummary" class="muted" style="margin-bottom:10px;"></div>
+          <div id="aiDecisionList"></div>
+        </div>
+      `;
+      revenueBox.parentNode.insertBefore(box, revenueBox.nextSibling);
+    }
+
+    const summaryEl = $("aiDecisionSummary");
+    const listEl = $("aiDecisionList");
+    if (!summaryEl || !listEl) return;
+
+    const headline = data?.headline || {};
+    const items = Array.isArray(data?.items) ? data.items : [];
+
+    summaryEl.innerHTML = `
+      Tổng đề xuất: <b>${headline.ai_decision_total || 0}</b> •
+      Critical: <b>${headline.ai_decision_critical || 0}</b> •
+      Warning: <b>${headline.ai_decision_warning || 0}</b>
+    `;
+
+    if (!items.length) {
+      listEl.innerHTML = `
+        <div class="item">
+          <div class="t">Chưa có quyết định ưu tiên</div>
+          <div class="d">Hiện chưa có tín hiệu rủi ro đủ mạnh để sinh đề xuất hành động.</div>
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = "";
+
+    items.forEach((x) => {
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="t">
+          ${escapeHtml(x.title || "AI Decision")}
+          <span class="priority-${escapeHtml(x.priority || "info")}" style="margin-left:8px;">${escapeHtml(x.priority || "info")}</span>
+        </div>
+        <div class="d" style="margin-top:6px;">${escapeHtml(x.summary || "")}</div>
+        <div class="row" style="margin-top:8px;">
+          <span><b>Action:</b> ${escapeHtml(x.action || "")}</span>
+        </div>
+      `;
+      listEl.appendChild(div);
+    });
+  }
+  function renderContractHealthScore(data) {
+    const aiBox = $("aiDecisionBox");
+    if (!aiBox) return;
+
+    let box = $("contractHealthScoreBox");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "contractHealthScoreBox";
+      box.className = "card";
+      box.style.gridColumn = "1 / -1";
+      box.style.width = "100%";
+      box.style.marginTop = "12px";
+      box.innerHTML = `
+        <div class="card-h">
+          <div>
+            <div class="card-t">Contract Health Score</div>
+            <div class="muted">Chấm điểm sức khỏe từng hợp đồng</div>
+          </div>
+        </div>
+        <div class="card-b">
+          <div id="contractHealthSummary" class="muted" style="margin-bottom:10px;"></div>
+          <div id="contractHealthList"></div>
+        </div>
+      `;
+      aiBox.parentNode.insertBefore(box, aiBox.nextSibling);
+    }
+
+    const summaryEl = $("contractHealthSummary");
+    const listEl = $("contractHealthList");
+    if (!summaryEl || !listEl) return;
+
+    const headline = data?.headline || {};
+    const items = Array.isArray(data?.items) ? data.items : [];
+
+    summaryEl.innerHTML = `
+      Tổng hợp đồng: <b>${headline.contract_health_total || 0}</b> •
+      Good: <b>${headline.contract_health_good || 0}</b> •
+      Warning: <b>${headline.contract_health_warning || 0}</b> •
+      Critical: <b>${headline.contract_health_critical || 0}</b>
+    `;
+
+    if (!items.length) {
+      listEl.innerHTML = `
+        <div class="item">
+          <div class="t">Chưa có dữ liệu sức khỏe hợp đồng</div>
+          <div class="d">Hiện chưa có hợp đồng nào trong phạm vi đang theo dõi.</div>
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = "";
+
+    items.forEach((x, idx) => {
+      const levelClass =
+        x.level === "good" ? "priority-info" :
+        x.level === "warning" ? "priority-warning" :
+        "priority-critical";
+
+      const issues = Array.isArray(x.issues) ? x.issues : [];
+
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="t">
+          #${idx + 1} • ${escapeHtml(x.contract_code || "")} • ${escapeHtml(x.contract_name || "")}
+          <span class="${levelClass}" style="margin-left:8px;">${escapeHtml(x.level || "critical")}</span>
+        </div>
+        <div class="row" style="margin-top:6px;">
+          <span>Score: <b>${escapeHtml(x.score || 0)}</b></span>
+          <span>Type: <b>${escapeHtml(x.contract_type || "")}</b></span>
+          <span>Payment overdue: <b>${escapeHtml(x.payments_overdue || 0)}</b></span>
+          <span>Milestone overdue: <b>${escapeHtml(x.milestones_overdue || 0)}</b></span>
+        </div>
+        <div class="row" style="margin-top:6px;">
+          <span>Payout overdue: <b>${escapeHtml(x.booking_payout_overdue || 0)}</b></span>
+          <span>Air thiếu link: <b>${escapeHtml(x.booking_air_missing || 0)}</b></span>
+          <span>Task overdue: <b>${escapeHtml(x.contract_work_overdue || 0)}</b></span>
+        </div>
+        ${issues.length ? `<div class="d" style="margin-top:8px;">${escapeHtml(issues.join(" • "))}</div>` : ""}
+      `;
+      listEl.appendChild(div);
+    });
+  }
+  function renderMissionControl(data) {
+    const root = document.querySelector(".grid") || document.body;
+
+    let box = $("missionControlBox");
+
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "missionControlBox";
+      box.className = "card";
+      box.style.gridColumn = "1 / -1";
+
+      box.innerHTML = `
+        <div class="card-h">
+          <div>
+            <div class="card-t">Mission Control</div>
+            <div class="muted">Agency trạng thái tổng thể</div>
+          </div>
+        </div>
+        <div class="card-b">
+          <div id="missionStatus"></div>
+          <div id="missionRisks"></div>
+          <div id="missionActions"></div>
+        </div>
+      `;
+
+      root.prepend(box);
+    }
+
+    const status = data?.headline?.status || "good";
+
+    const statusEl = $("missionStatus");
+
+    statusEl.innerHTML = `
+      <div class="row">
+        <span>Status:</span>
+        <b class="priority-${status}">${status.toUpperCase()}</b>
+      </div>
+    `;
+
+    const risks = data?.risks || [];
+    const actions = data?.actions || [];
+
+    const risksEl = $("missionRisks");
+    const actionsEl = $("missionActions");
+
+    risksEl.innerHTML = `
+      <h4>Top Risks</h4>
+    `;
+
+    risks.forEach((r) => {
+      risksEl.innerHTML += `
+        <div class="item">
+          <div class="t">${escapeHtml(r.title)}</div>
+          <div class="d">${escapeHtml(r.summary)}</div>
+        </div>
+      `;
+    });
+
+    actionsEl.innerHTML = `
+      <h4>Top Actions</h4>
+    `;
+
+    actions.forEach((a) => {
+      actionsEl.innerHTML += `
+        <div class="item">
+          <div class="t">${escapeHtml(a.title)}</div>
+          <div class="d">${escapeHtml(a.action)}</div>
+        </div>
+      `;
+    });
+  }
+  function renderAgencyHealth(data) {
+
+    const mission = $("missionControlBox");
+    if (!mission) return;
+
+    let box = $("agencyHealthBox");
+
+    if (!box) {
+
+      box = document.createElement("div");
+      box.id = "agencyHealthBox";
+      box.className = "card";
+      box.style.gridColumn = "1 / -1";
+
+      box.innerHTML = `
+        <div class="card-h">
+          <div>
+            <div class="card-t">Agency Health Score</div>
+            <div class="muted">Chỉ số vận hành toàn agency</div>
+          </div>
+        </div>
+
+        <div class="card-b">
+
+          <div id="agencyHealthMain"></div>
+
+          <div id="agencyHealthDetail"></div>
+
+        </div>
+      `;
+
+      mission.parentNode.insertBefore(box, mission.nextSibling);
+    }
+
+    const score = data?.score || 0;
+    const blocks = data?.blocks || {};
+
+    const main = $("agencyHealthMain");
+
+    main.innerHTML = `
+      <div style="font-size:32px;font-weight:700;">
+        ${score} / 100
+      </div>
+    `;
+
+    const detail = $("agencyHealthDetail");
+
+    detail.innerHTML = `
+      <div class="row">
+        <span>Finance</span>
+        <b>${blocks.finance || 0}</b>
+      </div>
+
+      <div class="row">
+        <span>Delivery</span>
+        <b>${blocks.delivery || 0}</b>
+      </div>
+
+      <div class="row">
+        <span>Contracts</span>
+        <b>${blocks.contracts || 0}</b>
+      </div>
+
+      <div class="row">
+        <span>Operations</span>
+        <b>${blocks.operations || 0}</b>
+      </div>
+    `;
+  }
+  function renderShopBrain(data){
+
+    const root = document.querySelector(".grid") || document.body
+
+    let box = $("shopBrainBox")
+
+    if(!box){
+
+      box = document.createElement("div")
+      box.id = "shopBrainBox"
+      box.className = "card"
+      box.style.gridColumn = "1 / -1"
+
+      box.innerHTML = `
+        <div class="card-h">
+          <div>
+            <div class="card-t">Shop Daily Mission</div>
+            <div class="muted">Việc cần làm hôm nay</div>
+          </div>
+        </div>
+
+        <div class="card-b">
+
+          <div id="shopMission"></div>
+
+          <div id="shopRisk"></div>
+
+          <div id="shopGrowth"></div>
+
+        </div>
+      `
+
+      root.prepend(box)
+    }
+
+    const mission = data?.daily_mission || []
+    const risks = data?.risks || []
+    const growth = data?.growth || []
+
+    const missionEl = $("shopMission")
+    const riskEl = $("shopRisk")
+    const growthEl = $("shopGrowth")
+
+    missionEl.innerHTML = `<h4>Hôm nay nên làm</h4>`
+    mission.forEach(x=>{
+      missionEl.innerHTML += `
+        <div class="item">
+          <div class="t">${escapeHtml(x.title)}</div>
+          <div class="d">${escapeHtml(x.summary)}</div>
+        </div>
+      `
+    })
+
+    riskEl.innerHTML = `<h4>Rủi ro</h4>`
+    risks.forEach(x=>{
+      riskEl.innerHTML += `
+        <div class="item">
+          <div class="t">${escapeHtml(x.title)}</div>
+          <div class="d">${escapeHtml(x.summary)}</div>
+        </div>
+      `
+    })
+
+    growthEl.innerHTML = `<h4>Gợi ý tăng trưởng</h4>`
+    growth.forEach(x=>{
+      growthEl.innerHTML += `
+        <div class="item">
+          <div class="t">${escapeHtml(x.title)}</div>
+          <div class="d">${escapeHtml(x.summary)}</div>
+        </div>
+      `
+    })
+  }
+  function renderProductRadar(data) {
+    const shopBrainBox = $("shopBrainBox");
+    if (!shopBrainBox) return;
+
+    let box = $("productRadarBox");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "productRadarBox";
+      box.className = "card";
+      box.style.gridColumn = "1 / -1";
+      box.innerHTML = `
+        <div class="card-h">
+          <div>
+            <div class="card-t">Product Radar</div>
+            <div class="muted">Theo dõi SKU bán tốt, lỗ, ROAS thấp và sắp hết hàng</div>
+          </div>
+        </div>
+        <div class="card-b">
+          <div id="productRadarWrap"></div>
+        </div>
+      `;
+      shopBrainBox.parentNode.insertBefore(box, shopBrainBox.nextSibling);
+    }
+
+    const wrap = $("productRadarWrap");
+    if (!wrap) return;
+
+    const blocks = data?.blocks || {};
+    const topSku = Array.isArray(blocks.top_sku) ? blocks.top_sku : [];
+    const lowRoas = Array.isArray(blocks.low_roas) ? blocks.low_roas : [];
+    const losingSku = Array.isArray(blocks.losing_sku) ? blocks.losing_sku : [];
+    const lowStock = Array.isArray(blocks.low_stock) ? blocks.low_stock : [];
+
+    function rowHtml(x, extra) {
+      return `
+        <div class="item">
+          <div class="t">${escapeHtml(x.sku || "")} • ${escapeHtml(x.name || "")}</div>
+          <div class="row">
+            ${extra}
+          </div>
+        </div>
+      `;
+    }
+
+    wrap.innerHTML = `
+      <div class="fd-cards">
+        <div class="fd-card">
+          <div class="fd-k">Top SKU</div>
+          <div>
+            ${topSku.length ? topSku.map(x => rowHtml(
+              x,
+              `<span>Revenue: <b>${escapeHtml(x.revenue || "0")}</b></span>
+              <span>Units: <b>${escapeHtml(x.units_sold || 0)}</b></span>`
+            )).join("") : `<div class="muted">Chưa có dữ liệu</div>`}
+          </div>
+        </div>
+
+        <div class="fd-card">
+          <div class="fd-k">ROAS thấp</div>
+          <div>
+            ${lowRoas.length ? lowRoas.map(x => rowHtml(
+              x,
+              `<span>ROAS: <b>${escapeHtml(x.roas_estimate || "0")}</b></span>
+              <span>Ads: <b>${escapeHtml(x.ads_spend || "0")}</b></span>`
+            )).join("") : `<div class="muted">Chưa có dữ liệu</div>`}
+          </div>
+        </div>
+
+        <div class="fd-card">
+          <div class="fd-k">SKU lỗ</div>
+          <div>
+            ${losingSku.length ? losingSku.map(x => rowHtml(
+              x,
+              `<span>Profit: <b>${escapeHtml(x.profit_estimate || "0")}</b></span>`
+            )).join("") : `<div class="muted">Chưa có SKU lỗ</div>`}
+          </div>
+        </div>
+
+        <div class="fd-card">
+          <div class="fd-k">Sắp hết hàng</div>
+          <div>
+            ${lowStock.length ? lowStock.map(x => rowHtml(
+              x,
+              `<span>Stock: <b>${escapeHtml(x.stock || 0)}</b></span>`
+            )).join("") : `<div class="muted">Tồn kho đang ổn</div>`}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  function renderShopServicesOverview(data) {
+      const productRadarBox = $("productRadarBox");
+      if (!productRadarBox) return;
+
+      let box = $("shopServicesOverviewBox");
+      if (!box) {
+        box = document.createElement("div");
+        box.id = "shopServicesOverviewBox";
+        box.className = "card";
+        box.style.gridColumn = "1 / -1";
+        box.innerHTML = `
+          <div class="card-h">
+            <div>
+              <div class="card-t">Shop Services Overview</div>
+              <div class="muted">Các dịch vụ shop đang sử dụng và trạng thái hiện tại</div>
+            </div>
+          </div>
+          <div class="card-b">
+            <div id="shopServicesOverviewSummary" class="muted" style="margin-bottom:10px;"></div>
+            <div id="shopServicesOverviewList"></div>
+          </div>
+        `;
+        productRadarBox.parentNode.insertBefore(box, productRadarBox.nextSibling);
+      }
+
+      const summaryEl = $("shopServicesOverviewSummary");
+      const listEl = $("shopServicesOverviewList");
+      if (!summaryEl || !listEl) return;
+
+      const headline = data?.headline || {};
+      const items = Array.isArray(data?.items) ? data.items : [];
+
+      summaryEl.innerHTML = `
+        Tổng dịch vụ: <b>${headline.shop_services_total || 0}</b> •
+        Active: <b>${headline.shop_services_active || 0}</b> •
+        Paused: <b>${headline.shop_services_paused || 0}</b> •
+        Ended: <b>${headline.shop_services_ended || 0}</b>
+      `;
+
+      if (!items.length) {
+        listEl.innerHTML = `
+          <div class="item">
+            <div class="t">Chưa có dịch vụ nào</div>
+            <div class="d">Hiện shop chưa được gắn dịch vụ nào trong hệ thống.</div>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = "";
+
+      items.forEach((x) => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <div class="t">
+            ${escapeHtml(x.service_name || x.service_code || "")}
+            <span class="priority-${x.status === "active" ? "info" : x.status === "paused" ? "warning" : "critical"}" style="margin-left:8px;">
+              ${escapeHtml(x.status || "")}
+            </span>
+          </div>
+          <div class="row" style="margin-top:6px;">
+            <span>Shop: <b>${escapeHtml(x.shop_name || "")}</b></span>
+            <span>Owner: <b>${escapeHtml(x.owner_name || "-")}</b></span>
+          </div>
+          <div class="row" style="margin-top:6px;">
+            <span>Contract: <b>${escapeHtml(x.contract_code || "-")}</b></span>
+            <span>Bắt đầu: <b>${escapeHtml(x.start_date || "-")}</b></span>
+            <span>Kết thúc: <b>${escapeHtml(x.end_date || "-")}</b></span>
+          </div>
+          ${x.note ? `<div class="d" style="margin-top:8px;">${escapeHtml(x.note)}</div>` : ""}
+        `;
+        listEl.appendChild(div);
+      });
+    }
+    function renderShopServiceTimeline(data) {
+    const overviewBox = $("shopServicesOverviewBox");
+    if (!overviewBox) return;
+
+    let box = $("shopServiceTimelineBox");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "shopServiceTimelineBox";
+      box.className = "card";
+      box.style.gridColumn = "1 / -1";
+      box.innerHTML = `
+        <div class="card-h">
+          <div>
+            <div class="card-t">Shop Service Timeline</div>
+            <div class="muted">Lịch booking, milestone, payment và vòng đời dịch vụ</div>
+          </div>
+        </div>
+        <div class="card-b">
+          <div id="shopServiceTimelineSummary" class="muted" style="margin-bottom:10px;"></div>
+          <div id="shopServiceTimelineList"></div>
+        </div>
+      `;
+      overviewBox.parentNode.insertBefore(box, overviewBox.nextSibling);
+    }
+
+    const summaryEl = $("shopServiceTimelineSummary");
+    const listEl = $("shopServiceTimelineList");
+    if (!summaryEl || !listEl) return;
+
+    const headline = data?.headline || {};
+    const items = Array.isArray(data?.items) ? data.items : [];
+
+    summaryEl.innerHTML = `
+      Tổng mốc: <b>${headline.shop_service_timeline_total || 0}</b> •
+      Critical: <b>${headline.shop_service_timeline_critical || 0}</b> •
+      Warning: <b>${headline.shop_service_timeline_warning || 0}</b> •
+      Info: <b>${headline.shop_service_timeline_info || 0}</b>
+    `;
+
+    if (!items.length) {
+      listEl.innerHTML = `
+        <div class="item">
+          <div class="t">Chưa có timeline dịch vụ</div>
+          <div class="d">Hiện chưa có lịch booking / milestone / payment gần tới.</div>
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = "";
+
+    items.forEach((x) => {
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="t">
+          ${escapeHtml(x.title || "")}
+          <span class="priority-${escapeHtml(x.priority || "info")}" style="margin-left:8px;">
+            ${escapeHtml(x.priority || "info")}
+          </span>
+        </div>
+        <div class="d" style="margin-top:6px;">${escapeHtml(x.summary || "")}</div>
+        <div class="row" style="margin-top:6px;">
+          <span>Loại: <b>${escapeHtml(x.kind || "")}</b></span>
+          <span>Hợp đồng: <b>${escapeHtml(x.contract_code || "-")}</b></span>
+          <span>Thời gian: <b>${escapeHtml(fmtTime(x.event_at) || "-")}</b></span>
+        </div>
+      `;
+      listEl.appendChild(div);
+    });
+  }
+  function renderShopCommandCenter(data){
+
+    const root = $("missionControlBox");
+    if(!root) return;
+
+    let box = $("shopCommandCenterBox");
+
+    if(!box){
+      box = document.createElement("div");
+      box.id = "shopCommandCenterBox";
+      box.className = "card";
+      box.style.gridColumn = "1 / -1";
+
+      box.innerHTML = `
+        <div class="card-h">
+          <div>
+            <div class="card-t">Shop Command Center</div>
+            <div class="muted">Những việc quan trọng nhất hôm nay</div>
+          </div>
+        </div>
+        <div class="card-b">
+          <div id="shopCommandList"></div>
+        </div>
+      `;
+
+      root.parentNode.insertBefore(box, root);
+    }
+
+    const list = $("shopCommandList");
+    if(!list) return;
+
+    const missions = data?.missions || [];
+
+    if(!missions.length){
+      list.innerHTML = `<div class="muted">Không có cảnh báo quan trọng</div>`;
+      return;
+    }
+
+    list.innerHTML = missions.map(x => `
+      <div class="item">
+        <div class="t">
+          ${escapeHtml(x.title)}
+          <span class="priority-${x.priority}" style="margin-left:8px">
+            ${x.priority}
+          </span>
+        </div>
+        <div class="d">${escapeHtml(x.summary)}</div>
+      </div>
+    `).join("");
+  }
+  function renderShopAIActions(data) {
+    const commandBox = $("shopCommandCenterBox");
+    if (!commandBox) return;
+
+    let box = $("shopAIActionsBox");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "shopAIActionsBox";
+      box.className = "card";
+      box.style.gridColumn = "1 / -1";
+      box.innerHTML = `
+        <div class="card-h">
+          <div>
+            <div class="card-t">AI Action Engine</div>
+            <div class="muted">Đề xuất hành động hằng ngày cho chủ shop</div>
+          </div>
+        </div>
+        <div class="card-b">
+          <div id="shopAIActionsSummary" class="muted" style="margin-bottom:10px;"></div>
+          <div id="shopAIActionsList"></div>
+        </div>
+      `;
+      commandBox.parentNode.insertBefore(box, commandBox.nextSibling);
+    }
+
+    const summaryEl = $("shopAIActionsSummary");
+    const listEl = $("shopAIActionsList");
+    if (!summaryEl || !listEl) return;
+
+    const headline = data?.headline || {};
+    const items = Array.isArray(data?.items) ? data.items : [];
+
+    summaryEl.innerHTML = `
+      Tổng action: <b>${headline.shop_ai_actions_total || 0}</b> •
+      Critical: <b>${headline.shop_ai_actions_critical || 0}</b> •
+      Warning: <b>${headline.shop_ai_actions_warning || 0}</b> •
+      Info: <b>${headline.shop_ai_actions_info || 0}</b>
+    `;
+
+    if (!items.length) {
+      listEl.innerHTML = `
+        <div class="item">
+          <div class="t">Chưa có action đề xuất</div>
+          <div class="d">Hiện chưa có tín hiệu đủ mạnh để sinh hành động mới.</div>
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = "";
+
+    items.forEach((x) => {
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="t">
+          ${escapeHtml(x.title || "Action")}
+          <span class="priority-${escapeHtml(x.priority || "info")}" style="margin-left:8px;">
+            ${escapeHtml(x.priority || "info")}
+          </span>
+        </div>
+        <div class="d" style="margin-top:6px;">${escapeHtml(x.summary || "")}</div>
+        <div class="row" style="margin-top:8px;">
+          <span><b>Gợi ý:</b> ${escapeHtml(x.action || "")}</span>
+        </div>
+      `;
+      listEl.appendChild(div);
+    });
+  }
+  function renderShopMissionDigest(data) {
+    const commandBox = $("shopCommandCenterBox");
+    const root = commandBox ? commandBox.parentNode : (document.querySelector(".grid") || document.body);
+
+    let box = $("shopMissionDigestBox");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "shopMissionDigestBox";
+      box.className = "card";
+      box.style.gridColumn = "1 / -1";
+      box.innerHTML = `
+        <div class="card-h">
+          <div>
+            <div class="card-t">Hôm nay cần làm gì</div>
+            <div class="muted">3 việc quan trọng nhất cho chủ shop</div>
+          </div>
+        </div>
+        <div class="card-b">
+          <div id="shopMissionDigestSummary" class="muted" style="margin-bottom:10px;"></div>
+          <div id="shopMissionDigestList"></div>
+        </div>
+      `;
+      if (commandBox) {
+        root.insertBefore(box, commandBox);
+      } else {
+        root.prepend(box);
+      }
+    }
+
+    const summaryEl = $("shopMissionDigestSummary");
+    const listEl = $("shopMissionDigestList");
+    if (!summaryEl || !listEl) return;
+
+    const headline = data?.headline || {};
+    const items = Array.isArray(data?.items) ? data.items : [];
+
+    summaryEl.innerHTML = `
+      Tổng mission: <b>${headline.shop_mission_digest_total || 0}</b> •
+      Critical: <b>${headline.shop_mission_digest_critical || 0}</b> •
+      Warning: <b>${headline.shop_mission_digest_warning || 0}</b>
+    `;
+
+    if (!items.length) {
+      listEl.innerHTML = `
+        <div class="item">
+          <div class="t">Hôm nay khá ổn</div>
+          <div class="d">Hiện chưa có việc gấp nổi bật cần ưu tiên ngay.</div>
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = "";
+
+    items.forEach((x, idx) => {
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="t">
+          #${idx + 1} • ${escapeHtml(x.title || "Mission")}
+          <span class="priority-${escapeHtml(x.priority || "info")}" style="margin-left:8px;">
+            ${escapeHtml(x.priority || "info")}
+          </span>
+        </div>
+        <div class="d" style="margin-top:6px;">${escapeHtml(x.summary || "")}</div>
+      `;
+      listEl.appendChild(div);
+    });
+  }
+  function renderShopKPIStrip(data) {
+    const missionBox = $("shopMissionDigestBox");
+    const root = missionBox ? missionBox.parentNode : (document.querySelector(".grid") || document.body);
+
+    let box = $("shopKPIStripBox");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "shopKPIStripBox";
+      box.className = "card";
+      box.style.gridColumn = "1 / -1";
+      box.innerHTML = `
+        <div class="card-b">
+          <div id="shopKPIStripWrap" class="fd-cards"></div>
+        </div>
+      `;
+      if (missionBox) {
+        root.insertBefore(box, missionBox);
+      } else {
+        root.prepend(box);
+      }
+    }
+
+    const wrap = $("shopKPIStripWrap");
+    if (!wrap) return;
+
+    const items = Array.isArray(data?.items) ? data.items : [];
+
+    if (!items.length) {
+      wrap.innerHTML = `<div class="muted">Chưa có KPI shop.</div>`;
+      return;
+    }
+
+    wrap.innerHTML = items.map((x) => `
+      <div class="fd-card">
+        <div class="fd-k">${escapeHtml(x.label || "")}</div>
+        <div class="fd-v">${escapeHtml(x.value || "0")} ${escapeHtml(x.unit || "")}</div>
+      </div>
+    `).join("");
+}
 window.safeRefreshAll = safeRefreshAll;
 window.htRefreshWork = refreshWorkData;
 window.htFindTask = findTaskById;
 window.htOpenTaskDrawer = openTaskDrawer;
+window.htMoveTask = moveTask;
+window.htPatchTaskLocal = patchTaskLocal;
+window.htStateWork = () => STATE.work;
 
 boot();
 })();

@@ -10,7 +10,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.api.v1.insight import _get_tenant_id
+from apps.work.models import WorkItem
+from apps.work.services_move import move_work_item, create_work_item
 
+from apps.work.models_comment import WorkComment
+from django.db.models import Q
+from django.db import transaction
+from apps.events.bus import emit_event, make_dedupe_key
 
 def _safe_import_workitem_model():
     try:
@@ -97,6 +103,27 @@ def _serialize_item(w) -> Dict[str, Any]:
         "updated_at": _iso(getattr(w, "updated_at", None)),
     }
 
+def _serialize_comment(x):
+    actor = getattr(x, "actor", None)
+
+    actor_name = ""
+    if actor:
+        actor_name = (
+            getattr(actor, "full_name", "")
+            or getattr(actor, "get_full_name", lambda: "")()
+            or getattr(actor, "username", "")
+            or getattr(actor, "email", "")
+        )
+
+    return {
+        "id": x.id,
+        "body": x.body or "",
+        "meta": x.meta or {},
+        "actor_id": x.actor_id,
+        "actor_name": actor_name,
+        "actor_email": getattr(actor, "email", "") if actor else "",
+        "created_at": x.created_at.isoformat() if x.created_at else None,
+    }
 
 def _apply_open_filter(qs, status: str):
     st = (status or "open").strip().lower()
@@ -152,88 +179,66 @@ class OSWorkInboxApi(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [CsrfExemptSessionAuthentication, TokenAuthentication]
 
-    def get(self, request):
-        tenant_id = _get_tenant_id(request)
-        if not tenant_id:
-            return Response({"ok": False, "message": "Thiếu tenant_id"}, status=400)
+    def get(self, request, *args, **kwargs):
+        tenant_id = int(getattr(request, "tenant_id", 1) or 1)
 
-        tenant_id = int(tenant_id)
+        page = int(request.GET.get("page", 1) or 1)
+        page_size = int(request.GET.get("page_size", 200) or 200)
+        if page < 1:
+            page = 1
+        if page_size < 1:
+            page_size = 200
 
-        if WorkItem is None:
-            return Response(
-                {
-                    "ok": True,
-                    "generated_at": timezone.now().isoformat(),
-                    "tenant_id": tenant_id,
-                    "items": [],
-                    "open_count": 0,
-                    "note": "WorkItem model not found.",
-                }
-            )
-
-        scope = (request.query_params.get("scope") or "tenant").strip().lower()
-        company_id = _parse_int(request.query_params.get("company_id"))
-        shop_id = _parse_int(request.query_params.get("shop_id"))
-        project_id = _parse_int(request.query_params.get("project_id"))
-        assignee = request.query_params.get("assignee")
-        status = (request.query_params.get("status") or "open").strip().lower()
-
-        try:
-            limit = int(request.query_params.get("limit") or 20)
-        except Exception:
-            limit = 20
-        limit = max(1, min(100, limit))
-
-        qs = WorkItem.objects_all.all() if hasattr(WorkItem, "objects_all") else WorkItem.objects.all()
-        qs = qs.filter(tenant_id=tenant_id)
-
-        try:
-            qs = qs.select_related("assignee", "requester", "created_by", "company", "shop", "project")
-        except Exception:
-            pass
-
-        if scope == "company":
-            if not company_id:
-                return Response({"ok": False, "message": "scope=company cần company_id"}, status=400)
-            qs = qs.filter(company_id=company_id)
-
-        if scope == "shop":
-            if not shop_id:
-                return Response({"ok": False, "message": "scope=shop cần shop_id"}, status=400)
-            qs = qs.filter(shop_id=shop_id)
-
-        if scope == "project":
-            if not project_id:
-                return Response({"ok": False, "message": "scope=project cần project_id"}, status=400)
-            qs = qs.filter(project_id=project_id)
-
-        if assignee:
-            try:
-                qs = qs.filter(assignee_id=int(assignee))
-            except Exception:
-                return Response({"ok": False, "message": "assignee không hợp lệ"}, status=400)
-
-        qs, normalized_status = _apply_open_filter(qs, status)
-
-        try:
-            open_count = int(qs.count())
-        except Exception:
-            open_count = 0
-
-        qs = qs.order_by("-updated_at", "-id")
-        items = [_serialize_item(x) for x in qs[:limit]]
-
-        return Response(
-            {
-                "ok": True,
-                "generated_at": timezone.now().isoformat(),
-                "tenant_id": tenant_id,
-                "scope": scope,
-                "status": normalized_status,
-                "items": items,
-                "open_count": open_count,
-            }
+        qs = (
+            WorkItem.objects_all
+            .filter(tenant_id=tenant_id)
+            .select_related("assignee", "requester", "project", "shop")
+            .order_by("status", "rank", "id")
         )
+
+        total = qs.count()
+        start = (page - 1) * page_size
+        end = start + page_size
+        rows = list(qs[start:end])
+
+        items = []
+        for x in rows:
+            items.append({
+                "id": x.id,
+                "title": x.title,
+                "description": x.description,
+                "status": x.status,
+                "rank": x.rank,
+                "tenant_id": x.tenant_id,
+                "company_id": x.company_id,
+                "shop_id": x.shop_id,
+                "project_id": x.project_id,
+                "priority": x.priority,
+                "due_at": x.due_at.isoformat() if x.due_at else None,
+                "updated_at": x.updated_at.isoformat() if x.updated_at else None,
+                "created_at": x.created_at.isoformat() if x.created_at else None,
+                "assignee_id": x.assignee_id,
+                "requester_id": x.requester_id,
+                "assignee_name": getattr(x.assignee, "full_name", "") if getattr(x, "assignee", None) else "",
+                "assignee_email": getattr(x.assignee, "email", "") if getattr(x, "assignee", None) else "",
+                "shop_name": getattr(x.shop, "name", "") if getattr(x, "shop", None) else "",
+                "project_name": getattr(x.project, "name", "") if getattr(x, "project", None) else "",
+                "target_type": getattr(x, "target_type", "") or "",
+                "target_id": getattr(x, "target_id", None),
+            })
+
+        open_count = sum(1 for x in items if x["status"] not in ["done", "cancelled"])
+
+        print("OS_INBOX_DEBUG:", [{"id": x["id"], "status": x["status"], "rank": x["rank"], "company_id": x["company_id"]} for x in items])
+
+        return Response({
+            "ok": True,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "open_count": open_count,
+            "items": items,
+        })
 
 
 class OSWorkCreateApi(APIView):
@@ -312,11 +317,50 @@ class OSWorkAssignApi(APIView):
         if not obj:
             return Response({"ok": False, "message": "Task not found"}, status=404)
 
+        old_assignee_id = getattr(obj, "assignee_id", None)
         obj.assignee_id = int(assignee_id)
+
         try:
             obj.save(update_fields=["assignee_id", "updated_at"])
         except Exception:
             obj.save()
+
+        if int(assignee_id) != int(old_assignee_id or 0):
+            try:
+                payload = {
+                    "id": obj.id,
+                    "work_item_id": obj.id,
+                    "title": getattr(obj, "title", ""),
+                    "status": getattr(obj, "status", ""),
+                    "assignee_id": obj.assignee_id,
+                    "old_assignee_id": old_assignee_id,
+                }
+
+                dedupe = make_dedupe_key(
+                    name="work.item.assigned",
+                    tenant_id=tenant_id,
+                    entity="workitem",
+                    entity_id=obj.id,
+                    extra={
+                        "assignee_id": str(obj.assignee_id or ""),
+                        "updated_at": obj.updated_at.isoformat() if getattr(obj, "updated_at", None) else "",
+                    },
+                )
+
+                transaction.on_commit(
+                    lambda: emit_event(
+                        tenant_id=tenant_id,
+                        company_id=getattr(obj, "company_id", None),
+                        shop_id=getattr(obj, "shop_id", None),
+                        actor_id=getattr(request.user, "id", None),
+                        name="work.item.assigned",
+                        version=1,
+                        dedupe_key=dedupe,
+                        payload=payload,
+                    )
+                )
+            except Exception:
+                pass
 
         obj = _reload_item(obj)
         return Response({"ok": True, "item": _serialize_item(obj)})
@@ -326,50 +370,98 @@ class OSWorkMoveApi(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [CsrfExemptSessionAuthentication, TokenAuthentication]
 
-    def post(self, request, task_id: int):
-        tenant_id = _get_tenant_id(request)
-        if not tenant_id:
-            return Response({"ok": False, "message": "Thiếu tenant_id"}, status=400)
-        tenant_id = int(tenant_id)
-
-        if WorkItem is None:
-            return Response({"ok": False, "message": "WorkItem not found"}, status=501)
-
-        payload = request.data or {}
-        to_status = (payload.get("status") or "").strip().lower()
-        to_company = _parse_int(payload.get("company_id"))
-        to_shop = _parse_int(payload.get("shop_id"))
-
-        if to_status and to_status not in ("todo", "doing", "blocked", "done", "cancelled"):
-            return Response({"ok": False, "message": "status không hợp lệ"}, status=400)
-
-        qs = WorkItem.objects_all.all() if hasattr(WorkItem, "objects_all") else WorkItem.objects.all()
-        obj = qs.filter(tenant_id=tenant_id, id=int(task_id)).first()
-        if not obj:
-            return Response({"ok": False, "message": "Task not found"}, status=404)
-
-        if to_status:
-            obj.status = to_status
-        if hasattr(obj, "company_id"):
-            obj.company_id = to_company
-        if hasattr(obj, "shop_id"):
-            obj.shop_id = to_shop
+    def post(self, request, task_id: int, *args, **kwargs):
+        tenant_id = getattr(request, "tenant_id", None) or request.headers.get("X-Tenant-Id") or 1
 
         try:
-            fields = ["updated_at"]
-            if to_status:
-                fields.append("status")
-            if hasattr(obj, "company_id"):
-                fields.append("company_id")
-            if hasattr(obj, "shop_id"):
-                fields.append("shop_id")
-            obj.save(update_fields=fields)
+            tenant_id = int(tenant_id)
         except Exception:
-            obj.save()
+            return Response(
+                {"ok": False, "message": "tenant_id không hợp lệ"},
+                status=400,
+            )
 
-        obj = _reload_item(obj)
-        return Response({"ok": True, "item": _serialize_item(obj)})
+        to_status = (request.data.get("to_status") or request.data.get("status") or "").strip().lower()
+        to_position = request.data.get("to_position")
 
+        if not to_status:
+            return Response(
+                {"ok": False, "message": "to_status is required"},
+                status=400,
+            )
+
+        try:
+            to_position = int(to_position) if to_position is not None else None
+        except Exception:
+            return Response(
+                {"ok": False, "message": "to_position không hợp lệ"},
+                status=400,
+            )
+
+        try:
+            res = move_work_item(
+                tenant_id=tenant_id,
+                item_id=int(task_id),
+                to_status=to_status,
+                to_position=to_position,
+            )
+        except ValueError as e:
+            return Response(
+                {"ok": False, "message": str(e)},
+                status=404,
+            )
+        except Exception as e:
+            return Response(
+                {"ok": False, "message": str(e)},
+                status=400,
+            )
+
+        try:
+            fresh = (
+                WorkItem.objects_all
+                .select_related("assignee", "requester", "project", "shop")
+                .get(id=task_id, tenant_id=tenant_id)
+            )
+        except WorkItem.DoesNotExist:
+            return Response(
+                {"ok": False, "message": "Task không tồn tại sau khi move"},
+                status=404,
+            )
+
+        item = {
+            "id": fresh.id,
+            "title": fresh.title,
+            "description": fresh.description,
+            "status": fresh.status,
+            "rank": fresh.rank,
+            "tenant_id": fresh.tenant_id,
+            "company_id": fresh.company_id,
+            "shop_id": fresh.shop_id,
+            "project_id": fresh.project_id,
+            "priority": fresh.priority,
+            "due_at": fresh.due_at.isoformat() if fresh.due_at else None,
+            "updated_at": fresh.updated_at.isoformat() if fresh.updated_at else None,
+            "created_at": fresh.created_at.isoformat() if fresh.created_at else None,
+            "assignee_id": fresh.assignee_id,
+            "requester_id": fresh.requester_id,
+            "assignee_name": getattr(fresh.assignee, "full_name", "") if getattr(fresh, "assignee", None) else "",
+            "assignee_email": getattr(fresh.assignee, "email", "") if getattr(fresh, "assignee", None) else "",
+            "shop_name": getattr(fresh.shop, "name", "") if getattr(fresh, "shop", None) else "",
+            "project_name": getattr(fresh.project, "name", "") if getattr(fresh, "project", None) else "",
+        }
+
+        print("OS_MOVE_DEBUG:", item["id"], item["status"], item["rank"], item["company_id"])
+
+        return Response({
+            "ok": True,
+            "moved": {
+                "from_status": res.from_status,
+                "to_status": res.to_status,
+                "from_position": res.from_position,
+                "to_position": res.to_position,
+            },
+            "item": item,
+        })
 
 class OSWorkUpdateApi(APIView):
     """
@@ -405,7 +497,8 @@ class OSWorkUpdateApi(APIView):
         obj = qs.filter(tenant_id=tenant_id, id=int(task_id)).first()
         if not obj:
             return Response({"ok": False, "message": "Task not found"}, status=404)
-
+        old_status = (obj.status or "").strip().lower()
+        new_status = None
         fields = ["updated_at"]
 
         if "title" in payload:
@@ -460,13 +553,152 @@ class OSWorkUpdateApi(APIView):
                 obj.due_at = dt
             fields.append("due_at")
 
-        # bỏ trùng
-        fields = list(dict.fromkeys(fields))
+            normal_fields = [f for f in fields if f != "status"]
+            normal_fields = list(dict.fromkeys(normal_fields))
 
+            try:
+                if normal_fields:
+                    obj.save(update_fields=normal_fields)
+            except Exception:
+                obj.save()
+
+            if new_status:
+                try:
+                    move_work_item(
+                        tenant_id=tenant_id,
+                        item_id=obj.id,
+                        to_status=new_status,
+                        to_position=None,
+                    )
+                except Exception as e:
+                    return Response({"ok": False, "message": str(e)}, status=400)
+
+            obj = _reload_item(obj)
+            return Response({"ok": True, "item": _serialize_item(obj)})
+
+class OSWorkCommentsApi(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication, TokenAuthentication]
+
+    def get(self, request, task_id: int, *args, **kwargs):
+        tenant_id = int(getattr(request, "tenant_id", 1) or 1)
+
+        qs = (
+            WorkComment.objects_all
+            .filter(tenant_id=tenant_id, work_item_id=task_id)
+            .select_related("actor")
+            .order_by("created_at", "id")
+        )
+
+        items = [_serialize_comment(x) for x in qs]
+        return Response({"ok": True, "items": items})
+
+    def post(self, request, task_id: int, *args, **kwargs):
+        tenant_id = int(getattr(request, "tenant_id", 1) or 1)
+
+        body = (request.data.get("body") or request.data.get("content") or "").strip()
+        if not body:
+            return Response(
+                {"ok": False, "message": "body is required"},
+                status=400,
+            )
+
+        task = WorkItem.objects_all.filter(id=task_id, tenant_id=tenant_id).first()
+        if not task:
+            return Response(
+                {"ok": False, "message": "Task not found"},
+                status=404,
+            )
+
+        comment = WorkComment.objects_all.create(
+            tenant_id=tenant_id,
+            work_item_id=task_id,
+            actor=request.user if getattr(request.user, "is_authenticated", False) else None,
+            body=body,
+            meta={},
+        )
+
+        comment = (
+            WorkComment.objects_all
+            .select_related("actor")
+            .get(id=comment.id)
+        )
         try:
-            obj.save(update_fields=fields)
-        except Exception:
-            obj.save()
+            payload = {
+                "id": task.id,
+                "work_item_id": task.id,
+                "comment_id": comment.id,
+                "body": comment.body,
+                "actor_id": getattr(comment, "actor_id", None),
+                "title": getattr(task, "title", ""),
+                "status": getattr(task, "status", ""),
+            }
 
-        obj = _reload_item(obj)
-        return Response({"ok": True, "item": _serialize_item(obj)})
+            dedupe = make_dedupe_key(
+                name="work.item.commented",
+                tenant_id=tenant_id,
+                entity="workcomment",
+                entity_id=comment.id,
+                extra={"work_item_id": task.id},
+            )
+
+            transaction.on_commit(
+                lambda: emit_event(
+                    tenant_id=tenant_id,
+                    company_id=getattr(task, "company_id", None),
+                    shop_id=getattr(task, "shop_id", None),
+                    actor_id=getattr(comment, "actor_id", None),
+                    name="work.item.commented",
+                    version=1,
+                    dedupe_key=dedupe,
+                    payload=payload,
+                )
+            )
+        except Exception:
+            pass
+
+        return Response({
+            "ok": True,
+            "item": _serialize_comment(comment),
+        }, status=201)
+
+class OSWorkQuickCreateApi(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication, TokenAuthentication]
+
+    def post(self, request, *args, **kwargs):
+        tenant_id = int(getattr(request, "tenant_id", 1) or 1)
+
+        text = (request.data.get("text") or "").strip()
+        status = (request.data.get("status") or "todo").strip().lower()
+
+        if not text:
+            return Response({"ok": False, "message": "text is required"}, status=400)
+
+        lines = [x.strip() for x in text.split("\n") if x.strip()]
+
+        created = []
+
+        for title in lines:
+            item = create_work_item(
+                tenant_id=tenant_id,
+                company_id=None,
+                title=title,
+                status=status,
+                created_by_id=request.user.id,
+                requester_id=request.user.id,
+            )
+
+            created.append({
+                "id": item.id,
+                "title": item.title,
+                "status": item.status,
+                "rank": item.rank,
+            })
+
+        return Response({
+            "ok": True,
+            "count": len(created),
+            "items": created,
+        })
+    

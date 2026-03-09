@@ -1,3 +1,4 @@
+# apps/notifications/events_handlers.py
 from __future__ import annotations
 
 import logging
@@ -12,8 +13,9 @@ def setup_handlers() -> None:
     register("work.item.created", on_outbox_event_to_notification)
     register("work.item.updated", on_outbox_event_to_notification)
     register("work.item.transitioned", on_outbox_event_to_notification)
+    register("work.item.commented", on_outbox_event_to_notification)
+    register("work.item.assigned", on_outbox_event_to_notification)
 
-    # os.* nếu anh emit sau này
     register("os.decision.created", on_outbox_event_to_notification)
     register("os.strategy.created", on_outbox_event_to_notification)
     register("os.action.executed", on_outbox_event_to_notification)

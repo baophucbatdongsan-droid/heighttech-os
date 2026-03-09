@@ -9,7 +9,8 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.events.models import OutboxEvent
-from apps.work.models import WorkItem, WorkComment, WorkItemTransitionLog
+from apps.work.models import WorkItem, WorkItemTransitionLog
+from apps.work.models_comment import WorkComment
 
 
 # =========================
@@ -143,6 +144,12 @@ def _tieu_de_su_kien(name: str) -> str:
         return "Tạo công việc"
     if n == "work.item.updated":
         return "Cập nhật công việc"
+    if n == "work.item.transitioned":
+        return "Chuyển trạng thái"
+    if n == "work.item.commented":
+        return "Bình luận công việc"
+    if n == "work.item.assigned":
+        return "Giao việc"
     return "Sự kiện hệ thống"
 
 

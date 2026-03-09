@@ -15,6 +15,7 @@ def _key(tenant_id: int, d: date, metric: str) -> str:
 def incr_usage(tenant_id: int | None, metric: str, amount: int = 1) -> None:
     if not tenant_id:
         return
+
     d = timezone.localdate()
     key = _key(int(tenant_id), d, metric)
 
@@ -36,4 +37,16 @@ def get_usage_value(tenant_id: int, d: date, metric: str) -> int:
 
 
 def delete_usage_key(tenant_id: int, d: date, metric: str) -> None:
-    cache.delete(_key(tenant_id, d, metric))
+    try:
+        cache.delete(_key(int(tenant_id), d, metric))
+    except Exception:
+        return
+
+
+def reset_usage_for_day(tenant_id: int, d: date, metric: str) -> None:
+    """
+    Reset usage của 1 metric trong 1 ngày.
+    Hiện tại metering đang dùng cache key theo ngày,
+    nên reset = xoá key.
+    """
+    delete_usage_key(tenant_id, d, metric)

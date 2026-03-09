@@ -64,6 +64,8 @@ INSTALLED_APPS = [
     # Business structure
     "apps.brands.apps.BrandsConfig",
     "apps.shops.apps.ShopsConfig",
+    "apps.shop_services.apps.ShopServicesConfig",
+    "apps.products.apps.ProductsConfig",
 
     # Domain
     "apps.projects.apps.ProjectsConfig",
@@ -73,6 +75,7 @@ INSTALLED_APPS = [
     "apps.finance.apps.FinanceConfig",
     "apps.intelligence.apps.IntelligenceConfig",
     "apps.work.apps.WorkConfig",
+    "apps.contracts.apps.ContractsConfig",
 
     # Dashboard + Billing
     "apps.dashboard.apps.DashboardConfig",
@@ -95,6 +98,8 @@ INSTALLED_APPS = [
     "apps.notifications.apps.NotificationsConfig",
 
     "apps.os.apps.OSConfig",
+    "apps.finance_ledger.apps.FinanceLedgerConfig",
+
 
 ]
 
