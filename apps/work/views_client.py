@@ -42,7 +42,7 @@ def client_work_home(request: HttpRequest):
     """
     tid = _tenant_id(request)
     if not tid:
-        return redirect("/dashboard/")
+        return redirect("/os/")
 
     qs = WorkItem.objects.filter(tenant_id=tid, visible_to_client=True)
 

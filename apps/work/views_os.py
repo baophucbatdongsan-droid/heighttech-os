@@ -127,7 +127,7 @@ def _user_belongs_to_tenant(tid: int, user_id: int, *, shop_id: Optional[int] = 
 def os_home(request: HttpRequest):
     tid = _tenant_id(request)
     if not tid:
-        return redirect("/dashboard/")
+        return redirect("/os/")
 
     qs = WorkItem.objects.filter(tenant_id=tid)
 
@@ -223,7 +223,7 @@ def os_home(request: HttpRequest):
 def os_my_work(request: HttpRequest):
     tid = _tenant_id(request)
     if not tid:
-        return redirect("/dashboard/")
+        return redirect("/os/")
 
     u = request.user
     qs = WorkItem.objects.filter(tenant_id=tid).filter(
@@ -245,7 +245,7 @@ def os_my_work(request: HttpRequest):
 def os_item_detail(request: HttpRequest, item_id: int):
     tid = _tenant_id(request)
     if not tid:
-        return redirect("/dashboard/")
+        return redirect("/os/")
 
     item = get_object_or_404(
         WorkItem.objects.select_related("project", "company", "assignee", "requester", "created_by", "shop"),

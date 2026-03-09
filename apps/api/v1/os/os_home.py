@@ -37,6 +37,7 @@ from apps.os.shop_command_center import build_shop_command_center
 from apps.os.shop_ai_actions import build_shop_ai_actions
 from apps.os.shop_mission_digest import build_shop_mission_digest
 from apps.os.shop_kpi_strip import build_shop_kpi_strip
+from apps.os.sku_radar import build_sku_radar
 
 
 CONTRACT_SOON_DAYS = 3
@@ -507,6 +508,12 @@ class OSHomeApi(APIView):
             company_id=company_id,
             shop_id=shop_id,
         )
+        sku_radar = build_sku_radar(
+            tenant_id=int(tenant_id),
+            company_id=company_id,
+            shop_id=shop_id,
+            limit=5,
+        )
 
         if not isinstance(headline, dict):
             headline = {}
@@ -528,6 +535,7 @@ class OSHomeApi(APIView):
         headline.update(getattr(shop_ai_actions, "headline", {}) or {})
         headline.update(getattr(shop_mission_digest, "headline", {}) or {})
         headline.update(getattr(shop_kpi_strip, "headline", {}) or {})
+        headline.update(getattr(sku_radar, "headline", {}) or {})
 
         if not isinstance(blocks, dict):
             blocks = {}
@@ -646,6 +654,7 @@ class OSHomeApi(APIView):
                 "ket_qua_hanh_dong_chien_luoc": action_results_strategy,
                 "layout": [
                     "shop_kpi_strip"
+                    "sku_radar",
                     "shop_mission_digest",
                     "shop_command_center",
                     "shop_ai_actions"

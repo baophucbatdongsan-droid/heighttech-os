@@ -212,7 +212,105 @@
 
     return p;
   }
+  function renderCurrentShopNotice() {
+    const shopId = getCurrentShopId();
+    const shops = getKnownShops();
+    const found = shops.find((x) => String(x.id) === String(shopId));
 
+    const els = [
+      document.getElementById("shopScopeNotice"),
+      document.getElementById("shopScopeNoticeSales"),
+    ].filter(Boolean);
+
+    els.forEach((el) => {
+      if (!shopId) {
+        el.innerHTML = `<span style="color:#f87171;font-weight:600;">Chưa chọn shop. Anh chọn shop trước khi nhập dữ liệu nha.</span>`;
+      } else {
+        el.innerHTML = `<span style="color:#86efac;">Đang thao tác cho shop <b>${escapeHtml(found?.name || ("#" + shopId))}</b></span>`;
+      }
+    });
+
+    const hasShop = !!shopId;
+    const importBtn = document.querySelector('button[onclick="importProductCsv()"]');
+    const salesBtn = document.querySelector('button[onclick="submitSales()"]');
+
+    if (importBtn) importBtn.disabled = !hasShop;
+    if (salesBtn) salesBtn.disabled = !hasShop;
+
+    renderQuickShopSelector();
+  }
+  function getCurrentShopId() {
+    const shopId =
+      String(STATE?.scope?.shop_id || "").trim() ||
+      String(localStorage.getItem("ht_shop_id") || "").trim();
+
+    return shopId || "";
+  }
+  function getKnownShops() {
+    const homeShops = ((STATE.raw.home || {}).blocks || {}).shops_health || [];
+    const result = [];
+
+    homeShops.forEach((s) => {
+      const shopId =
+        s.shop_id ??
+        s.id ??
+        (s.shop && s.shop.id) ??
+        "";
+
+      const shopName =
+        s.shop_name ||
+        s.name ||
+        (s.shop && s.shop.name) ||
+        (shopId ? `Shop #${shopId}` : "");
+
+      if (shopId) {
+        result.push({
+          id: String(shopId),
+          name: String(shopName || `Shop #${shopId}`),
+        });
+      }
+    });
+
+    const map = new Map();
+    result.forEach((x) => {
+      map.set(String(x.id), x);
+    });
+
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }
+  function renderQuickShopSelector() {
+    const el = document.getElementById("shopQuickSelector");
+    if (!el) return;
+
+    const shops = getKnownShops();
+    const currentShopId = getCurrentShopId();
+
+    let html = `<option value="">-- Chọn shop để nhập dữ liệu --</option>`;
+
+    shops.forEach((shop) => {
+      const selected = String(shop.id) === String(currentShopId) ? "selected" : "";
+      html += `<option value="${escapeHtml(shop.id)}" ${selected}>${escapeHtml(shop.name)}</option>`;
+    });
+
+    el.innerHTML = html;
+  }
+  function applyQuickShopSelection() {
+    const el = document.getElementById("shopQuickSelector");
+    if (!el) return;
+
+    const shopId = String(el.value || "").trim();
+
+    if (!shopId) {
+      alert("Anh chọn shop trước nha");
+      return;
+    }
+
+    setScope("shop", {
+      shop_id: shopId,
+      company_id: "",
+      project_id: "",
+    });
+  }
   function setTheme(theme) {
     STATE.ui.theme = theme === "light" ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", STATE.ui.theme);
@@ -244,6 +342,7 @@
     localStorage.setItem("ht_project_id", STATE.scope.project_id);
 
     applyScopeUI();
+    renderCurrentShopNotice();
     STATE.timelineCursor = null;
     STATE.lastTimelineIds = new Set();
 
@@ -1430,6 +1529,7 @@
     renderShopServicesOverview((data.blocks && data.blocks.shop_services_overview) || {});
     renderShopServiceTimeline((data.blocks && data.blocks.shop_service_timeline) || {});
     renderShopKPIStrip((data.blocks && data.blocks.shop_kpi_strip) || {});
+    renderSKURadar((data.blocks && data.blocks.sku_radar) || {});
     renderShopMissionDigest((data.blocks && data.blocks.shop_mission_digest) || {});
     renderShopCommandCenter((data.blocks && data.blocks.shop_command_center) || {});
     renderShopAIActions((data.blocks && data.blocks.shop_ai_actions) || {});
@@ -1439,6 +1539,10 @@
     renderContractRadar(data.blocks?.contract_radar);
     renderKernel(data);
     renderShopQuickNav(data);
+    renderQuickShopSelector();
+    renderCurrentShopNotice();
+    ensureOSQuickLinks();
+    syncOSQuickLinksByScroll();
     renderRawJson();
   }
     async function createTask(payload) {
@@ -1925,6 +2029,7 @@
     try {
       applyScopeUI();
       ensureWorkToolbar();
+      renderCurrentShopNotice();
 
       await refreshControlCenter();
       await refreshTimeline(true);
@@ -2239,7 +2344,7 @@
     }
   }
 
- function bindEvents() {
+  function bindEvents() {
     if (STATE.eventsBound) return;
     STATE.eventsBound = true;
 
@@ -2314,7 +2419,7 @@
         renderRawJson();
       });
     });
-
+    
     qsa(".work-view-tab").forEach((btn) => {
       btn.addEventListener("click", async () => {
         STATE.ui.activeTab = "work";
@@ -2390,6 +2495,22 @@
     });
 
     document.addEventListener("click", async (e) => {
+      const quickLinkBtn = e.target.closest(".os-quick-link-btn");
+      if (quickLinkBtn) {
+        const url = quickLinkBtn.dataset.url || "";
+        const targetId = quickLinkBtn.dataset.target || "";
+
+        if (url) {
+          window.location.href = url;
+          return;
+        }
+
+        if (targetId) {
+          scrollToOSSection(targetId);
+          return;
+        }
+      }
+
       const clearFilter = e.target.closest("#btnClearFilterFinal");
       if (clearFilter) {
         STATE.work.filters.assignee = "";
@@ -2486,6 +2607,7 @@
         } finally {
           kbMoveBtn.textContent = "Move";
         }
+        return;
       }
 
       const markReadBtn = e.target.closest(".mark-read-btn");
@@ -2710,6 +2832,9 @@
         }
       }
     });
+    window.addEventListener("scroll", () => {
+      syncOSQuickLinksByScroll();
+    }, { passive: true });
   }
 
   function ensureStyles() {
@@ -2885,7 +3010,9 @@
     ensureStyles();
     setTheme(STATE.ui.theme);
     applyScopeUI();
+    renderCurrentShopNotice();
     ensureWorkToolbar();
+    ensureOSQuickLinks();
     bindEvents();
     switchWorkView(STATE.ui.workView);
 
@@ -4125,6 +4252,130 @@
       listEl.appendChild(div);
     });
   }
+  function ensureOSQuickLinks() {
+    const root = document.querySelector(".grid") || document.body;
+    if (!root) return;
+
+    let box = $("osQuickLinksBox");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "osQuickLinksBox";
+      box.className = "card";
+      box.style.gridColumn = "1 / -1";
+      box.innerHTML = `
+        <div class="card-b" style="padding:10px 12px;">
+          <div id="osQuickLinksWrap" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+        </div>
+      `;
+    }
+
+    const anchor =
+      $("shopKPIStripBox") ||
+      $("shopMissionDigestBox") ||
+      $("shopCommandCenterBox") ||
+      root.firstElementChild ||
+      null;
+
+    if (anchor) {
+      if (box !== anchor.previousElementSibling) {
+        root.insertBefore(box, anchor);
+      }
+    } else if (!box.parentNode) {
+      root.prepend(box);
+    }
+
+    const wrap = $("osQuickLinksWrap");
+    if (!wrap) return;
+
+    const links = [
+      { label: "OS", url: "/os" },
+      { label: "Khu làm việc", url: "/work" },
+      { label: "KPI shop", target: "shopKPIStripBox" },
+      { label: "Radar SKU", target: "skuRadarBox" },
+      { label: "Hôm nay cần làm", target: "shopMissionDigestBox" },
+      { label: "AI hành động", target: "shopAIActionsBox" },
+      { label: "Dịch vụ shop", target: "shopServicesOverviewBox" },
+      { label: "Timeline dịch vụ", target: "shopServiceTimelineBox" },
+      { label: "Thông báo", target: "notifList" },
+    ];
+
+    wrap.innerHTML = links.map((x) => {
+      if (x.url) {
+        return `
+          <button
+            type="button"
+            class="btn mini os-quick-link-btn"
+            data-url="${escapeHtml(x.url)}"
+          >
+            ${escapeHtml(x.label)}
+          </button>
+        `;
+      }
+
+      return `
+        <button
+          type="button"
+          class="btn mini os-quick-link-btn"
+          data-target="${escapeHtml(x.target)}"
+        >
+          ${escapeHtml(x.label)}
+        </button>
+      `;
+    }).join("");
+  }
+
+  function getOSQuickLinkSections() {
+    return [
+      { btnTarget: "shopKPIStripBox", sectionId: "shopKPIStripBox" },
+      { btnTarget: "skuRadarBox", sectionId: "skuRadarBox" },
+      { btnTarget: "shopMissionDigestBox", sectionId: "shopMissionDigestBox" },
+      { btnTarget: "shopAIActionsBox", sectionId: "shopAIActionsBox" },
+      { btnTarget: "shopServicesOverviewBox", sectionId: "shopServicesOverviewBox" },
+      { btnTarget: "shopServiceTimelineBox", sectionId: "shopServiceTimelineBox" },
+      { btnTarget: "notifList", sectionId: "notifList" },
+    ];
+  }
+
+  function setActiveOSQuickLink(targetId) {
+    qsa(".os-quick-link-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.target === targetId);
+    });
+  }
+  function syncOSQuickLinksByScroll() {
+    const sections = getOSQuickLinkSections();
+    let activeId = "";
+
+    for (const item of sections) {
+      const el = $(item.sectionId);
+      if (!el) continue;
+
+      const rect = el.getBoundingClientRect();
+
+      if (rect.top <= 140 && rect.bottom >= 140) {
+        activeId = item.btnTarget;
+        break;
+      }
+    }
+
+    if (activeId) {
+      setActiveOSQuickLink(activeId);
+    }
+  }
+
+  function scrollToOSSection(targetId) {
+    const el = document.getElementById(targetId);
+    if (!el) {
+      alert("Mục này chưa có dữ liệu hoặc chưa render xong.");
+      return;
+    }
+
+    setActiveOSQuickLink(targetId);
+
+    el.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
   function renderShopKPIStrip(data) {
     const missionBox = $("shopMissionDigestBox");
     const root = missionBox ? missionBox.parentNode : (document.querySelector(".grid") || document.body);
@@ -4163,7 +4414,196 @@
         <div class="fd-v">${escapeHtml(x.value || "0")} ${escapeHtml(x.unit || "")}</div>
       </div>
     `).join("");
-}
+  }
+  function renderSKURadar(data) {
+
+    const kpiBox = $("shopKPIStripBox");
+    const root = kpiBox ? kpiBox.parentNode : (document.querySelector(".grid") || document.body);
+
+    let box = $("skuRadarBox");
+
+    if (!box) {
+
+      box = document.createElement("div");
+      box.id = "skuRadarBox";
+      box.className = "card";
+      box.style.gridColumn = "1 / -1";
+
+      box.innerHTML = `
+        <div class="card-h">
+          <div>
+            <div class="card-t">Radar SKU</div>
+            <div class="muted">Theo dõi SKU bán tốt, ROAS thấp và SKU đang lỗ</div>
+          </div>
+        </div>
+
+        <div class="card-b">
+          <div id="skuRadarWrap" class="fd-cards"></div>
+        </div>
+      `;
+
+      if (kpiBox) {
+        root.insertBefore(box, kpiBox.nextSibling);
+      } else {
+        root.prepend(box);
+      }
+    }
+
+    const wrap = $("skuRadarWrap");
+    if (!wrap) return;
+
+    const blocks = data?.blocks || {};
+
+    const topSelling = blocks.top_selling || [];
+    const lowRoas = blocks.low_roas || [];
+    const losingSku = blocks.losing_sku || [];
+    const lowStock = blocks.low_stock || [];
+
+    function itemHtml(x, extra) {
+
+      return `
+        <div class="item">
+          <div class="t">${escapeHtml(x.sku || "")} • ${escapeHtml(x.name || "")}</div>
+          <div class="row">${extra}</div>
+        </div>
+      `;
+    }
+
+    wrap.innerHTML = `
+
+      <div class="fd-card">
+        <div class="fd-k">SKU bán tốt</div>
+        ${topSelling.length ? topSelling.map(x => itemHtml(
+          x,
+          `<span>Doanh thu: <b>${x.revenue}</b></span>
+          <span>SL: <b>${x.units_sold}</b></span>`
+        )).join("") : `<div class="muted">Chưa có dữ liệu</div>`}
+      </div>
+
+      <div class="fd-card">
+        <div class="fd-k">ROAS thấp</div>
+        ${lowRoas.length ? lowRoas.map(x => itemHtml(
+          x,
+          `<span>ROAS: <b>${x.roas_estimate}</b></span>`
+        )).join("") : `<div class="muted">Chưa có dữ liệu</div>`}
+      </div>
+
+      <div class="fd-card">
+        <div class="fd-k">SKU đang lỗ</div>
+        ${losingSku.length ? losingSku.map(x => itemHtml(
+          x,
+          `<span>Lợi nhuận: <b>${x.profit_estimate}</b></span>`
+        )).join("") : `<div class="muted">Chưa có SKU lỗ</div>`}
+      </div>
+
+      <div class="fd-card">
+        <div class="fd-k">Sắp hết hàng</div>
+        ${lowStock.length ? lowStock.map(x => itemHtml(
+          x,
+          `<span>Tồn kho: <b>${x.stock}</b></span>`
+        )).join("") : `<div class="muted">Tồn kho ổn</div>`}
+      </div>
+
+    `;
+  }
+  async function importProductCsv() {
+    const fileInput = document.getElementById("productCsvFile");
+    const result = document.getElementById("csvImportResult");
+    const shopId = getCurrentShopId();
+
+    if (!shopId) {
+      alert("Anh chọn shop trước nha, rồi mới import sản phẩm được.");
+      return;
+    }
+
+    if (!fileInput || !fileInput.files.length) {
+      alert("Anh chọn file CSV trước nha");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    try {
+      const res = await fetch(`/api/v1/os/products/import-csv/?shop_id=${encodeURIComponent(shopId)}`, {
+        method: "POST",
+        body: formData,
+        credentials: "include"
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        result.innerHTML = `<span style="color:#f87171;">Import lỗi: ${data.message || "Không xác định"}</span>`;
+        return;
+      }
+
+      result.innerHTML =
+        `Đã nhập cho shop <b>#${shopId}</b> • ` +
+        `Tạo mới: <b>${data.created || 0}</b> • ` +
+        `Cập nhật: <b>${data.updated || 0}</b> • ` +
+        `Lỗi: <b>${data.errors_count || 0}</b>`;
+
+      if (window.safeRefreshAll) {
+        setTimeout(() => window.safeRefreshAll(true), 300);
+      }
+    } catch (e) {
+      result.innerHTML = `<span style="color:#f87171;">Import lỗi, vui lòng thử lại</span>`;
+    }
+  }
+  async function submitSales() {
+    const sku = (document.getElementById("skuInput")?.value || "").trim();
+    const units = document.getElementById("unitsSoldInput")?.value || 0;
+    const revenue = document.getElementById("revenueInput")?.value || 0;
+    const ads = document.getElementById("adsInput")?.value || 0;
+    const result = document.getElementById("salesResult");
+    const shopId = getCurrentShopId();
+
+    if (!shopId) {
+      alert("Anh chọn shop trước nha, rồi mới nhập doanh số SKU được.");
+      return;
+    }
+
+    if (!sku) {
+      alert("Anh nhập mã SKU trước nha");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/v1/os/products/daily-stats/upsert/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          shop_id: parseInt(shopId, 10),
+          sku: sku,
+          units_sold: parseInt(units || 0, 10),
+          revenue: parseFloat(revenue || 0),
+          ads_spend: parseFloat(ads || 0)
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        result.innerHTML = `<span style="color:#f87171;">Lưu dữ liệu lỗi: ${data.message || "Không xác định"}</span>`;
+        return;
+      }
+
+      result.innerHTML =
+        `Đã ghi nhận cho shop <b>#${shopId}</b> • ` +
+        `ROAS: <b>${data.item.roas_estimate}</b> • ` +
+        `Lợi nhuận ước tính: <b>${data.item.profit_estimate}</b>`;
+
+      if (window.safeRefreshAll) {
+        setTimeout(() => window.safeRefreshAll(true), 300);
+      }
+    } catch (e) {
+      result.innerHTML = `<span style="color:#f87171;">Gửi dữ liệu lỗi, vui lòng thử lại</span>`;
+    }
+  }
 window.safeRefreshAll = safeRefreshAll;
 window.htRefreshWork = refreshWorkData;
 window.htFindTask = findTaskById;

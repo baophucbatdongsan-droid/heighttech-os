@@ -1545,3 +1545,52 @@ border-left:4px solid #ef4444;
 #shopKPIStripBox{
   border-left:4px solid #3b82f6;
 }
+#skuRadarBox{
+  border-left:4px solid #06b6d4;
+}
+#osQuickLinksBox{
+  border-left:4px solid #8b5cf6;
+  position: sticky;
+  top: 14px;
+  z-index: 30;
+  backdrop-filter: blur(10px);
+  background: rgba(10, 18, 40, 0.72);
+}
+
+.os-quick-link-btn{
+  border-radius:999px;
+  white-space:nowrap;
+}
+
+#osQuickLinksWrap{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+@media (max-width: 768px){
+  #osQuickLinksBox{
+    top: 8px;
+  }
+
+  #osQuickLinksWrap{
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+
+  #osQuickLinksWrap::-webkit-scrollbar{
+    height: 4px;
+  }
+
+  .os-quick-link-btn{
+    flex: 0 0 auto;
+  }
+}
+.os-quick-link-btn.active{
+  box-shadow: 0 0 0 1px rgba(139,92,246,.45) inset;
+  background: rgba(139,92,246,.18);
+  border-color: rgba(139,92,246,.45);
+}

@@ -113,7 +113,42 @@
           <div class="list" id="notifList"></div>
         </div>
       </div>
+      <div class="card">
+        <div class="card-h">Nhập sản phẩm từ file CSV</div>
 
+        <div style="padding:12px">
+          <div id="shopScopeNotice" class="muted" style="margin-bottom:8px;"></div>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+            <select id="shopQuickSelector" class="input" style="min-width:260px;"></select>
+            <button type="button" class="btn" onclick="applyQuickShopSelection()">Chọn shop</button>
+          </div>
+
+          <input type="file" id="productCsvFile" accept=".csv">
+
+          <button onclick="importProductCsv()" class="btn">
+            Tải lên
+          </button>
+
+          <div id="csvImportResult" style="margin-top:10px;font-size:13px;"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h">Nhập doanh số SKU</div>
+
+        <div style="padding:12px; display:flex; gap:8px; flex-wrap:wrap;">
+          <div class="muted" id="shopScopeNoticeSales" style="width:100%; margin-bottom:4px;"></div>
+
+          <input id="skuInput" placeholder="Mã SKU" class="input">
+          <input id="unitsSoldInput" type="number" placeholder="Số lượng bán" class="input">
+          <input id="revenueInput" type="number" placeholder="Doanh thu" class="input">
+          <input id="adsInput" type="number" placeholder="Chi phí quảng cáo" class="input">
+
+          <button onclick="submitSales()" class="btn">Ghi nhận</button>
+
+          <div id="salesResult" style="width:100%; margin-top:8px;"></div>
+        </div>
+      </div>
       <!-- ================================= -->
       <!-- WORK OS -->
       <!-- ================================= -->
@@ -304,7 +339,7 @@
           <div class="table" id="healthTable"></div>
         </div>
       </div>
-
+      
       <!-- ================================= -->
       <!-- STRATEGY PANEL -->
       <!-- ================================= -->
