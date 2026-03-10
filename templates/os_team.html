@@ -163,7 +163,7 @@
 
     .stats{
       display:grid;
-      grid-template-columns:repeat(3,1fr);
+      grid-template-columns:repeat(4,1fr);
       gap:12px;
       margin-bottom:18px;
     }
@@ -217,6 +217,7 @@
       padding:12px 13px;
       outline:none;
       transition:.16s ease;
+      appearance:none;
     }
 
     .input::placeholder{
@@ -227,6 +228,21 @@
       border-color:rgba(79,140,255,.72);
       box-shadow:0 0 0 4px rgba(79,140,255,.14);
       background:rgba(255,255,255,.06);
+    }
+
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    textarea:-webkit-autofill,
+    textarea:-webkit-autofill:hover,
+    textarea:-webkit-autofill:focus,
+    select:-webkit-autofill,
+    select:-webkit-autofill:hover,
+    select:-webkit-autofill:focus{
+      -webkit-text-fill-color: var(--text);
+      -webkit-box-shadow: 0 0 0px 1000px rgba(255,255,255,.04) inset;
+      transition: background-color 5000s ease-in-out 0s;
+      border:1px solid rgba(255,255,255,.08);
     }
 
     .form-actions{
@@ -328,10 +344,14 @@
     }
 
     .tag.role-founder{ background:rgba(245,158,11,.12); color:#ffd79a; border-color:rgba(245,158,11,.2); }
-    .tag.role-head{ background:rgba(79,140,255,.14); color:#bdd4ff; border-color:rgba(79,140,255,.25); }
-    .tag.role-account{ background:rgba(16,185,129,.14); color:#b8f3dc; border-color:rgba(16,185,129,.22); }
-    .tag.role-sale{ background:rgba(236,72,153,.14); color:#ffc9e6; border-color:rgba(236,72,153,.22); }
+    .tag.role-head{ background:rgba(99,102,241,.14); color:#cdd2ff; border-color:rgba(99,102,241,.25); }
+    .tag.role-leader-channel{ background:rgba(79,140,255,.14); color:#bdd4ff; border-color:rgba(79,140,255,.25); }
+    .tag.role-leader-booking{ background:rgba(236,72,153,.14); color:#ffc9e6; border-color:rgba(236,72,153,.22); }
+    .tag.role-leader-operation{ background:rgba(16,185,129,.14); color:#b8f3dc; border-color:rgba(16,185,129,.22); }
+    .tag.role-account{ background:rgba(34,197,94,.14); color:#c8f7d7; border-color:rgba(34,197,94,.22); }
+    .tag.role-sale{ background:rgba(249,115,22,.14); color:#ffd2b0; border-color:rgba(249,115,22,.22); }
     .tag.role-operator{ background:rgba(148,163,184,.14); color:#dce7f7; border-color:rgba(148,163,184,.2); }
+    .tag.role-editor{ background:rgba(168,85,247,.14); color:#ead1ff; border-color:rgba(168,85,247,.22); }
 
     .status{
       font-size:12px;
@@ -384,7 +404,7 @@
 
     @media (max-width: 640px){
       .stats{
-        grid-template-columns:1fr;
+        grid-template-columns:1fr 1fr;
       }
 
       .form-grid{
@@ -420,7 +440,7 @@
           <div class="card-h">
             <div>
               <div class="card-t">Tạo tài khoản nhân sự</div>
-              <div class="card-d">Dùng cho leader booking, leader channel, operator, sale, account trong cùng workspace.</div>
+              <div class="card-d">Dùng cho leader booking, leader channel, leader operation, operator, sale, account, editor trong cùng workspace.</div>
             </div>
           </div>
 
@@ -432,43 +452,82 @@
               </div>
               <div class="stat">
                 <div class="stat-k">Leader</div>
-                <div class="stat-v" id="statHead">0</div>
+                <div class="stat-v" id="statLeader">0</div>
               </div>
               <div class="stat">
                 <div class="stat-k">Operator</div>
                 <div class="stat-v" id="statOperator">0</div>
               </div>
+              <div class="stat">
+                <div class="stat-k">Editor</div>
+                <div class="stat-v" id="statEditor">0</div>
+              </div>
             </div>
 
             <div class="form-grid">
               <div class="field">
-                <label class="label" for="email">Email</label>
-                <input id="email" class="input" placeholder="vd: leader.booking@heightmedia.vn">
+                <label class="label" for="email">Email đăng nhập</label>
+                <input
+                  id="email"
+                  class="input"
+                  type="email"
+                  inputmode="email"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="vd: leader.booking@heightmedia.vn"
+                >
               </div>
 
               <div class="field">
-                <label class="label" for="username">Username</label>
-                <input id="username" class="input" placeholder="vd: leader.booking">
+                <label class="label" for="username">Tên đăng nhập / tên hiển thị</label>
+                <input
+                  id="username"
+                  class="input"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="vd: leader_booking"
+                >
               </div>
 
               <div class="field">
                 <label class="label" for="password">Mật khẩu tạm</label>
-                <input id="password" class="input" type="password" placeholder="Nhập mật khẩu tạm">
+                <input
+                  id="password"
+                  class="input"
+                  type="password"
+                  autocomplete="new-password"
+                  placeholder="Nhập mật khẩu tạm"
+                >
               </div>
 
               <div class="field">
                 <label class="label" for="role">Vai trò</label>
                 <select id="role" class="select">
                   <option value="operator">Operator</option>
+                  <option value="editor">Editor</option>
                   <option value="sale">Sale</option>
                   <option value="account">Account</option>
-                  <option value="head">Leader</option>
+                  <option value="leader_channel">Leader Channel</option>
+                  <option value="leader_booking">Leader Booking</option>
+                  <option value="leader_operation">Leader Operation</option>
+                  <option value="head">Head (Legacy)</option>
+                  <option value="founder">Founder</option>
                 </select>
               </div>
 
               <div class="field full">
                 <label class="label" for="company_id">Company ID (tuỳ chọn nếu API đã auto)</label>
-                <input id="company_id" class="input" placeholder="Để trống nếu hệ đang auto company hiện tại">
+                <input
+                  id="company_id"
+                  class="input"
+                  type="number"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  placeholder="Để trống nếu hệ đang auto company hiện tại"
+                >
               </div>
             </div>
 
@@ -478,7 +537,7 @@
             </div>
 
             <div class="hint">
-              Gợi ý: founder Height Media tạo trước <b>leader booking</b>, <b>leader channel</b>. Sau đó leader đăng nhập và tự tạo tiếp nhân sự dưới quyền trong cùng workspace.
+              Gợi ý: founder tạo trước <b>leader booking</b>, <b>leader channel</b>, <b>leader operation</b>. Sau đó leader đăng nhập và tự tạo tiếp nhân sự dưới quyền trong cùng workspace.
             </div>
 
             <div id="statusBox" class="status info"></div>
@@ -519,12 +578,22 @@
             </div>
 
             <div class="mini-item">
-              <div class="mini-title">Leader / Head</div>
-              <div class="mini-desc">Quản lý bộ phận như booking, channel, vận hành. Có thể tạo nhân sự dưới quyền trong cùng workspace.</div>
+              <div class="mini-title">Leader Channel</div>
+              <div class="mini-desc">Quản lý xây kênh, content studio, content work sync, AI dashboard, priority dashboard.</div>
             </div>
 
             <div class="mini-item">
-              <div class="mini-title">Operator / Sale / Account</div>
+              <div class="mini-title">Leader Booking</div>
+              <div class="mini-desc">Quản lý booking KOC/KOL, video link, lịch air, payout liên quan booking.</div>
+            </div>
+
+            <div class="mini-item">
+              <div class="mini-title">Leader Operation</div>
+              <div class="mini-desc">Quản lý vận hành shop, SKU, progress client, các đầu việc execution theo shop.</div>
+            </div>
+
+            <div class="mini-item">
+              <div class="mini-title">Operator / Sale / Account / Editor</div>
               <div class="mini-desc">Là user vận hành thực tế, chỉ làm việc theo role được giao.</div>
             </div>
 
@@ -541,6 +610,30 @@
   <script>
     let TEAM_CACHE = [];
 
+    function getCookie(name) {
+      const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
+      return m ? decodeURIComponent(m[2]) : "";
+    }
+
+    function authHeaders(extra = {}) {
+      const headers = Object.assign({}, extra || {});
+      const csrf = getCookie("csrftoken");
+      if (csrf) {
+        headers["X-CSRFToken"] = csrf;
+      }
+      headers["X-Requested-With"] = "XMLHttpRequest";
+      return headers;
+    }
+
+    async function readJsonSafe(res) {
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        return await res.json();
+      }
+      const txt = await res.text();
+      throw new Error(txt || `HTTP ${res.status}`);
+    }
+
     function escapeHtml(value) {
       return String(value ?? "")
         .replaceAll("&", "&amp;")
@@ -554,9 +647,27 @@
       const r = String(role || "").toLowerCase();
       if (r === "founder") return "role-founder";
       if (r === "head") return "role-head";
+      if (r === "leader_channel") return "role-leader-channel";
+      if (r === "leader_booking") return "role-leader-booking";
+      if (r === "leader_operation") return "role-leader-operation";
       if (r === "account") return "role-account";
       if (r === "sale") return "role-sale";
+      if (r === "editor") return "role-editor";
       return "role-operator";
+    }
+
+    function roleLabel(role){
+      const r = String(role || "").toLowerCase();
+      if (r === "founder") return "Founder";
+      if (r === "head") return "Head (Legacy)";
+      if (r === "leader_channel") return "Leader Channel";
+      if (r === "leader_booking") return "Leader Booking";
+      if (r === "leader_operation") return "Leader Operation";
+      if (r === "account") return "Account";
+      if (r === "sale") return "Sale";
+      if (r === "editor") return "Editor";
+      if (r === "operator") return "Operator";
+      return role || "Unknown";
     }
 
     function initials(text){
@@ -579,17 +690,23 @@
       document.getElementById("password").value = "";
       document.getElementById("role").value = "operator";
       document.getElementById("company_id").value = "";
-      setStatus("Đã xoá form.", "info");
     }
 
     function updateStats(items){
       const arr = Array.isArray(items) ? items : [];
-      const head = arr.filter(x => String(x.role || "").toLowerCase() === "head").length;
+
+      const leader = arr.filter(x => {
+        const r = String(x.role || "").toLowerCase();
+        return ["head", "leader_channel", "leader_booking", "leader_operation"].includes(r);
+      }).length;
+
       const operator = arr.filter(x => String(x.role || "").toLowerCase() === "operator").length;
+      const editor = arr.filter(x => String(x.role || "").toLowerCase() === "editor").length;
 
       document.getElementById("statTotal").textContent = arr.length;
-      document.getElementById("statHead").textContent = head;
+      document.getElementById("statLeader").textContent = leader;
       document.getElementById("statOperator").textContent = operator;
+      document.getElementById("statEditor").textContent = editor;
     }
 
     function renderTeam(){
@@ -604,6 +721,7 @@
             x.username,
             x.email,
             x.role,
+            roleLabel(x.role),
             x.company_id
           ].filter(Boolean).join(" ").toLowerCase();
           return hay.includes(keyword);
@@ -625,7 +743,7 @@
               <div class="member-name">${escapeHtml(x.username || "(không có username)")}</div>
               <div class="member-email">${escapeHtml(x.email || "")}</div>
               <div class="member-meta">
-                <span class="tag ${roleClass(x.role)}">${escapeHtml(x.role || "operator")}</span>
+                <span class="tag ${roleClass(x.role)}">${escapeHtml(roleLabel(x.role))}</span>
                 <span class="tag">Company ID: ${escapeHtml(x.company_id ?? "-")}</span>
                 <span class="tag">User ID: ${escapeHtml(x.user_id ?? "-")}</span>
               </div>
@@ -641,13 +759,16 @@
       try {
         const res = await fetch("/api/v1/team/", {
           credentials: "include",
-          cache: "no-store"
+          cache: "no-store",
+          headers: authHeaders({
+            "Accept": "application/json"
+          })
         });
 
-        const data = await res.json();
+        const data = await readJsonSafe(res);
 
         if (!res.ok || !data.ok) {
-          setStatus(data.message || "Không tải được danh sách nhân sự.", "err");
+          setStatus(data.message || data.detail || "Không tải được danh sách nhân sự.", "err");
           return;
         }
 
@@ -668,7 +789,7 @@
       const company_id = document.getElementById("company_id").value.trim();
 
       if (!email || !password) {
-        setStatus("Cần nhập email và mật khẩu tạm.", "err");
+        setStatus("Cần nhập email đăng nhập và mật khẩu tạm.", "err");
         return;
       }
 
@@ -683,21 +804,22 @@
         const res = await fetch("/api/v1/team/create/", {
           method: "POST",
           credentials: "include",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: authHeaders({
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          }),
           body: JSON.stringify(payload)
         });
 
-        const data = await res.json();
+        const data = await readJsonSafe(res);
 
         if (!res.ok || !data.ok) {
-          setStatus(data.message || "Tạo tài khoản thất bại.", "err");
+          setStatus(data.message || data.detail || "Tạo tài khoản thất bại.", "err");
           return;
         }
 
-        setStatus("Tạo tài khoản thành công. User ID: " + (data.user_id || "-"), "ok");
         clearForm();
+        setStatus("Tạo tài khoản thành công. User ID: " + (data.user_id || "-"), "ok");
         await loadTeam();
       } catch (err) {
         setStatus("Lỗi tạo tài khoản: " + err.message, "err");

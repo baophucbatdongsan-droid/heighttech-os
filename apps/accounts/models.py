@@ -6,17 +6,25 @@ from django.utils import timezone
 
 
 ROLE_FOUNDER = "founder"
-ROLE_HEAD = "head"
+ROLE_HEAD = "head"  # legacy
+ROLE_LEADER_CHANNEL = "leader_channel"
+ROLE_LEADER_BOOKING = "leader_booking"
+ROLE_LEADER_OPERATION = "leader_operation"
 ROLE_ACCOUNT = "account"
 ROLE_SALE = "sale"
 ROLE_OPERATOR = "operator"
+ROLE_EDITOR = "editor"
 
 ROLE_CHOICES = (
     (ROLE_FOUNDER, "Founder"),
-    (ROLE_HEAD, "Head"),
+    (ROLE_HEAD, "Head (Legacy)"),
+    (ROLE_LEADER_CHANNEL, "Leader Channel"),
+    (ROLE_LEADER_BOOKING, "Leader Booking"),
+    (ROLE_LEADER_OPERATION, "Leader Operation"),
     (ROLE_ACCOUNT, "Account"),
     (ROLE_SALE, "Sale"),
     (ROLE_OPERATOR, "Operator"),
+    (ROLE_EDITOR, "Editor"),
 )
 
 
