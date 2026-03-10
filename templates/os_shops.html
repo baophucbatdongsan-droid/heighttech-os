@@ -1,0 +1,388 @@
+{% load static %}
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>HeightTech OS • Shop</title>
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=23" />
+  <style>
+    .page-wrap{max-width:1240px;margin:0 auto;padding:24px;}
+    .page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
+    .page-title{font-size:28px;font-weight:900;}
+    .page-sub{color:var(--muted);margin-top:6px;line-height:1.6;max-width:860px;}
+    .tenant-line{
+      display:inline-flex;align-items:center;gap:8px;
+      margin-top:12px;padding:8px 12px;border-radius:999px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.04);
+      font-size:12px;color:var(--muted);
+    }
+
+    .grid-2{display:grid;grid-template-columns:1.02fr .98fr;gap:18px;}
+    .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+    .full{grid-column:1 / -1;}
+    .status-box{margin-top:12px;font-size:13px;min-height:20px;line-height:1.5;}
+    .list-box{display:flex;flex-direction:column;gap:12px;}
+
+    .item-card{
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;
+      padding:14px;
+      background:rgba(255,255,255,.03);
+    }
+
+    .item-title{
+      font-weight:800;
+      font-size:15px;
+      line-height:1.35;
+    }
+
+    .item-sub{
+      font-size:13px;
+      color:var(--muted);
+      margin-top:4px;
+      line-height:1.5;
+    }
+
+    .item-meta{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+
+    .tag2{
+      padding:4px 10px;
+      border-radius:999px;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+      font-size:12px;
+    }
+
+    .actions-row{
+      display:flex;
+      gap:10px;
+      justify-content:flex-end;
+      margin-top:14px;
+      flex-wrap:wrap;
+    }
+
+    .mini-note{
+      font-size:12px;
+      color:var(--muted);
+      margin-top:8px;
+      line-height:1.5;
+    }
+
+    @media (max-width: 920px){
+      .grid-2{grid-template-columns:1fr;}
+      .form-grid{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="page-head">
+      <div>
+        <div class="page-title">Tạo Shop</div>
+        <div class="page-sub">
+          Tạo nhanh workspace shop để gắn brand, SKU, doanh số và luồng vận hành.
+          Trang này chỉ thao tác trong tenant hiện tại.
+        </div>
+        <div class="tenant-line">
+          Tenant hiện tại:
+          <b id="tenantBadge">{{ current_tenant_id|default:"?" }}</b>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a href="/os/" class="btn">← Về OS</a>
+        <button class="btn primary" type="button" onclick="loadShops()">Làm mới</button>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-h">
+          <div>
+            <div class="card-title">Tạo workspace shop</div>
+            <div class="brand-sub">Không cần nhập Brand ID tay nữa. Hệ thống sẽ tự tạo Company → Brand → Shop.</div>
+          </div>
+        </div>
+
+        <div class="card-b">
+          <div class="form-grid">
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Tên công ty</div>
+              <input id="company_name" class="input" placeholder="VD: Height Media Commerce" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Tên brand</div>
+              <input id="brand_name" class="input" placeholder="VD: Height Beauty" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Tên shop</div>
+              <input id="shop_name" class="input" placeholder="VD: Height Beauty Official" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Nền tảng</div>
+              <select id="platform" class="input">
+                <option value="shopee">Shopee</option>
+                <option value="tiktok_shop">TikTok Shop</option>
+                <option value="lazada">Lazada</option>
+                <option value="website">Website</option>
+                <option value="other">Khác</option>
+              </select>
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Industry code</div>
+              <input id="industry_code" class="input" placeholder="VD: ecommerce" value="default" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Rule version</div>
+              <input id="rule_version" class="input" placeholder="VD: v1" value="v1" />
+            </div>
+
+            <div class="full">
+              <div class="muted" style="margin-bottom:6px;">Ghi chú</div>
+              <input id="description" class="input" placeholder="VD: Shop mỹ phẩm TikTok chuyên live / ads / KOC" />
+            </div>
+          </div>
+
+          <div class="actions-row">
+            <button class="btn" type="button" onclick="resetForm()">Xoá form</button>
+            <button class="btn primary" type="button" onclick="createWorkspace()">Tạo workspace</button>
+          </div>
+
+          <div class="mini-note">
+            Sau khi tạo xong, hệ thống sẽ có luôn <b>Company</b>, <b>Brand</b> và <b>Shop</b> trong tenant hiện tại.
+          </div>
+
+          <div id="statusBox" class="status-box muted"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <div>
+            <div class="card-title">Danh sách shop</div>
+            <div class="brand-sub">Chỉ hiển thị shop thuộc tenant hiện tại.</div>
+          </div>
+        </div>
+
+        <div class="card-b">
+          <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+            <input id="searchQ" class="input" placeholder="Tìm tên / code / platform / brand..." />
+            <button class="btn" type="button" onclick="loadShops()">Tìm</button>
+          </div>
+
+          <div id="shopsList" class="list-box"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
+
+    function getCookie(name) {
+      const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
+      return m ? decodeURIComponent(m[2]) : "";
+    }
+
+    function authHeaders(extra = {}) {
+      const headers = Object.assign({}, extra || {});
+      if (CURRENT_TENANT_ID) {
+        headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
+      }
+      const csrf = getCookie("csrftoken");
+      if (csrf) {
+        headers["X-CSRFToken"] = csrf;
+      }
+      return headers;
+    }
+
+    async function readJsonSafe(res) {
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        return await res.json();
+      }
+      const txt = await res.text();
+      throw new Error(txt || `HTTP ${res.status}`);
+    }
+
+    function escapeHtml(v){
+      return String(v ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function setStatus(msg, type){
+      const el = document.getElementById("statusBox");
+      el.textContent = msg || "";
+      el.style.color =
+        type === "err" ? "#ff8f9c" :
+        type === "ok" ? "#8fe3a1" :
+        "#8ab4ff";
+    }
+
+    function resetForm(showMessage = true){
+      ["company_name","brand_name","shop_name","description","industry_code","rule_version"].forEach(id=>{
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+
+      document.getElementById("platform").value = "shopee";
+      document.getElementById("industry_code").value = "default";
+      document.getElementById("rule_version").value = "v1";
+
+      if (showMessage) {
+        setStatus("Đã xoá form.", "ok");
+      }
+    }
+
+    function buildWorkspacePayload(){
+      const companyName = document.getElementById("company_name").value.trim();
+      const brandName = document.getElementById("brand_name").value.trim();
+      const shopName = document.getElementById("shop_name").value.trim();
+      const platform = document.getElementById("platform").value;
+      const industryCode = document.getElementById("industry_code").value.trim() || "default";
+      const ruleVersion = document.getElementById("rule_version").value.trim() || "v1";
+      const description = document.getElementById("description").value.trim();
+
+      return {
+        company_name: companyName,
+        brand_name: brandName,
+        name: shopName,
+        platform: platform,
+        industry_code: industryCode,
+        rule_version: ruleVersion,
+        description: description
+      };
+    }
+
+    async function createWorkspace() {
+      try {
+        const payload = buildWorkspacePayload();
+
+        if (!payload.company_name) {
+          setStatus("Thiếu tên công ty.", "err");
+          return;
+        }
+
+        if (!payload.brand_name) {
+          setStatus("Thiếu tên brand.", "err");
+          return;
+        }
+
+        if (!payload.name) {
+          setStatus("Thiếu tên shop.", "err");
+          return;
+        }
+
+        setStatus("Đang tạo workspace shop...", "info");
+
+        const res = await fetch("/api/v1/shops/create-workspace/", {
+          method: "POST",
+          credentials: "include",
+          headers: authHeaders({
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          }),
+          body: JSON.stringify(payload)
+        });
+
+        const data = await readJsonSafe(res);
+
+        if (!res.ok || !data.ok) {
+          setStatus(data.message || data.detail || "Tạo workspace thất bại.", "err");
+          return;
+        }
+
+        const createdShop = data.shop?.name || data.item?.name || payload.name;
+        const createdBrand = data.brand?.name || payload.brand_name;
+        const createdCompany = data.company?.name || payload.company_name;
+
+        resetForm(false);
+        setStatus(
+          `Tạo thành công • Company: ${createdCompany} • Brand: ${createdBrand} • Shop: ${createdShop}`,
+          "ok"
+        );
+        await loadShops();
+      } catch (err) {
+        setStatus("Lỗi: " + err.message, "err");
+      }
+    }
+
+    function renderShops(items){
+      const box = document.getElementById("shopsList");
+
+      if (!items || !items.length) {
+        box.innerHTML = `<div class="muted">Chưa có shop nào.</div>`;
+        return;
+      }
+
+      box.innerHTML = items.map(x => `
+        <div class="item-card">
+          <div class="item-title">${escapeHtml(x.name || "Shop")}</div>
+          <div class="item-sub">Brand: ${escapeHtml(x.brand_name || "Chưa có")}</div>
+
+          <div class="item-meta">
+            <span class="tag2">ID: ${escapeHtml(x.id ?? "-")}</span>
+            <span class="tag2">Brand ID: ${escapeHtml(x.brand_id ?? "-")}</span>
+            <span class="tag2">Platform: ${escapeHtml(x.platform || "-")}</span>
+            <span class="tag2">Code: ${escapeHtml(x.code || "-")}</span>
+            <span class="tag2">Status: ${escapeHtml(x.status || "-")}</span>
+            <span class="tag2">Industry: ${escapeHtml(x.industry_code || "-")}</span>
+            <span class="tag2">Rule: ${escapeHtml(x.rule_version || "-")}</span>
+          </div>
+
+          ${x.description ? `<div class="item-sub" style="margin-top:8px;">${escapeHtml(x.description)}</div>` : ""}
+        </div>
+      `).join("");
+    }
+
+    async function loadShops(){
+      const q = document.getElementById("searchQ").value.trim();
+
+      try{
+        const url = q
+          ? `/api/v1/shops/?q=${encodeURIComponent(q)}`
+          : `/api/v1/shops/`;
+
+        const res = await fetch(url, {
+          credentials: "include",
+          cache: "no-store",
+          headers: authHeaders({
+            "Accept": "application/json"
+          })
+        });
+
+        const data = await readJsonSafe(res);
+
+        if (!res.ok || !data.ok) {
+          document.getElementById("shopsList").innerHTML =
+            `<div class="muted">Có lỗi khi tải danh sách shop.</div>`;
+          return;
+        }
+
+        renderShops(data.items || []);
+      } catch(err){
+        document.getElementById("shopsList").innerHTML =
+          `<div class="muted">Có lỗi khi tải danh sách shop: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    loadShops();
+  </script>
+</body>
+</html>

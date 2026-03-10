@@ -1,0 +1,139 @@
+{% load static %}
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Tiến độ xây kênh</title>
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=20" />
+  <style>
+    .page-wrap{max-width:1180px;margin:0 auto;padding:24px;}
+    .page-title{font-size:28px;font-weight:900;}
+    .page-sub{color:var(--muted);margin-top:6px;line-height:1.5;}
+    .kpi-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0;}
+    .kpi-card{padding:14px;border-radius:16px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);}
+    .kpi-k{font-size:12px;color:var(--muted);}
+    .kpi-v{font-size:24px;font-weight:900;margin-top:6px;}
+    .stack{display:flex;flex-direction:column;gap:14px;}
+    .item{border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px;background:rgba(255,255,255,.03);}
+    .item-t{font-size:17px;font-weight:800;}
+    .item-d{color:var(--muted);font-size:13px;line-height:1.6;margin-top:8px;white-space:pre-wrap;}
+    .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+    .tag2{padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);font-size:12px;}
+    .metric-list{margin-top:12px;display:grid;gap:8px;}
+    .metric-item{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);font-size:13px;}
+    @media (max-width: 900px){
+      .kpi-row{grid-template-columns:repeat(2,minmax(0,1fr));}
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="page-title">Tiến độ xây kênh</div>
+    <div class="page-sub">
+      Shop có thể theo dõi nội dung đang chuẩn bị quay, đang sản xuất, đã air và hiệu suất từng ngày.
+    </div>
+
+    <div class="kpi-row" id="headlineRow"></div>
+    <div class="stack" id="contentList"></div>
+  </div>
+
+  <script>
+    const CONTRACT_ID = {{ contract_id }};
+    const SHOP_ID = {{ shop_id }};
+    const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
+
+    function authHeaders(extra = {}) {
+      const headers = Object.assign({}, extra || {});
+      if (CURRENT_TENANT_ID) {
+        headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
+      }
+      return headers;
+    }
+
+    function escapeHtml(v){
+      return String(v ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function kpiCard(label, value){
+      return `
+        <div class="kpi-card">
+          <div class="kpi-k">${escapeHtml(label)}</div>
+          <div class="kpi-v">${escapeHtml(value)}</div>
+        </div>
+      `;
+    }
+
+    function renderHeadline(h){
+      document.getElementById("headlineRow").innerHTML = `
+        ${kpiCard("Tổng nội dung", h.total_contents || 0)}
+        ${kpiCard("Đã có kịch bản", h.script_ready || 0)}
+        ${kpiCard("Đang sản xuất", h.in_production || 0)}
+        ${kpiCard("Đã air", h.aired || 0)}
+      `;
+    }
+
+    function renderItems(items){
+      const box = document.getElementById("contentList");
+      if (!items.length){
+        box.innerHTML = `<div class="item"><div class="item-t">Chưa có nội dung nào</div></div>`;
+        return;
+      }
+
+      box.innerHTML = items.map(x => `
+        <div class="item">
+          <div class="item-t">${escapeHtml(x.title)}</div>
+
+          <div class="row">
+            <span class="tag2">Trạng thái: ${escapeHtml(x.status)}</span>
+            ${x.content_pillar ? `<span class="tag2">Trụ cột: ${escapeHtml(x.content_pillar)}</span>` : ``}
+            ${x.planned_publish_at ? `<span class="tag2">Dự kiến đăng: ${escapeHtml(x.planned_publish_at)}</span>` : ``}
+            ${x.aired_at ? `<span class="tag2">Đã air: ${escapeHtml(x.aired_at)}</span>` : ``}
+          </div>
+
+          ${x.script_text ? `<div class="item-d"><b>Kịch bản:</b>\n${escapeHtml(x.script_text)}</div>` : ``}
+          ${x.video_link ? `<div class="item-d"><b>Link video:</b> ${escapeHtml(x.video_link)}</div>` : ``}
+
+          <div class="metric-list">
+            ${(x.daily_metrics || []).map(m => `
+              <div class="metric-item">
+                <b>${escapeHtml(m.metric_date || "")}</b> •
+                View: ${escapeHtml(m.views)} •
+                Like: ${escapeHtml(m.likes)} •
+                Comment: ${escapeHtml(m.comments)} •
+                Share: ${escapeHtml(m.shares)} •
+                Order: ${escapeHtml(m.orders)} •
+                Revenue: ${escapeHtml(m.revenue)}
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    async function loadProgress(){
+      const url = `/api/v1/contracts/${CONTRACT_ID}/client/channel-progress/?shop_id=${encodeURIComponent(SHOP_ID)}`;
+      const res = await fetch(url, {
+        credentials: "include",
+        cache: "no-store",
+        headers: authHeaders()
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok){
+        document.getElementById("contentList").innerHTML =
+          `<div class="item"><div class="item-t">Không tải được dữ liệu</div></div>`;
+        return;
+      }
+      renderHeadline(data.headline || {});
+      renderItems(data.items || []);
+    }
+
+    loadProgress();
+  </script>
+</body>
+</html>

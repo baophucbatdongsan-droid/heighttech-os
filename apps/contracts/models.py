@@ -351,3 +351,148 @@ class ContractBookingItem(models.Model):
 
     def __str__(self) -> str:
         return f"{self.koc_name} - Contract#{self.contract_id}"
+class ContractChannelContent(models.Model):
+    class Status(models.TextChoices):
+        IDEA = "idea", "Ý tưởng"
+        SCRIPT = "script", "Đã có kịch bản"
+        PRE_PRODUCTION = "pre_production", "Chuẩn bị quay"
+        PRODUCTION = "production", "Đang sản xuất"
+        POST_PRODUCTION = "post_production", "Hậu kỳ"
+        SCHEDULED = "scheduled", "Đã lên lịch"
+        AIRED = "aired", "Đã air"
+        CANCELLED = "cancelled", "Huỷ"
+
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE, db_index=True)
+    contract = models.ForeignKey(
+        "contracts.Contract",
+        on_delete=models.CASCADE,
+        related_name="channel_contents",
+        db_index=True,
+    )
+    company = models.ForeignKey(
+        "companies.Company",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        db_index=True,
+    )
+    shop = models.ForeignKey(
+        "shops.Shop",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        db_index=True,
+        related_name="contract_channel_contents",
+    )
+
+    title = models.CharField(max_length=255, db_index=True)
+    script_text = models.TextField(blank=True, default="")
+    content_pillar = models.CharField(max_length=120, blank=True, default="")
+    status = models.CharField(
+        max_length=30,
+        choices=Status.choices,
+        default=Status.IDEA,
+        db_index=True,
+    )
+
+    planned_publish_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    aired_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    video_link = models.URLField(blank=True, default="")
+
+    visible_to_client = models.BooleanField(default=True, db_index=True)
+    sort_order = models.PositiveIntegerField(default=1, db_index=True)
+
+    meta = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True, db_index=True)
+
+    objects = TenantManager()
+    objects_all = TenantAllManager()
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+        indexes = [
+            models.Index(fields=["tenant", "contract", "status"], name="ccc_t_ct_st_idx"),
+            models.Index(fields=["tenant", "shop", "status"], name="ccc_t_sh_st_idx"),
+            models.Index(fields=["tenant", "visible_to_client"], name="ccc_t_vtc_idx"),
+            models.Index(fields=["tenant", "aired_at"], name="ccc_t_air_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.title} ({self.contract_id})"
+
+
+class ContractChannelDailyMetric(models.Model):
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE, db_index=True)
+    content = models.ForeignKey(
+        "contracts.ContractChannelContent",
+        on_delete=models.CASCADE,
+        related_name="daily_metrics",
+        db_index=True,
+    )
+    metric_date = models.DateField(db_index=True)
+
+    views = models.PositiveIntegerField(default=0)
+    likes = models.PositiveIntegerField(default=0)
+    comments = models.PositiveIntegerField(default=0)
+    shares = models.PositiveIntegerField(default=0)
+    saves = models.PositiveIntegerField(default=0)
+    orders = models.PositiveIntegerField(default=0)
+    revenue = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+
+    meta = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True, db_index=True)
+
+    objects = TenantManager()
+    objects_all = TenantAllManager()
+
+    class Meta:
+        ordering = ["-metric_date", "-id"]
+        indexes = [
+            models.Index(fields=["tenant", "content", "metric_date"], name="ccdm_t_ct_dt_idx"),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=["content", "metric_date"], name="uq_channel_content_metric_date"),
+        ]
+
+    def __str__(self) -> str:
+        return f"Metric {self.content_id} - {self.metric_date}"
+class ContractChannelInsightSnapshot(models.Model):
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE, db_index=True)
+    content = models.ForeignKey(
+        "contracts.ContractChannelContent",
+        on_delete=models.CASCADE,
+        related_name="insight_snapshots",
+        db_index=True,
+    )
+
+    health_score = models.PositiveIntegerField(default=0, db_index=True)
+    ai_label = models.CharField(max_length=50, blank=True, default="", db_index=True)
+    ai_recommendation = models.TextField(blank=True, default="")
+
+    priority_score = models.PositiveIntegerField(default=0, db_index=True)
+    priority_label = models.CharField(max_length=50, blank=True, default="", db_index=True)
+    priority_reason = models.TextField(blank=True, default="")
+    action_hint = models.TextField(blank=True, default="")
+
+    views_14d = models.PositiveIntegerField(default=0)
+    orders_14d = models.PositiveIntegerField(default=0)
+    revenue_14d = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+
+    computed_at = models.DateTimeField(default=timezone.now, db_index=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    objects = TenantManager()
+    objects_all = TenantAllManager()
+
+    class Meta:
+        ordering = ["-computed_at", "-id"]
+        indexes = [
+            models.Index(fields=["tenant", "content", "computed_at"], name="ccis_t_ct_cmp_idx"),
+            models.Index(fields=["tenant", "priority_label", "computed_at"], name="ccis_t_pl_cmp_idx"),
+            models.Index(fields=["tenant", "ai_label", "computed_at"], name="ccis_t_al_cmp_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return f"InsightSnapshot content={self.content_id} score={self.health_score}"

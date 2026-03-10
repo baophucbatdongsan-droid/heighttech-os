@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>HeightTech OS • Team</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#121a2f;
+      --panel-2:#17223d;
+      --line:rgba(255,255,255,.08);
+      --text:#ecf2ff;
+      --muted:#9fb0d3;
+      --primary:#4f8cff;
+      --primary-2:#2f6df6;
+      --success:#22c55e;
+      --danger:#ef4444;
+      --warning:#f59e0b;
+      --shadow:0 20px 50px rgba(0,0,0,.28);
+      --radius:18px;
+      --radius-sm:12px;
+    }
+
+    *{ box-sizing:border-box; }
+
+    html,body{
+      margin:0;
+      padding:0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(79,140,255,.14), transparent 28%),
+        radial-gradient(circle at top right, rgba(34,197,94,.10), transparent 22%),
+        var(--bg);
+      color:var(--text);
+      min-height:100%;
+    }
+
+    a{
+      color:inherit;
+      text-decoration:none;
+    }
+
+    .container{
+      max-width:1100px;
+      margin:0 auto;
+      padding:28px 18px 48px;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:22px;
+      flex-wrap:wrap;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:14px;
+    }
+
+    .brand-badge{
+      width:44px;
+      height:44px;
+      border-radius:14px;
+      background:linear-gradient(135deg, var(--primary), #7aa8ff);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:800;
+      color:white;
+      box-shadow:0 10px 24px rgba(79,140,255,.35);
+    }
+
+    .brand-title{
+      font-size:22px;
+      font-weight:800;
+      line-height:1.15;
+      letter-spacing:.2px;
+    }
+
+    .brand-sub{
+      font-size:13px;
+      color:var(--muted);
+      margin-top:4px;
+    }
+
+    .top-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .btn{
+      border:none;
+      border-radius:12px;
+      padding:10px 14px;
+      font-weight:700;
+      cursor:pointer;
+      transition:.18s ease;
+    }
+
+    .btn:hover{
+      transform:translateY(-1px);
+    }
+
+    .btn-primary{
+      background:linear-gradient(135deg, var(--primary), var(--primary-2));
+      color:#fff;
+      box-shadow:0 12px 28px rgba(47,109,246,.32);
+    }
+
+    .btn-ghost{
+      background:rgba(255,255,255,.04);
+      color:var(--text);
+      border:1px solid var(--line);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:18px;
+    }
+
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      backdrop-filter: blur(8px);
+    }
+
+    .card-h{
+      padding:18px 18px 12px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:14px;
+      border-bottom:1px solid rgba(255,255,255,.05);
+    }
+
+    .card-t{
+      font-size:18px;
+      font-weight:800;
+      letter-spacing:.2px;
+    }
+
+    .card-d{
+      font-size:13px;
+      color:var(--muted);
+      margin-top:4px;
+      line-height:1.5;
+    }
+
+    .card-b{
+      padding:18px;
+    }
+
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:12px;
+      margin-bottom:18px;
+    }
+
+    .stat{
+      background:rgba(255,255,255,.035);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:14px;
+    }
+
+    .stat-k{
+      color:var(--muted);
+      font-size:12px;
+      margin-bottom:6px;
+    }
+
+    .stat-v{
+      font-size:22px;
+      font-weight:800;
+    }
+
+    .form-grid{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:12px;
+    }
+
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:7px;
+    }
+
+    .field.full{
+      grid-column:1 / -1;
+    }
+
+    .label{
+      font-size:13px;
+      color:var(--muted);
+      font-weight:600;
+    }
+
+    .input, .select{
+      width:100%;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.04);
+      color:var(--text);
+      padding:12px 13px;
+      outline:none;
+      transition:.16s ease;
+    }
+
+    .input::placeholder{
+      color:#7f91b8;
+    }
+
+    .input:focus, .select:focus{
+      border-color:rgba(79,140,255,.72);
+      box-shadow:0 0 0 4px rgba(79,140,255,.14);
+      background:rgba(255,255,255,.06);
+    }
+
+    .form-actions{
+      display:flex;
+      justify-content:flex-end;
+      gap:10px;
+      margin-top:14px;
+      flex-wrap:wrap;
+    }
+
+    .hint{
+      margin-top:10px;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.5;
+    }
+
+    .search-row{
+      display:flex;
+      gap:10px;
+      margin-bottom:14px;
+      flex-wrap:wrap;
+    }
+
+    .search-row .input{
+      flex:1;
+      min-width:220px;
+    }
+
+    .member-list{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      min-height:120px;
+    }
+
+    .member{
+      display:flex;
+      justify-content:space-between;
+      gap:14px;
+      align-items:flex-start;
+      padding:14px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.07);
+      background:rgba(255,255,255,.03);
+    }
+
+    .member-left{
+      display:flex;
+      gap:12px;
+      min-width:0;
+    }
+
+    .avatar{
+      width:42px;
+      height:42px;
+      border-radius:50%;
+      background:linear-gradient(135deg, #223660, #2f4c86);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:800;
+      color:#dbe7ff;
+      flex:0 0 42px;
+      border:1px solid rgba(255,255,255,.08);
+    }
+
+    .member-name{
+      font-weight:800;
+      line-height:1.3;
+      word-break:break-word;
+    }
+
+    .member-email{
+      color:var(--muted);
+      font-size:13px;
+      margin-top:4px;
+      word-break:break-word;
+    }
+
+    .member-meta{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:8px;
+    }
+
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      border-radius:999px;
+      padding:5px 10px;
+      font-size:12px;
+      font-weight:700;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.04);
+      color:#d8e4ff;
+    }
+
+    .tag.role-founder{ background:rgba(245,158,11,.12); color:#ffd79a; border-color:rgba(245,158,11,.2); }
+    .tag.role-head{ background:rgba(79,140,255,.14); color:#bdd4ff; border-color:rgba(79,140,255,.25); }
+    .tag.role-account{ background:rgba(16,185,129,.14); color:#b8f3dc; border-color:rgba(16,185,129,.22); }
+    .tag.role-sale{ background:rgba(236,72,153,.14); color:#ffc9e6; border-color:rgba(236,72,153,.22); }
+    .tag.role-operator{ background:rgba(148,163,184,.14); color:#dce7f7; border-color:rgba(148,163,184,.2); }
+
+    .status{
+      font-size:12px;
+      margin-top:8px;
+      min-height:18px;
+    }
+
+    .status.ok{ color:#8df0b2; }
+    .status.err{ color:#ff9ca8; }
+    .status.info{ color:#a8c3ff; }
+
+    .empty{
+      padding:18px;
+      border:1px dashed rgba(255,255,255,.1);
+      border-radius:14px;
+      color:var(--muted);
+      text-align:center;
+      background:rgba(255,255,255,.02);
+    }
+
+    .side-list{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .mini-item{
+      border:1px solid rgba(255,255,255,.07);
+      background:rgba(255,255,255,.03);
+      border-radius:14px;
+      padding:14px;
+    }
+
+    .mini-title{
+      font-weight:800;
+      margin-bottom:6px;
+    }
+
+    .mini-desc{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.55;
+    }
+
+    @media (max-width: 920px){
+      .grid{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media (max-width: 640px){
+      .stats{
+        grid-template-columns:1fr;
+      }
+
+      .form-grid{
+        grid-template-columns:1fr;
+      }
+
+      .member{
+        flex-direction:column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-badge">HT</div>
+        <div>
+          <div class="brand-title">HeightTech OS • Team</div>
+          <div class="brand-sub">Founder / Leader tạo và quản lý nhân sự trong workspace hiện tại</div>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <a href="/os/" class="btn btn-ghost">← Về OS</a>
+        <button class="btn btn-primary" type="button" onclick="loadTeam()">Làm mới danh sách</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <div class="card">
+          <div class="card-h">
+            <div>
+              <div class="card-t">Tạo tài khoản nhân sự</div>
+              <div class="card-d">Dùng cho leader booking, leader channel, operator, sale, account trong cùng workspace.</div>
+            </div>
+          </div>
+
+          <div class="card-b">
+            <div class="stats">
+              <div class="stat">
+                <div class="stat-k">Tổng nhân sự</div>
+                <div class="stat-v" id="statTotal">0</div>
+              </div>
+              <div class="stat">
+                <div class="stat-k">Leader</div>
+                <div class="stat-v" id="statHead">0</div>
+              </div>
+              <div class="stat">
+                <div class="stat-k">Operator</div>
+                <div class="stat-v" id="statOperator">0</div>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="field">
+                <label class="label" for="email">Email</label>
+                <input id="email" class="input" placeholder="vd: leader.booking@heightmedia.vn">
+              </div>
+
+              <div class="field">
+                <label class="label" for="username">Username</label>
+                <input id="username" class="input" placeholder="vd: leader.booking">
+              </div>
+
+              <div class="field">
+                <label class="label" for="password">Mật khẩu tạm</label>
+                <input id="password" class="input" type="password" placeholder="Nhập mật khẩu tạm">
+              </div>
+
+              <div class="field">
+                <label class="label" for="role">Vai trò</label>
+                <select id="role" class="select">
+                  <option value="operator">Operator</option>
+                  <option value="sale">Sale</option>
+                  <option value="account">Account</option>
+                  <option value="head">Leader</option>
+                </select>
+              </div>
+
+              <div class="field full">
+                <label class="label" for="company_id">Company ID (tuỳ chọn nếu API đã auto)</label>
+                <input id="company_id" class="input" placeholder="Để trống nếu hệ đang auto company hiện tại">
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn btn-ghost" type="button" onclick="clearForm()">Xoá form</button>
+              <button class="btn btn-primary" id="createBtn" type="button" onclick="createUser()">Tạo tài khoản</button>
+            </div>
+
+            <div class="hint">
+              Gợi ý: founder Height Media tạo trước <b>leader booking</b>, <b>leader channel</b>. Sau đó leader đăng nhập và tự tạo tiếp nhân sự dưới quyền trong cùng workspace.
+            </div>
+
+            <div id="statusBox" class="status info"></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:18px;">
+          <div class="card-h">
+            <div>
+              <div class="card-t">Danh sách nhân sự</div>
+              <div class="card-d">Hiển thị các user đang thuộc tenant / workspace hiện tại.</div>
+            </div>
+          </div>
+
+          <div class="card-b">
+            <div class="search-row">
+              <input id="searchInput" class="input" placeholder="Tìm theo email / username / role..." oninput="renderTeam()">
+            </div>
+
+            <div id="teamList" class="member-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <div class="card-h">
+            <div>
+              <div class="card-t">Quy tắc dùng</div>
+              <div class="card-d">Để tránh loạn tenant và loạn vai trò.</div>
+            </div>
+          </div>
+
+          <div class="card-b side-list">
+            <div class="mini-item">
+              <div class="mini-title">Founder</div>
+              <div class="mini-desc">Tạo leader, xem toàn bộ workspace, kiểm soát cấu trúc công ty và team.</div>
+            </div>
+
+            <div class="mini-item">
+              <div class="mini-title">Leader / Head</div>
+              <div class="mini-desc">Quản lý bộ phận như booking, channel, vận hành. Có thể tạo nhân sự dưới quyền trong cùng workspace.</div>
+            </div>
+
+            <div class="mini-item">
+              <div class="mini-title">Operator / Sale / Account</div>
+              <div class="mini-desc">Là user vận hành thực tế, chỉ làm việc theo role được giao.</div>
+            </div>
+
+            <div class="mini-item">
+              <div class="mini-title">Lưu ý</div>
+              <div class="mini-desc">Nhân sự nội bộ không dùng <b>/register</b>. Chỉ founder / leader tạo từ trang này để luôn vào đúng workspace hiện tại.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let TEAM_CACHE = [];
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function roleClass(role){
+      const r = String(role || "").toLowerCase();
+      if (r === "founder") return "role-founder";
+      if (r === "head") return "role-head";
+      if (r === "account") return "role-account";
+      if (r === "sale") return "role-sale";
+      return "role-operator";
+    }
+
+    function initials(text){
+      const s = String(text || "").trim();
+      if (!s) return "U";
+      const parts = s.split(/\s+|\./).filter(Boolean);
+      return (parts[0]?.[0] || "U").toUpperCase() + (parts[1]?.[0] || "").toUpperCase();
+    }
+
+    function setStatus(msg, type="info"){
+      const box = document.getElementById("statusBox");
+      if (!box) return;
+      box.className = "status " + type;
+      box.textContent = msg || "";
+    }
+
+    function clearForm(){
+      document.getElementById("email").value = "";
+      document.getElementById("username").value = "";
+      document.getElementById("password").value = "";
+      document.getElementById("role").value = "operator";
+      document.getElementById("company_id").value = "";
+      setStatus("Đã xoá form.", "info");
+    }
+
+    function updateStats(items){
+      const arr = Array.isArray(items) ? items : [];
+      const head = arr.filter(x => String(x.role || "").toLowerCase() === "head").length;
+      const operator = arr.filter(x => String(x.role || "").toLowerCase() === "operator").length;
+
+      document.getElementById("statTotal").textContent = arr.length;
+      document.getElementById("statHead").textContent = head;
+      document.getElementById("statOperator").textContent = operator;
+    }
+
+    function renderTeam(){
+      const box = document.getElementById("teamList");
+      const keyword = String(document.getElementById("searchInput")?.value || "").trim().toLowerCase();
+
+      let items = TEAM_CACHE.slice();
+
+      if (keyword) {
+        items = items.filter(x => {
+          const hay = [
+            x.username,
+            x.email,
+            x.role,
+            x.company_id
+          ].filter(Boolean).join(" ").toLowerCase();
+          return hay.includes(keyword);
+        });
+      }
+
+      updateStats(TEAM_CACHE);
+
+      if (!items.length) {
+        box.innerHTML = `<div class="empty">Chưa có nhân sự nào hiển thị trong workspace hiện tại.</div>`;
+        return;
+      }
+
+      box.innerHTML = items.map(x => `
+        <div class="member">
+          <div class="member-left">
+            <div class="avatar">${escapeHtml(initials(x.username || x.email || "U"))}</div>
+            <div>
+              <div class="member-name">${escapeHtml(x.username || "(không có username)")}</div>
+              <div class="member-email">${escapeHtml(x.email || "")}</div>
+              <div class="member-meta">
+                <span class="tag ${roleClass(x.role)}">${escapeHtml(x.role || "operator")}</span>
+                <span class="tag">Company ID: ${escapeHtml(x.company_id ?? "-")}</span>
+                <span class="tag">User ID: ${escapeHtml(x.user_id ?? "-")}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    async function loadTeam(){
+      setStatus("Đang tải danh sách nhân sự...", "info");
+
+      try {
+        const res = await fetch("/api/v1/team/", {
+          credentials: "include",
+          cache: "no-store"
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          setStatus(data.message || "Không tải được danh sách nhân sự.", "err");
+          return;
+        }
+
+        TEAM_CACHE = Array.isArray(data.items) ? data.items : [];
+        renderTeam();
+        setStatus(`Đã tải ${TEAM_CACHE.length} nhân sự.`, "ok");
+      } catch (err) {
+        setStatus("Lỗi tải danh sách: " + err.message, "err");
+      }
+    }
+
+    async function createUser(){
+      const btn = document.getElementById("createBtn");
+      const email = document.getElementById("email").value.trim();
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const role = document.getElementById("role").value;
+      const company_id = document.getElementById("company_id").value.trim();
+
+      if (!email || !password) {
+        setStatus("Cần nhập email và mật khẩu tạm.", "err");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Đang tạo...";
+      setStatus("Đang tạo tài khoản...", "info");
+
+      try {
+        const payload = { email, username, password, role };
+        if (company_id) payload.company_id = Number(company_id);
+
+        const res = await fetch("/api/v1/team/create/", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          setStatus(data.message || "Tạo tài khoản thất bại.", "err");
+          return;
+        }
+
+        setStatus("Tạo tài khoản thành công. User ID: " + (data.user_id || "-"), "ok");
+        clearForm();
+        await loadTeam();
+      } catch (err) {
+        setStatus("Lỗi tạo tài khoản: " + err.message, "err");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Tạo tài khoản";
+      }
+    }
+
+    loadTeam();
+  </script>
+</body>
+</html>

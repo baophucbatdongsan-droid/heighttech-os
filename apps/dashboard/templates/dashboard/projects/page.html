@@ -10,6 +10,10 @@
 {% endblock %}
 
 {% block topbar_actions %}
+  <a class="chip" href="/os/">🏠 OS</a>
+  <a class="chip" href="/work/">📋 Khu làm việc</a>
+  <a class="chip" href="/os/contracts/">🧾 Hợp đồng</a>
+  <a class="chip" href="/os/founder/content-priority/">🎯 Priority</a>
   <a class="chip" href="{% url 'dashboard_projects:projects_dashboard' %}{% if qs_keep %}?{{ qs_keep }}{% endif %}">↻ Refresh</a>
   <a class="chip" href="{% url 'dashboard_projects:projects_dashboard_export_csv' %}{% if qs_keep %}?{{ qs_keep }}{% endif %}">⬇️ CSV</a>
   <button type="button" class="chip btn-primary" onclick="openDrawer('help')">❓ HDSD</button>

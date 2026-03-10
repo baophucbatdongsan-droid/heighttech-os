@@ -76,20 +76,21 @@
     return 1;
   }
 
-  async function http(url, opts={}, retry=0){
-
+  async function http(url, opts = {}, retry = 0) {
     const headers = Object.assign({}, opts.headers || {});
     const tenantId =
       String(window.HT_TENANT_ID || "").trim() ||
-      String(localStorage.getItem("ht_tenant_id") || "").trim() ||
-      "1";
+      String(localStorage.getItem("ht_tenant_id") || "").trim();
 
-    headers["X-Tenant-Id"] = tenantId;
+    if (tenantId) {
+      headers["X-Tenant-Id"] = tenantId;
+    }
+
     const method = (opts.method || "GET").toUpperCase();
     const csrf = getCookie("csrftoken");
 
-    if(csrf && method!=="GET"){
-      headers["X-CSRFToken"]=csrf;
+    if (csrf && method !== "GET") {
+      headers["X-CSRFToken"] = csrf;
     }
 
     const res = await fetch(url, Object.assign({
@@ -98,32 +99,29 @@
       cache: "no-store",
     }, opts));
 
-    const ct = res.headers.get("content-type")||"";
+    const ct = res.headers.get("content-type") || "";
     const data = ct.includes("application/json")
       ? await res.json()
       : await res.text();
 
-    if(res.status===429 && retry<2){
+    if (res.status === 429 && retry < 2) {
+      const retryAfter = Number(res.headers.get("Retry-After") || 0);
+      const msg =
+        (data && (data.message || data.detail || data.error))
+        || (typeof data === "string" ? data : "");
 
-        const retryAfter = Number(res.headers.get("Retry-After")||0);
+      const wait = retryAfter || parseRetrySeconds(msg) || 1;
+      await sleep(wait * 1000);
 
-        const msg =
-          (data && (data.message||data.detail||data.error))
-          || (typeof data==="string"?data:"");
-
-        const wait = retryAfter || parseRetrySeconds(msg) || 1;
-
-        await sleep(wait*1000);
-
-        return http(url,opts,retry+1);
+      return http(url, opts, retry + 1);
     }
 
-    if(!res.ok){
-        const msg =
-          (data && (data.message||data.detail||data.error))
-          || (typeof data==="string"?data:JSON.stringify(data));
+    if (!res.ok) {
+      const msg =
+        (data && (data.message || data.detail || data.error))
+        || (typeof data === "string" ? data : JSON.stringify(data));
 
-        throw new Error(msg || "HTTP "+res.status);
+      throw new Error(msg || ("HTTP " + res.status));
     }
 
     return data;
@@ -198,13 +196,13 @@
     const p = new URLSearchParams();
     p.set("scope", STATE.scope.scope || "tenant");
 
-    // FIX CỨNG tenant_id để backend OS API không báo thiếu
     const tenantId =
       String(window.HT_TENANT_ID || "").trim() ||
-      String(localStorage.getItem("ht_tenant_id") || "").trim() ||
-      "1";
+      String(localStorage.getItem("ht_tenant_id") || "").trim();
 
-    p.set("tenant_id", tenantId);
+    if (tenantId) {
+      p.set("tenant_id", tenantId);
+    }
 
     if (STATE.scope.company_id) p.set("company_id", STATE.scope.company_id);
     if (STATE.scope.shop_id) p.set("shop_id", STATE.scope.shop_id);
@@ -1378,8 +1376,8 @@
 
     STATE.raw.work = data;
 
-    setKpiValueByLabel("Open Tasks", STATE.work.open.length);
-
+// KHÔNG overwrite KPI "Open Tasks" ở đây.
+// KPI headline phải lấy từ /api/v1/os/home/ hoặc /api/v1/os/dashboard/
     renderAllWork();
     renderRawJson();
   }
@@ -1516,6 +1514,7 @@
     }
 
     updateHeadline(data.headline || {});
+    updateHeroStats(data);
     renderMissionControl((data.blocks && data.blocks.mission_control) || {});
     renderFounderDashboard((data.blocks && data.blocks.founder_dashboard) || {});
     renderShopRiskRadar((data.blocks && data.blocks.shop_risk_radar) || {});
@@ -1544,6 +1543,7 @@
     ensureOSQuickLinks();
     syncOSQuickLinksByScroll();
     renderRawJson();
+
   }
     async function createTask(payload) {
     if (!CFG.workCreate) throw new Error("Thiếu CFG.workCreate");
@@ -1629,7 +1629,7 @@
     try {
       patchTaskLocal(id, { status });
       renderAllWork();
-      setKpiValueByLabel("Open Tasks", STATE.work.open.length);
+    
 
       const url = `${CFG.workAssignBase}${id}/move/`;
 
@@ -1649,7 +1649,7 @@
       }
 
       renderAllWork();
-      setKpiValueByLabel("Open Tasks", STATE.work.open.length);
+    
 
       refreshTimeline(true).catch(console.warn);
       refreshHome().catch(console.warn);
@@ -1657,7 +1657,7 @@
     } catch (err) {
       patchTaskLocal(id, oldTask);
       renderAllWork();
-      setKpiValueByLabel("Open Tasks", STATE.work.open.length);
+    
       throw err;
     } finally {
       MOVE_LOCK = false;
@@ -2189,9 +2189,7 @@
         const t =
           b === "light" || b === "dark"
             ? b
-            : STATE.ui.theme === "dark"
-            ? "light"
-            : "dark";
+            : (STATE.ui.theme === "dark" ? "light" : "dark");
 
         setTheme(t);
         if (out) out.textContent = "Theme: " + t;
@@ -2202,9 +2200,14 @@
         if (["status", "company", "shop", "assignee"].includes(b)) {
           STATE.ui.boardGroupBy = b;
           localStorage.setItem("ht_board_group_by", STATE.ui.boardGroupBy);
-          if ($("boardGroupByFinal")) $("boardGroupByFinal").value = STATE.ui.boardGroupBy;
+
+          if ($("boardGroupByFinal")) {
+            $("boardGroupByFinal").value = STATE.ui.boardGroupBy;
+          }
+
           renderWorkBoard();
           bindKanbanDnD(STATE.ui.boardGroupBy === "status");
+
           if (out) out.textContent = "Board = " + b;
           return;
         }
@@ -2254,13 +2257,15 @@
 
       if (a === "work" && b === "create") {
         const title = parts.slice(2).join(" ").trim();
-        if (!title) throw new Error("Usage: work create <title>");
+        if (!title) {
+          throw new Error("Usage: work create <title>");
+        }
 
         const p = scopeParams();
         const payload = {
-          title,
-          priority,
-          due_at: dueAt || null,
+          title: title,
+          priority: Number($("quickPriorityFinal")?.value || 2),
+          due_at: ($("quickDeadlineFinal")?.value || "").trim() || null,
         };
 
         if (p.get("company_id")) payload.company_id = Number(p.get("company_id"));
@@ -2314,7 +2319,9 @@
 
       if (a === "mark" && b === "read") {
         const id = (parts[2] || "").trim();
-        if (!id) throw new Error("Usage: mark read <id>");
+        if (!id) {
+          throw new Error("Usage: mark read <id>");
+        }
 
         await http(`${CFG.notifications}${id}/read/`, { method: "POST" });
         await refreshNotifications();
@@ -2331,7 +2338,8 @@
         });
 
         if (out) {
-          out.textContent = typeof resp === "string" ? resp : JSON.stringify(resp, null, 2);
+          out.textContent =
+            typeof resp === "string" ? resp : JSON.stringify(resp, null, 2);
         }
 
         await safeRefreshAll();
@@ -2340,7 +2348,7 @@
 
       if (out) out.textContent = "Lệnh chưa hỗ trợ.";
     } catch (e) {
-      if (out) out.textContent = "Error: " + e.message;
+      if (out) out.textContent = "Error: " + (e?.message || e);
     }
   }
 
@@ -3016,8 +3024,10 @@
     bindEvents();
     switchWorkView(STATE.ui.workView);
 
-    localStorage.setItem("ht_tenant_id", "1");
-    window.HT_TENANT_ID = 1;
+    const currentTenantId = String(window.HT_TENANT_ID || "").trim();
+    if (currentTenantId) {
+      localStorage.setItem("ht_tenant_id", currentTenantId);
+    }
 
     if (!localStorage.getItem("ht_board_group_by")) {
       STATE.ui.boardGroupBy = "status";
@@ -3026,7 +3036,7 @@
       STATE.ui.boardGroupBy = localStorage.getItem("ht_board_group_by") || "status";
     }
 
-    await safeRefreshAll();
+    await safeRefreshAll(true);
 
     if ($("boardGroupByFinal")) {
       $("boardGroupByFinal").value = STATE.ui.boardGroupBy;
@@ -4506,51 +4516,6 @@
 
     `;
   }
-  async function importProductCsv() {
-    const fileInput = document.getElementById("productCsvFile");
-    const result = document.getElementById("csvImportResult");
-    const shopId = getCurrentShopId();
-
-    if (!shopId) {
-      alert("Anh chọn shop trước nha, rồi mới import sản phẩm được.");
-      return;
-    }
-
-    if (!fileInput || !fileInput.files.length) {
-      alert("Anh chọn file CSV trước nha");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("file", fileInput.files[0]);
-
-    try {
-      const res = await fetch(`/api/v1/os/products/import-csv/?shop_id=${encodeURIComponent(shopId)}`, {
-        method: "POST",
-        body: formData,
-        credentials: "include"
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.ok) {
-        result.innerHTML = `<span style="color:#f87171;">Import lỗi: ${data.message || "Không xác định"}</span>`;
-        return;
-      }
-
-      result.innerHTML =
-        `Đã nhập cho shop <b>#${shopId}</b> • ` +
-        `Tạo mới: <b>${data.created || 0}</b> • ` +
-        `Cập nhật: <b>${data.updated || 0}</b> • ` +
-        `Lỗi: <b>${data.errors_count || 0}</b>`;
-
-      if (window.safeRefreshAll) {
-        setTimeout(() => window.safeRefreshAll(true), 300);
-      }
-    } catch (e) {
-      result.innerHTML = `<span style="color:#f87171;">Import lỗi, vui lòng thử lại</span>`;
-    }
-  }
   async function submitSales() {
     const sku = (document.getElementById("skuInput")?.value || "").trim();
     const units = document.getElementById("unitsSoldInput")?.value || 0;
@@ -4573,8 +4538,73 @@
       const res = await fetch("/api/v1/os/products/daily-stats/upsert/", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
+        credentials: "include",
+        body: JSON.stringify({
+          shop_id: parseInt(shopId, 10),
+          sku: sku,
+          units_sold: parseInt(units || 0, 10),
+          revenue: parseFloat(revenue || 0),
+          ads_spend: parseFloat(ads || 0),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        result.innerHTML = `<span style="color:#f87171;">Lưu dữ liệu lỗi: ${data.message || "Không xác định"}</span>`;
+        return;
+      }
+
+      result.innerHTML =
+        `Đã ghi nhận cho shop <b>#${shopId}</b> • ` +
+        `ROAS: <b>${data.item?.roas_estimate ?? "-"}</b> • ` +
+        `Lợi nhuận ước tính: <b>${data.item?.profit_estimate ?? "-"}</b>`;
+
+      if (window.safeRefreshAll) {
+        setTimeout(() => window.safeRefreshAll(true), 300);
+      }
+    } catch (e) {
+      result.innerHTML = `<span style="color:#f87171;">Gửi dữ liệu lỗi, vui lòng thử lại</span>`;
+      console.error("submitSales error:", e);
+    }
+  }
+  async function submitSales() {
+    const sku = (document.getElementById("skuInput")?.value || "").trim();
+    const units = document.getElementById("unitsSoldInput")?.value || 0;
+    const revenue = document.getElementById("revenueInput")?.value || 0;
+    const ads = document.getElementById("adsInput")?.value || 0;
+    const result = document.getElementById("salesResult");
+    const shopId = getCurrentShopId();
+
+    if (!shopId) {
+      alert("Anh chọn shop trước nha, rồi mới nhập doanh số SKU được.");
+      return;
+    }
+
+    if (!sku) {
+      alert("Anh nhập mã SKU trước nha");
+      return;
+    }
+
+    try {
+      const headers = {
+        "Content-Type": "application/json"
+      };
+
+      const tenantId =
+        String(window.HT_TENANT_ID || "").trim() ||
+        String(localStorage.getItem("ht_tenant_id") || "").trim();
+
+      if (tenantId) headers["X-Tenant-Id"] = tenantId;
+
+      const csrf = getCookie("csrftoken");
+      if (csrf) headers["X-CSRFToken"] = csrf;
+
+      const res = await fetch("/api/v1/os/products/daily-stats/upsert/", {
+        method: "POST",
+        headers,
         credentials: "include",
         body: JSON.stringify({
           shop_id: parseInt(shopId, 10),
@@ -4588,20 +4618,65 @@
       const data = await res.json();
 
       if (!res.ok || !data.ok) {
-        result.innerHTML = `<span style="color:#f87171;">Lưu dữ liệu lỗi: ${data.message || "Không xác định"}</span>`;
+        result.innerHTML = `<span style="color:#f87171;">Lưu dữ liệu lỗi: ${escapeHtml(data.message || "Không xác định")}</span>`;
         return;
       }
 
       result.innerHTML =
-        `Đã ghi nhận cho shop <b>#${shopId}</b> • ` +
-        `ROAS: <b>${data.item.roas_estimate}</b> • ` +
-        `Lợi nhuận ước tính: <b>${data.item.profit_estimate}</b>`;
+        `Đã ghi nhận cho shop <b>#${escapeHtml(shopId)}</b> • ` +
+        `ROAS: <b>${escapeHtml(data.item.roas_estimate)}</b> • ` +
+        `Lợi nhuận ước tính: <b>${escapeHtml(data.item.profit_estimate)}</b>`;
 
       if (window.safeRefreshAll) {
         setTimeout(() => window.safeRefreshAll(true), 300);
       }
     } catch (e) {
       result.innerHTML = `<span style="color:#f87171;">Gửi dữ liệu lỗi, vui lòng thử lại</span>`;
+    }
+  }
+  function updateHeroStats(data){
+    try{
+      const headline = data?.headline || {};
+      const blocks = data?.blocks || {};
+
+      const shops =
+        headline.shops_total ??
+        headline.total_shops ??
+        (Array.isArray(blocks.shops_health) ? blocks.shops_health.length : 0) ??
+        0;
+
+      const tasks =
+        headline.work_open ??
+        headline.open_tasks ??
+        headline.tasks_open ??
+        headline.contract_work_open ??
+        0;
+
+      const revenue =
+        headline.revenue_today ??
+        headline.today_revenue ??
+        headline.gmv_today ??
+        0;
+
+      const alerts =
+        headline.alerts ??
+        headline.alert_total ??
+        headline.notifications_unread ??
+        headline.risk_alerts ??
+        headline.contract_work_urgent ??
+        0;
+
+      const s1 = document.getElementById("heroShops");
+      const s2 = document.getElementById("heroTasks");
+      const s3 = document.getElementById("heroRevenue");
+      const s4 = document.getElementById("heroAlerts");
+
+      if (s1) s1.textContent = String(shops || 0);
+      if (s2) s2.textContent = String(tasks || 0);
+      if (s3) s3.textContent = Number(revenue || 0).toLocaleString("vi-VN");
+      if (s4) s4.textContent = String(alerts || 0);
+    } catch (e) {
+      console.warn("updateHeroStats error:", e);
     }
   }
 window.safeRefreshAll = safeRefreshAll;

@@ -1,24 +1,63 @@
-# apps/accounts/views_auth.py
 from __future__ import annotations
 
-from django.contrib.auth import logout
-from django.contrib.auth.views import LoginView as DjangoLoginView
-from django.shortcuts import redirect
-from django.urls import reverse
+from django.contrib.auth import login, logout
+from django.shortcuts import redirect, render
+from django.views import View
 
-from apps.core.authz import get_actor_ctx
+from .forms_auth import EmailLoginForm
+from .forms_register import RegisterForm
 
 
-class LoginView(DjangoLoginView):
+class LoginView(View):
     template_name = "auth/login.html"
 
-    def get_success_url(self):
-        ctx = get_actor_ctx(self.request)
-        if ctx.role in ("founder", "admin"):
-            return reverse("founder:home")
-        return reverse("app:home")
+    def get(self, request):
+        if request.user.is_authenticated:
+            return redirect("/os/")
+
+        form = EmailLoginForm(request=request)
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request):
+        form = EmailLoginForm(request=request, data=request.POST)
+
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            next_url = request.GET.get("next") or "/os/"
+            return redirect(next_url)
+
+        return render(request, self.template_name, {"form": form})
 
 
-def logout_view(request):
-    logout(request)
-    return redirect("login")
+class RegisterView(View):
+    template_name = "auth/register.html"
+
+    def get(self, request):
+        if request.user.is_authenticated:
+            return redirect("/os/")
+
+        form = RegisterForm()
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request):
+        form = RegisterForm(request.POST)
+
+        if form.is_valid():
+            result = form.save()
+            user = result["user"]
+
+            login(request, user, backend="apps.accounts.backends.EmailAuthBackend")
+            return redirect("/os/")
+
+        return render(request, self.template_name, {"form": form})
+
+
+class LogoutView(View):
+    def get(self, request):
+        logout(request)
+        return redirect("/login/")
+
+    def post(self, request):
+        logout(request)
+        return redirect("/login/")

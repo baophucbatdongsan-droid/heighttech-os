@@ -1,4 +1,3 @@
-# apps/api/v1/os/dashboard.py
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -38,19 +37,46 @@ def _safe_int(v, default=0) -> int:
 
 def _resolve_tenant_id(request) -> Optional[int]:
     """
-    Ưu tiên các convention sẵn có trong codebase anh:
-    - request.tenant_id (middleware)
-    - request.tenant.id (TenantRequiredMixin)
-    - header X-Tenant-Id (fallback)
+    Ưu tiên tenant theo membership của user hiện tại.
+    Không dùng tenant mặc định/cũ trước membership nữa.
     """
+    # 1) membership active của user hiện tại
+    try:
+        user = getattr(request, "user", None)
+        if user and getattr(user, "is_authenticated", False):
+            from apps.accounts.models import Membership
+
+            m = (
+                Membership.objects.filter(user=user, is_active=True)
+                .select_related("tenant", "company")
+                .order_by("id")
+                .first()
+            )
+            if m and getattr(m, "tenant_id", None):
+                return _safe_int(m.tenant_id, None)
+    except Exception:
+        pass
+
+    # 2) actor context
+    try:
+        actor_ctx = getattr(request, "actor_ctx", None)
+        tid = getattr(actor_ctx, "tenant_id", None)
+        if tid is not None:
+            return _safe_int(tid, None)
+    except Exception:
+        pass
+
+    # 3) middleware request.tenant_id
     tid = getattr(request, "tenant_id", None)
     if tid:
         return _safe_int(tid, None)
 
+    # 4) request.tenant.id
     tenant = getattr(request, "tenant", None)
     if tenant and getattr(tenant, "id", None):
         return _safe_int(tenant.id, None)
 
+    # 5) header fallback
     try:
         h = request.headers.get("X-Tenant-Id")
         if h:
@@ -64,12 +90,18 @@ def _resolve_tenant_id(request) -> Optional[int]:
 def _shop_counts(tenant_id: int) -> Dict[str, Any]:
     Shop = _get_model("shops", "Shop")
     if not Shop:
-        return {"ok": False, "message": "Không tìm thấy model Shop", "total": 0, "active": 0, "risk": 0, "items": []}
+        return {
+            "ok": False,
+            "message": "Không tìm thấy model Shop",
+            "total": 0,
+            "active": 0,
+            "risk": 0,
+            "items": [],
+        }
 
     qs = Shop.objects_all.filter(tenant_id=tenant_id)
     total = qs.count()
 
-    # active heuristic
     if _has_field(Shop, "is_active"):
         active = qs.filter(is_active=True).count()
     elif _has_field(Shop, "status"):
@@ -77,7 +109,6 @@ def _shop_counts(tenant_id: int) -> Dict[str, Any]:
     else:
         active = total
 
-    # risk heuristic
     risk_q = Q()
     if _has_field(Shop, "health_score"):
         risk_q |= Q(health_score__lt=60)
@@ -88,7 +119,6 @@ def _shop_counts(tenant_id: int) -> Dict[str, Any]:
 
     risk = qs.filter(risk_q).count() if str(risk_q) != "(AND: )" else 0
 
-    # top list
     items = []
     pick_fields = ["id"]
     for f in ["name", "title", "slug", "status", "health_score", "updated_at"]:
@@ -105,7 +135,9 @@ def _shop_counts(tenant_id: int) -> Dict[str, Any]:
                 or f"Shop#{s.id}",
                 "trang_thai": getattr(s, "status", None),
                 "suc_khoe": getattr(s, "health_score", None),
-                "cap_nhat": getattr(s, "updated_at", None).isoformat() if getattr(s, "updated_at", None) else None,
+                "cap_nhat": getattr(s, "updated_at", None).isoformat()
+                if getattr(s, "updated_at", None)
+                else None,
             }
         )
 
@@ -115,7 +147,14 @@ def _shop_counts(tenant_id: int) -> Dict[str, Any]:
 def _work_counts(tenant_id: int) -> Dict[str, Any]:
     WorkItem = _get_model("work", "WorkItem")
     if not WorkItem:
-        return {"ok": False, "message": "Không tìm thấy model WorkItem", "total_open": 0, "overdue": 0, "by_status": {}, "recent": []}
+        return {
+            "ok": False,
+            "message": "Không tìm thấy model WorkItem",
+            "total_open": 0,
+            "overdue": 0,
+            "by_status": {},
+            "recent": [],
+        }
 
     qs = WorkItem.objects_all.filter(tenant_id=tenant_id)
 
@@ -148,11 +187,19 @@ def _work_counts(tenant_id: int) -> Dict[str, Any]:
                 "project_id": getattr(it, "project_id", None),
                 "shop_id": getattr(it, "shop_id", None),
                 "assignee_id": getattr(it, "assignee_id", None),
-                "cap_nhat": getattr(it, "updated_at", None).isoformat() if getattr(it, "updated_at", None) else None,
+                "cap_nhat": getattr(it, "updated_at", None).isoformat()
+                if getattr(it, "updated_at", None)
+                else None,
             }
         )
 
-    return {"ok": True, "total_open": total_open, "overdue": overdue, "by_status": by_status, "recent": recent}
+    return {
+        "ok": True,
+        "total_open": total_open,
+        "overdue": overdue,
+        "by_status": by_status,
+        "recent": recent,
+    }
 
 
 def _projects_counts(tenant_id: int) -> Dict[str, Any]:
@@ -206,7 +253,9 @@ def _actions_counts(tenant_id: int) -> Dict[str, Any]:
                 "uu_tien": getattr(a, "priority", None),
                 "cap_nhat": (
                     getattr(a, "updated_at", None) or getattr(a, "created_at", None)
-                ).isoformat() if (getattr(a, "updated_at", None) or getattr(a, "created_at", None)) else None,
+                ).isoformat()
+                if (getattr(a, "updated_at", None) or getattr(a, "created_at", None))
+                else None,
             }
         )
 
@@ -245,9 +294,6 @@ def _revenue_snapshot(tenant_id: int) -> Dict[str, Any]:
 
 
 class OSDashboardApi(APIView):
-    """
-    GET /api/v1/os/dashboard/
-    """
     permission_classes = [IsAuthenticated, AbilityPermission]
     required_ability = VIEW_API_DASHBOARD
 

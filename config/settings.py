@@ -1,3 +1,4 @@
+
 """
 Django settings for config project.
 """
@@ -36,9 +37,13 @@ ALLOW_TENANT_HEADER = env("ALLOW_TENANT_HEADER", default=True, cast=bool)
 # ==================================================
 AUTH_USER_MODEL = "accounts.User"
 LOGIN_URL = "/login/"
-LOGIN_REDIRECT_URL = "/dashboard/"
+LOGIN_REDIRECT_URL = "/os/"
 LOGOUT_REDIRECT_URL = "/login/"
 
+AUTHENTICATION_BACKENDS = [
+    "apps.accounts.backends.EmailAuthBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
 # ==================================================
 # APPLICATIONS
 # ==================================================

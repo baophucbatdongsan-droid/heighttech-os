@@ -235,6 +235,10 @@ class WorkItem(models.Model):
             models.Index(fields=["tenant", "type"], name="wi_t_type_idx"),
             # ✅ company_key index for uniqueness grouping
             models.Index(fields=["tenant", "company_key", "status", "rank"], name="wi_t_ck_sr_idx"),
+
+            models.Index(fields=["tenant", "assignee"], name="wi_t_asg_idx"),
+            models.Index(fields=["tenant", "updated_at"], name="wi_t_upd_idx"),
+
         ]
         constraints = [
             # ✅ Compatible UNIQUE (no expressions=)

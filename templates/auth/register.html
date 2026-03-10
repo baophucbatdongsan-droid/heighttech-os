@@ -1,0 +1,110 @@
+{% load static %}
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <title>HeightTech OS • Đăng ký</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#fff; --line:#e6e8ef; --text:#111; --muted:#667085;
+      --primary:#2563eb; --shadow: 0 18px 40px rgba(16,24,40,.12); --radius:16px;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:var(--bg); color:var(--text); padding:16px;
+    }
+    .wrap{ width:460px; max-width:96vw; }
+    .brand{ text-align:center; margin-bottom:18px; }
+    .brand h1{ margin:0; font-size:22px; }
+    .brand p{ margin:6px 0 0; font-size:13px; color:var(--muted); }
+    .card{
+      background:var(--card); border:1px solid var(--line);
+      border-radius:var(--radius); padding:26px; box-shadow:var(--shadow);
+    }
+    .field{ margin-bottom:14px; }
+    label{ display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
+    input{
+      width:100%; padding:11px 12px; border:1px solid #d0d5dd; border-radius:12px;
+      outline:none; font-size:14px;
+    }
+    input:focus{
+      border-color: rgba(37,99,235,.6);
+      box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+    }
+    .btn{
+      width:100%; padding:12px; border:none; border-radius:12px;
+      background:var(--primary); color:#fff; font-weight:700; cursor:pointer; font-size:14px;
+    }
+    .btn:hover{ opacity:.96; }
+    .error{
+      background:#fff5f6; border:1px solid #ffd3d8;
+      padding:10px; border-radius:12px; font-size:13px; color:#b42318;
+      margin-bottom:14px;
+    }
+    .help{
+      margin-top:14px; text-align:center; font-size:13px; color:var(--muted);
+    }
+    .help a{
+      color:var(--primary); text-decoration:none; font-weight:600;
+    }
+    ul.errorlist{
+      list-style:none; padding:0; margin:6px 0 0; color:#b42318; font-size:13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <h1>HeightTech OS</h1>
+      <p>Tạo workspace mới cho doanh nghiệp</p>
+    </div>
+
+    <div class="card">
+      <form method="post">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="error">
+            {% for err in form.non_field_errors %}
+              <div>{{ err }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="field">
+          <label for="{{ form.email.id_for_label }}">Email</label>
+          {{ form.email }}
+          {{ form.email.errors }}
+        </div>
+
+        <div class="field">
+          <label for="{{ form.company_name.id_for_label }}">Tên công ty</label>
+          {{ form.company_name }}
+          {{ form.company_name.errors }}
+        </div>
+
+        <div class="field">
+          <label for="{{ form.password1.id_for_label }}">Mật khẩu</label>
+          {{ form.password1 }}
+          {{ form.password1.errors }}
+        </div>
+
+        <div class="field">
+          <label for="{{ form.password2.id_for_label }}">Xác nhận mật khẩu</label>
+          {{ form.password2 }}
+          {{ form.password2.errors }}
+        </div>
+
+        <button class="btn" type="submit">Tạo tài khoản</button>
+      </form>
+
+      <div class="help">
+        Đã có tài khoản? <a href="/login/">Đăng nhập</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

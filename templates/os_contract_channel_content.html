@@ -1,0 +1,340 @@
+{% load static %}
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Channel Content Studio</title>
+
+<link rel="stylesheet" href="{% static 'os/os.css' %}">
+
+<style>
+.page-wrap{
+  max-width:1200px;
+  margin:0 auto;
+  padding:24px;
+}
+
+.page-title{
+  font-size:28px;
+  font-weight:900;
+  margin-bottom:12px;
+}
+
+.page-sub{
+  color:var(--muted);
+  margin-bottom:12px;
+  line-height:1.5;
+}
+
+.toolbar{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:18px;
+}
+
+.stack{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.item{
+  border:1px solid rgba(255,255,255,.1);
+  padding:14px;
+  border-radius:14px;
+  background:rgba(255,255,255,.03);
+}
+
+.row{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:8px;
+}
+
+.input{
+  width:100%;
+  padding:10px 12px;
+  border-radius:10px;
+  background:#111;
+  border:1px solid #333;
+  color:white;
+}
+
+.tag{
+  padding:4px 10px;
+  border-radius:999px;
+  background:#222;
+  font-size:12px;
+}
+
+button{
+  padding:8px 12px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  background:#444;
+  color:white;
+}
+
+.actions-row{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:12px;
+}
+
+.status-box{
+  min-height:20px;
+  font-size:13px;
+  margin-top:10px;
+  color:var(--muted);
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="page-wrap">
+
+  <div class="page-title">Channel Content Studio</div>
+  <div class="page-sub">
+    Quản lý nội dung theo từng hợp đồng, theo dõi AI score, trạng thái air và hiệu quả nội dung.
+  </div>
+
+  <div class="toolbar">
+    <a class="btn" href="/os/contracts/{{ contract_id }}/">← Quay lại hợp đồng</a>
+    <a class="btn primary" href="/os/content-work-sync/?contract_id={{ contract_id }}">Viết content</a>
+    <a class="btn" href="/os/founder/content-ai/">AI Content</a>
+    <a class="btn" href="/os/founder/content-priority/">Ưu tiên content</a>
+  </div>
+
+  <div class="stack">
+
+    <div class="item">
+      <h3 style="margin-top:0;">Tạo nội dung mới</h3>
+
+      <input id="title" class="input" placeholder="Tiêu đề video">
+      <div style="height:10px;"></div>
+
+      <input id="pillar" class="input" placeholder="Trụ cột nội dung">
+      <div style="height:10px;"></div>
+
+      <textarea id="script" class="input" placeholder="Kịch bản video" style="min-height:120px;"></textarea>
+
+      <div class="actions-row">
+        <button onclick="createContent()">Tạo content</button>
+        <a class="btn" href="/os/content-work-sync/?contract_id={{ contract_id }}">Đi tới viết content</a>
+      </div>
+
+      <div id="createStatus" class="status-box"></div>
+    </div>
+
+    <div id="contentList" class="stack"></div>
+
+  </div>
+
+</div>
+
+<script>
+const CONTRACT_ID = {{ contract_id }};
+const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
+
+function getCookie(name) {
+  const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
+  return m ? decodeURIComponent(m[2]) : "";
+}
+
+function authHeaders(extra = {}) {
+  const headers = Object.assign({}, extra || {});
+  if (CURRENT_TENANT_ID) headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
+  const csrf = getCookie("csrftoken");
+  if (csrf) headers["X-CSRFToken"] = csrf;
+  return headers;
+}
+
+function setCreateStatus(msg, type="info"){
+  const el = document.getElementById("createStatus");
+  el.textContent = msg || "";
+  el.style.color = type === "err" ? "#ff8f9c" : type === "ok" ? "#8fe3a1" : "#8ab4ff";
+}
+
+async function readJsonSafe(res){
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("application/json")) return await res.json();
+  const txt = await res.text();
+  throw new Error(txt || `HTTP ${res.status}`);
+}
+
+function escapeHtml(v){
+  return String(v ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+async function fetchAiScore(contentId){
+  try{
+    const res = await fetch(`/api/v1/channel-content/${contentId}/ai-score/`, {
+      credentials: "include",
+      headers: authHeaders()
+    });
+    const data = await readJsonSafe(res);
+    if (!res.ok || !data.ok) {
+      return null;
+    }
+    return data.ai || null;
+  }catch(err){
+    return null;
+  }
+}
+
+function aiBadge(ai){
+  if (!ai) return `<span class="tag">AI: ...</span>`;
+
+  let tone = "#666";
+  if (ai.label === "boostable") tone = "#1f8f4e";
+  else if (ai.label === "normal") tone = "#5874d8";
+  else if (ai.label === "weak-conversion") tone = "#a97818";
+  else if (ai.label === "weak") tone = "#a13d3d";
+
+  return `
+    <span class="tag" style="border:1px solid ${tone}; color:${tone}; background:transparent;">
+      AI ${escapeHtml(ai.health_score)} • ${escapeHtml(ai.label)}
+    </span>
+  `;
+}
+
+async function loadContent(){
+  const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/channel-content/`, {
+    credentials:"include",
+    headers: authHeaders()
+  });
+
+  const data = await readJsonSafe(res);
+  const box = document.getElementById("contentList");
+
+  if (!data.items || !data.items.length){
+    box.innerHTML = "<div class='item'>Chưa có content</div>";
+    return;
+  }
+
+  const htmlParts = [];
+
+  for (const x of data.items){
+    const ai = await fetchAiScore(x.id);
+
+    htmlParts.push(`
+      <div class="item">
+        <b>${escapeHtml(x.title)}</b>
+
+        <div class="row">
+          <span class="tag">${escapeHtml(x.status)}</span>
+          ${x.visible_to_client ? "<span class='tag'>client thấy</span>" : ""}
+          ${aiBadge(ai)}
+        </div>
+
+        <div style="margin-top:8px; white-space:pre-wrap;">
+          ${escapeHtml(x.script_text || "")}
+        </div>
+
+        ${ai ? `
+          <div style="margin-top:10px; color:#bbb; font-size:13px; line-height:1.5;">
+            <b>AI nhận định:</b> ${escapeHtml(ai.recommendation)}
+          </div>
+        ` : ""}
+
+        <div class="actions-row">
+          <button onclick="markAired(${x.id})">Đã air</button>
+          <button onclick="addMetric(${x.id})">Nhập view</button>
+          <a class="btn" href="/os/content-work-sync/?contract_id=${CONTRACT_ID}">Viết tiếp</a>
+        </div>
+      </div>
+    `);
+  }
+
+  box.innerHTML = htmlParts.join("");
+}
+
+async function createContent(){
+  const payload = {
+    title: document.getElementById("title").value.trim(),
+    script_text: document.getElementById("script").value.trim(),
+    content_pillar: document.getElementById("pillar").value.trim()
+  };
+
+  if (!payload.title) {
+    setCreateStatus("Thiếu tiêu đề content", "err");
+    return;
+  }
+
+  setCreateStatus("Đang tạo content...", "info");
+
+  const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/channel-content/create/`, {
+    method:"POST",
+    credentials:"include",
+    headers: authHeaders({"Content-Type":"application/json"}),
+    body:JSON.stringify(payload)
+  });
+
+  const data = await readJsonSafe(res);
+
+  if (!res.ok || !data.ok) {
+    setCreateStatus(data.message || "Tạo content thất bại", "err");
+    return;
+  }
+
+  document.getElementById("title").value = "";
+  document.getElementById("script").value = "";
+  document.getElementById("pillar").value = "";
+
+  setCreateStatus("Tạo content thành công", "ok");
+  loadContent();
+}
+
+async function markAired(id){
+  await fetch(`/api/v1/channel-content/${id}/update/`, {
+    method:"POST",
+    credentials:"include",
+    headers: authHeaders({"Content-Type":"application/json"}),
+    body:JSON.stringify({aired:true})
+  });
+
+  loadContent();
+}
+
+async function addMetric(id){
+  const views = prompt("Views hôm nay");
+  const likes = prompt("Likes hôm nay", "0");
+  const comments = prompt("Comments hôm nay", "0");
+  const shares = prompt("Shares hôm nay", "0");
+  const orders = prompt("Orders hôm nay", "0");
+  const revenue = prompt("Revenue hôm nay", "0");
+
+  await fetch(`/api/v1/channel-content/${id}/metric/`, {
+    method:"POST",
+    credentials:"include",
+    headers: authHeaders({"Content-Type":"application/json"}),
+    body:JSON.stringify({
+      views: views,
+      likes: likes,
+      comments: comments,
+      shares: shares,
+      orders: orders,
+      revenue: revenue
+    })
+  });
+
+  alert("Đã lưu metric");
+  loadContent();
+}
+
+loadContent();
+</script>
+
+</body>
+</html>

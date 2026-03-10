@@ -1,0 +1,519 @@
+{% load static %}
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>HeightTech OS • Hợp đồng</title>
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=18" />
+  <style>
+    .page-wrap{max-width:1240px;margin:0 auto;padding:24px;}
+    .page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
+    .page-title{font-size:28px;font-weight:900;}
+    .page-sub{color:var(--muted);margin-top:6px;line-height:1.5;max-width:860px;}
+    .grid-2{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;}
+    .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+    .full{grid-column:1 / -1;}
+    .status-box{margin-top:10px;font-size:13px;min-height:20px;line-height:1.5;}
+    .list-box{display:flex;flex-direction:column;gap:12px;}
+    .contract-item{border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px;background:rgba(255,255,255,.03);}
+    .contract-title{font-weight:800;font-size:15px;line-height:1.35;}
+    .contract-sub{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.5;}
+    .contract-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+    .tag2{padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);font-size:12px;}
+    .section-title{font-weight:800;margin-bottom:8px;}
+    .muted{color:var(--muted);}
+    .actions-row{display:flex;gap:10px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap;}
+    .hidden{display:none;}
+    .mini-note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;}
+    .tenant-pill{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 12px;border-radius:999px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.04);
+      font-size:12px;color:var(--muted);
+    }
+    .contract-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }
+    .contract-actions .btn{
+      text-decoration:none;
+    }
+    @media (max-width: 920px){
+      .grid-2{grid-template-columns:1fr;}
+      .form-grid{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="page-head">
+      <div>
+        <div class="page-title">Hợp đồng</div>
+        <div class="page-sub">
+          Tạo và quản lý hợp đồng booking, xây kênh, vận hành, hợp đồng lẻ.
+          Dữ liệu ở trang này được khóa theo tenant hiện tại để tránh lộ chéo.
+        </div>
+        <div class="mini-note">
+          Tenant hiện tại:
+          <span class="tenant-pill">Tenant ID: <b id="tenantBadge">{{ current_tenant_id|default:"" }}</b></span>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a href="/os/" class="btn">← Về OS</a>
+        <button class="btn primary" type="button" onclick="loadContracts()">Làm mới</button>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-h">
+          <div>
+            <div class="card-title">Tạo hợp đồng mới</div>
+            <div class="brand-sub">Nhập thông tin cơ bản trước, milestone, payment, booking tracking tính tiếp ở bước sau.</div>
+          </div>
+        </div>
+
+        <div class="card-b">
+          <div class="form-grid">
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Mã hợp đồng</div>
+              <input id="code" class="input" placeholder="VD: HD002" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Tên hợp đồng</div>
+              <input id="name" class="input" placeholder="VD: Vận hành shop mỹ phẩm tháng 4" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Company ID</div>
+              <input id="company_id" class="input" placeholder="VD: 2" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Shop ID (nếu có)</div>
+              <input id="shop_id" class="input" placeholder="VD: 15" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Đối tác / khách hàng</div>
+              <input id="partner_name" class="input" placeholder="Tên khách / nhãn hàng" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Loại hợp đồng</div>
+              <select id="contract_kind" class="input" onchange="toggleContractKindFields()">
+                <option value="operation">Vận hành</option>
+                <option value="booking_freecast">Booking free cast</option>
+                <option value="booking_percent">Booking cast %</option>
+                <option value="channel_build">Xây kênh</option>
+                <option value="job_small">Hợp đồng lẻ</option>
+              </select>
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Ngày ký</div>
+              <input id="signed_at" type="date" class="input" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Ngày bắt đầu</div>
+              <input id="start_date" type="date" class="input" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Ngày kết thúc</div>
+              <input id="end_date" type="date" class="input" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Tổng giá trị hợp đồng</div>
+              <input id="total_value" class="input" placeholder="VD: 15000000" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">VAT %</div>
+              <input id="vat_percent" class="input" placeholder="VD: 8 hoặc 10" />
+            </div>
+
+            <div id="bookingBlock" class="full hidden">
+              <div class="section-title">Booking</div>
+              <div class="form-grid">
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">Đơn giá / KOC (chưa VAT)</div>
+                  <input id="koc_unit_price_ex_vat" class="input" placeholder="VD: 150000 hoặc 200000" />
+                </div>
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">% deal cast (chưa VAT)</div>
+                  <input id="booking_percent_ex_vat" class="input" placeholder="VD: 15" />
+                </div>
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">Số KOC dự kiến</div>
+                  <input id="estimated_koc_count" class="input" placeholder="VD: 20" />
+                </div>
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">Ghi chú booking</div>
+                  <input id="booking_note" class="input" placeholder="Free cast / deal cast..." />
+                </div>
+              </div>
+            </div>
+
+            <div id="channelBlock" class="full hidden">
+              <div class="section-title">Xây kênh</div>
+              <div class="form-grid">
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">Chế độ</div>
+                  <select id="channel_mode" class="input">
+                    <option value="shop_channel">Xây kênh cho shop</option>
+                    <option value="independent_channel">Xây kênh riêng biệt</option>
+                  </select>
+                </div>
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">KPI view</div>
+                  <input id="channel_kpi_views" class="input" placeholder="VD: 300000" />
+                </div>
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">KPI hiệu quả kênh</div>
+                  <input id="channel_kpi_effective_rate" class="input" placeholder="VD: 3.5" />
+                </div>
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">Ghi chú xây kênh</div>
+                  <input id="channel_note" class="input" placeholder="Mục tiêu view / chuyển đổi / chi phí phát sinh..." />
+                </div>
+              </div>
+            </div>
+
+            <div id="operationBlock" class="full">
+              <div class="section-title">Vận hành</div>
+              <div class="form-grid">
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">Phí cứng (chưa VAT)</div>
+                  <input id="fixed_fee_ex_vat" class="input" placeholder="VD: 5000000" />
+                </div>
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">% vận hành theo net revenue (đã VAT)</div>
+                  <input id="net_revenue_percent_inc_vat" class="input" placeholder="VD: 5" />
+                </div>
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">Mốc 1 doanh thu</div>
+                  <input id="revenue_tier_1" class="input" placeholder="VD: 1500000000" />
+                </div>
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">% mốc 1</div>
+                  <input id="revenue_tier_1_percent" class="input" placeholder="VD: 3" />
+                </div>
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">Mốc 2 doanh thu</div>
+                  <input id="revenue_tier_2" class="input" placeholder="VD: 3000000000" />
+                </div>
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">% mốc 2</div>
+                  <input id="revenue_tier_2_percent" class="input" placeholder="VD: 4.5" />
+                </div>
+                <div class="full">
+                  <div class="muted" style="margin-bottom:6px;">% mốc 3</div>
+                  <input id="revenue_tier_3_percent" class="input" placeholder="VD: 6" />
+                </div>
+                <div class="full">
+                  <div class="muted" style="margin-bottom:6px;">Ghi chú vận hành</div>
+                  <input id="operation_note" class="input" placeholder="Tính trên net revenue = GMV - hoàn huỷ" />
+                </div>
+              </div>
+            </div>
+
+            <div id="jobBlock" class="full hidden">
+              <div class="section-title">Hợp đồng lẻ</div>
+              <div class="form-grid">
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">Giá trị theo việc hoàn thành (chưa VAT)</div>
+                  <input id="job_result_based_ex_vat" class="input" placeholder="VD: 2000000" />
+                </div>
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">Ghi chú</div>
+                  <input id="job_note" class="input" placeholder="Thiết kế / setup / audit / việc nhỏ..." />
+                </div>
+              </div>
+            </div>
+
+            <div class="full">
+              <div class="muted" style="margin-bottom:6px;">Ghi chú chung</div>
+              <textarea id="note" class="input" style="min-height:100px;" placeholder="Thông tin thêm..."></textarea>
+            </div>
+          </div>
+
+          <div class="actions-row">
+            <button class="btn" type="button" onclick="resetForm()">Xoá form</button>
+            <button class="btn primary" type="button" onclick="createContract()">Tạo hợp đồng</button>
+          </div>
+
+          <div id="statusBox" class="status-box muted"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <div>
+            <div class="card-title">Danh sách hợp đồng</div>
+            <div class="brand-sub">Chỉ hiển thị hợp đồng trong tenant hiện tại.</div>
+          </div>
+        </div>
+
+        <div class="card-b">
+          <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+            <input id="searchQ" class="input" placeholder="Tìm code / tên / đối tác..." />
+            <button class="btn" type="button" onclick="loadContracts()">Tìm</button>
+          </div>
+
+          <div id="contractsList" class="list-box"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
+
+    function getCookie(name) {
+      const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
+      return m ? decodeURIComponent(m[2]) : "";
+    }
+
+    function authHeaders(extra = {}) {
+      const headers = Object.assign({}, extra || {});
+      if (CURRENT_TENANT_ID) {
+        headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
+      }
+      const csrf = getCookie("csrftoken");
+      if (csrf) {
+        headers["X-CSRFToken"] = csrf;
+      }
+      return headers;
+    }
+
+    async function readJsonSafe(res) {
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        return await res.json();
+      }
+      const txt = await res.text();
+      throw new Error(txt || `HTTP ${res.status}`);
+    }
+
+    function escapeHtml(v){
+      return String(v ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function setStatus(msg, type){
+      const el = document.getElementById("statusBox");
+      el.textContent = msg || "";
+      el.style.color = type === "err" ? "#ff8f9c" : type === "ok" ? "#8fe3a1" : "#8ab4ff";
+    }
+
+    function toggleContractKindFields(){
+      const kind = document.getElementById("contract_kind").value;
+
+      document.getElementById("bookingBlock").classList.add("hidden");
+      document.getElementById("channelBlock").classList.add("hidden");
+      document.getElementById("operationBlock").classList.add("hidden");
+      document.getElementById("jobBlock").classList.add("hidden");
+
+      if (kind === "booking_freecast" || kind === "booking_percent") {
+        document.getElementById("bookingBlock").classList.remove("hidden");
+      } else if (kind === "channel_build") {
+        document.getElementById("channelBlock").classList.remove("hidden");
+      } else if (kind === "operation") {
+        document.getElementById("operationBlock").classList.remove("hidden");
+      } else if (kind === "job_small") {
+        document.getElementById("jobBlock").classList.remove("hidden");
+      }
+    }
+
+    function resetForm(){
+      [
+        "code","name","company_id","shop_id","partner_name","signed_at","start_date","end_date",
+        "total_value","vat_percent","koc_unit_price_ex_vat","booking_percent_ex_vat",
+        "estimated_koc_count","booking_note","channel_kpi_views","channel_kpi_effective_rate",
+        "channel_note","fixed_fee_ex_vat","net_revenue_percent_inc_vat","operation_note",
+        "job_result_based_ex_vat","job_note","note",
+        "revenue_tier_1","revenue_tier_1_percent","revenue_tier_2","revenue_tier_2_percent","revenue_tier_3_percent"
+      ].forEach(id=>{
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+
+      document.getElementById("contract_kind").value = "operation";
+      document.getElementById("channel_mode").value = "shop_channel";
+      toggleContractKindFields();
+      setStatus("Đã xoá form.", "ok");
+    }
+
+    async function createContract(){
+      const payload = {
+        code: document.getElementById("code").value.trim(),
+        name: document.getElementById("name").value.trim(),
+        company_id: document.getElementById("company_id").value.trim(),
+        shop_id: document.getElementById("shop_id").value.trim(),
+        partner_name: document.getElementById("partner_name").value.trim(),
+        contract_kind: document.getElementById("contract_kind").value,
+        signed_at: document.getElementById("signed_at").value,
+        start_date: document.getElementById("start_date").value,
+        end_date: document.getElementById("end_date").value,
+        total_value: document.getElementById("total_value").value.trim(),
+        vat_percent: document.getElementById("vat_percent").value.trim(),
+        note: document.getElementById("note").value.trim(),
+
+        koc_unit_price_ex_vat: document.getElementById("koc_unit_price_ex_vat").value.trim(),
+        booking_percent_ex_vat: document.getElementById("booking_percent_ex_vat").value.trim(),
+        estimated_koc_count: document.getElementById("estimated_koc_count").value.trim(),
+        booking_note: document.getElementById("booking_note").value.trim(),
+
+        channel_mode: document.getElementById("channel_mode").value,
+        channel_kpi_views: document.getElementById("channel_kpi_views").value.trim(),
+        channel_kpi_effective_rate: document.getElementById("channel_kpi_effective_rate").value.trim(),
+        channel_note: document.getElementById("channel_note").value.trim(),
+
+        fixed_fee_ex_vat: document.getElementById("fixed_fee_ex_vat").value.trim(),
+        net_revenue_percent_inc_vat: document.getElementById("net_revenue_percent_inc_vat").value.trim(),
+        operation_note: document.getElementById("operation_note").value.trim(),
+
+        tier1_revenue_cap: document.getElementById("revenue_tier_1").value.trim(),
+        tier1_percent_inc_vat: document.getElementById("revenue_tier_1_percent").value.trim(),
+        tier2_revenue_cap: document.getElementById("revenue_tier_2").value.trim(),
+        tier2_percent_inc_vat: document.getElementById("revenue_tier_2_percent").value.trim(),
+        tier3_percent_inc_vat: document.getElementById("revenue_tier_3_percent").value.trim(),
+
+        job_result_based_ex_vat: document.getElementById("job_result_based_ex_vat").value.trim(),
+        job_note: document.getElementById("job_note").value.trim(),
+      };
+
+      setStatus("Đang tạo hợp đồng...", "info");
+
+      try {
+        const res = await fetch("/api/v1/contracts/create/", {
+          method: "POST",
+          credentials: "include",
+          headers: authHeaders({
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          }),
+          body: JSON.stringify(payload)
+        });
+
+        const data = await readJsonSafe(res);
+
+        if (!res.ok || !data.ok) {
+          setStatus(`Tạo hợp đồng thất bại [HTTP ${res.status}]: ${data.message || data.detail || "Unknown error"}`, "err");
+          return;
+        }
+
+        setStatus("Tạo hợp đồng thành công: " + (data.item?.code || ""), "ok");
+        resetForm();
+        await loadContracts();
+      } catch (err) {
+        setStatus("Lỗi JS/fetch: " + err.message, "err");
+      }
+    }
+
+    function renderContracts(items){
+      const box = document.getElementById("contractsList");
+
+      if (!items || !items.length) {
+        box.innerHTML = `<div class="muted">Chưa có hợp đồng nào trong tenant hiện tại.</div>`;
+        return;
+      }
+
+      box.innerHTML = items.map(x => {
+        const meta = x.meta || {};
+        const contractKind = x.contract_kind || meta.contract_kind || "";
+        const shops = Array.isArray(x.shops) ? x.shops : [];
+        const shopText = shops.length ? shops.map(s => s.name || ("#" + s.id)).join(", ") : "Chưa gắn shop";
+
+        return `
+          <div class="contract-item">
+            <div class="contract-title">${escapeHtml(x.code)} • ${escapeHtml(x.name)}</div>
+            <div class="contract-sub">${escapeHtml(x.partner_name || "Chưa có đối tác")}</div>
+
+            <div class="contract-meta">
+              <span class="tag2">${escapeHtml(x.contract_type || "")}</span>
+              <span class="tag2">${escapeHtml(contractKind)}</span>
+              <span class="tag2">${escapeHtml(x.status || "")}</span>
+              <span class="tag2">Value: ${escapeHtml(x.total_value || "0")}</span>
+              <span class="tag2">VAT: ${escapeHtml(x.vat_percent || "0")}%</span>
+            </div>
+
+            <div class="contract-sub" style="margin-top:8px;">
+              Company ID: ${escapeHtml(x.company_id ?? "-")} • Shop: ${escapeHtml(shopText)}
+            </div>
+
+            <div class="contract-sub" style="margin-top:6px;">
+              ${contractKind === "operation" ? `
+                Phí cứng: ${escapeHtml(meta.fixed_fee_ex_vat || "0")} (chưa VAT)
+                • % net revenue: ${escapeHtml(meta.net_revenue_percent_inc_vat || "0")} (đã VAT)
+              ` : ""}
+              ${contractKind === "booking_freecast" ? `
+                Free cast: ${escapeHtml(meta.koc_unit_price_ex_vat || "0")} / KOC (chưa VAT)
+              ` : ""}
+              ${contractKind === "booking_percent" ? `
+                % deal cast: ${escapeHtml(meta.booking_percent_ex_vat || "0")}% (chưa VAT)
+              ` : ""}
+              ${contractKind === "channel_build" ? `
+                KPI view: ${escapeHtml(meta.channel_kpi_views || "0")}
+                • KPI hiệu quả: ${escapeHtml(meta.channel_kpi_effective_rate || "0")}
+              ` : ""}
+              ${contractKind === "job_small" ? `
+                Hợp đồng lẻ: ${escapeHtml(meta.job_result_based_ex_vat || "0")} (chưa VAT)
+              ` : ""}
+            </div>
+
+            <div class="contract-actions">
+              <a href="/os/contracts/${x.id}/" class="btn primary">Mở trung tâm</a>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function loadContracts(){
+      const q = document.getElementById("searchQ").value.trim();
+
+      try{
+        const url = q
+          ? `/api/v1/contracts/?q=${encodeURIComponent(q)}`
+          : `/api/v1/contracts/`;
+
+        const res = await fetch(url, {
+          credentials: "include",
+          cache: "no-store",
+          headers: authHeaders()
+        });
+
+        const data = await readJsonSafe(res);
+
+        if (!res.ok || !data.ok) {
+          document.getElementById("contractsList").innerHTML =
+            `<div class="muted">Không tải được danh sách hợp đồng.</div>`;
+          return;
+        }
+
+        renderContracts(data.items || []);
+      }catch(err){
+        document.getElementById("contractsList").innerHTML =
+          `<div class="muted">Có lỗi khi tải danh sách hợp đồng: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    toggleContractKindFields();
+    loadContracts();
+  </script>
+</body>
+</html>

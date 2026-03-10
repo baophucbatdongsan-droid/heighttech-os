@@ -1,0 +1,339 @@
+{% load static %}
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Founder Content Priority Dashboard</title>
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=26" />
+  <style>
+    .page-wrap{max-width:1280px;margin:0 auto;padding:24px;}
+    .page-title{font-size:28px;font-weight:900;}
+    .page-sub{color:var(--muted);margin-top:6px;line-height:1.5;}
+    .kpi-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0;}
+    .kpi-card{padding:14px;border-radius:16px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);}
+    .kpi-k{font-size:12px;color:var(--muted);}
+    .kpi-v{font-size:24px;font-weight:900;margin-top:6px;}
+    .stack{display:flex;flex-direction:column;gap:12px;}
+    .item{border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px;background:rgba(255,255,255,.025);}
+    .item-t{font-weight:800;line-height:1.45;}
+    .item-d{font-size:13px;color:var(--muted);line-height:1.6;margin-top:6px;}
+    .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+    .tag{padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);font-size:12px;}
+    .top-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px;margin-bottom:8px;}
+    .status-line{font-size:13px;line-height:1.5;min-height:20px;color:var(--muted);}
+    .muted{color:var(--muted);}
+    .tenant-pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.04);
+      font-size:12px;
+      color:var(--muted);
+      margin-top:10px;
+    }
+    .inline-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .inline-actions .btn{
+      text-decoration:none;
+    }
+    @media (max-width: 980px){
+      .kpi-row{grid-template-columns:repeat(2,minmax(0,1fr));}
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="page-title">Founder / Leader Priority Dashboard</div>
+    <div class="page-sub">
+      Tự động sắp thứ tự ưu tiên cho content team: nên scale gì, sản xuất gì, sửa gì trước.
+    </div>
+
+    <div class="tenant-pill">
+      Tenant hiện tại: <b>{{ current_tenant_id|default:"?" }}</b>
+    </div>
+
+    <div class="top-actions">
+      <a href="/os/" class="btn">← Về OS</a>
+      <a href="/os/founder/content-ai/" class="btn">AI Dashboard</a>
+      <a href="/os/content-work-sync/" class="btn primary">Khu làm việc content</a>
+      <button class="btn primary" type="button" onclick="generateAutoTasks()">Tự tạo task cho team</button>
+      <button class="btn" type="button" onclick="recomputeEngine()">Recompute AI/Priority</button>
+      <button class="btn" type="button" onclick="loadDashboard()">Làm mới</button>
+    </div>
+
+    <div id="autoTaskStatus" class="status-line"></div>
+
+    <div class="kpi-row" id="headlineRow"></div>
+    <div class="stack" id="priorityList"></div>
+  </div>
+
+  <script>
+    const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
+
+    function getCookie(name) {
+      const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
+      return m ? decodeURIComponent(m[2]) : "";
+    }
+
+    function authHeaders(extra = {}) {
+      const headers = Object.assign({}, extra || {});
+      if (CURRENT_TENANT_ID) {
+        headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
+      }
+      const csrf = getCookie("csrftoken");
+      if (csrf) {
+        headers["X-CSRFToken"] = csrf;
+      }
+      return headers;
+    }
+
+    async function readJsonSafe(res) {
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        return await res.json();
+      }
+      const txt = await res.text();
+      throw new Error(txt || `HTTP ${res.status}`);
+    }
+
+    function setStatus(msg, type = "info") {
+      const el = document.getElementById("autoTaskStatus");
+      el.textContent = msg || "";
+      el.style.color =
+        type === "err" ? "#ff8f9c" :
+        type === "ok" ? "#8fe3a1" :
+        "#8ab4ff";
+    }
+
+    function escapeHtml(v){
+      return String(v ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function kpiCard(label, value){
+      return `
+        <div class="kpi-card">
+          <div class="kpi-k">${escapeHtml(label)}</div>
+          <div class="kpi-v">${escapeHtml(value)}</div>
+        </div>
+      `;
+    }
+
+    function priorityTag(p){
+      const label = p?.priority_label || "...";
+      const score = p?.priority_score || 0;
+      return `<span class="tag">Priority ${escapeHtml(score)} • ${escapeHtml(label)}</span>`;
+    }
+
+    function aiTag(ai){
+      return `<span class="tag">AI ${escapeHtml(ai?.health_score || 0)} • ${escapeHtml(ai?.label || "-")}</span>`;
+    }
+
+    function roleGuessTag(x){
+      const p = x?.priority?.priority_label || "";
+      const title = String(x?.title || "").toLowerCase();
+      const desc = String(x?.priority?.action_hint || "").toLowerCase();
+
+      let role = "leader_channel";
+
+      if (
+        title.includes("booking") ||
+        title.includes("koc") ||
+        title.includes("kol") ||
+        desc.includes("booking")
+      ) {
+        role = "leader_booking";
+      } else if (
+        title.includes("edit") ||
+        title.includes("dựng") ||
+        title.includes("thumbnail") ||
+        title.includes("caption") ||
+        desc.includes("cta") ||
+        desc.includes("hook")
+      ) {
+        role = "editor";
+      } else if (
+        title.includes("shop") ||
+        title.includes("gmv") ||
+        title.includes("sku") ||
+        title.includes("ads") ||
+        title.includes("vận hành")
+      ) {
+        role = "leader_operation";
+      } else if (["scale_now", "produce_now", "fix_now"].includes(p)) {
+        role = "leader_channel";
+      }
+
+      return `<span class="tag">Role: ${escapeHtml(role)}</span>`;
+    }
+
+    function itemActionButtons(x){
+      const contentId = x?.content_id;
+      const contractId = x?.contract_id;
+      const shopName = x?.shop_name || "";
+      const html = [];
+
+      if (contractId) {
+        html.push(`<a class="btn" href="/os/contracts/${contractId}/content/">Mở Content Studio</a>`);
+        html.push(`<a class="btn primary" href="/os/content-work-sync/?contract_id=${contractId}">Khu làm việc content</a>`);
+        html.push(`<a class="btn" href="/os/contracts/${contractId}/">Xem hợp đồng</a>`);
+      } else {
+        html.push(`<a class="btn primary" href="/os/content-work-sync/">Khu làm việc content</a>`);
+      }
+
+      if (contentId) {
+        html.push(`<span class="tag">Content ID: ${escapeHtml(contentId)}</span>`);
+      }
+      if (shopName) {
+        html.push(`<span class="tag">${escapeHtml(shopName)}</span>`);
+      }
+
+      return html.join("");
+    }
+
+    async function loadDashboard(){
+      if (!CURRENT_TENANT_ID) {
+        setStatus("Thiếu tenant hiện tại. Anh kiểm tra lại apps/os/views.py giúp em.", "err");
+        return;
+      }
+
+      setStatus("Đang tải priority dashboard...", "info");
+
+      try {
+        const res = await fetch(`/api/v1/founder/content-priority-dashboard/`, {
+          credentials: "include",
+          cache: "no-store",
+          headers: authHeaders()
+        });
+
+        const data = await readJsonSafe(res);
+
+        if (!res.ok || !data.ok){
+          setStatus(data.message || "Không tải được priority dashboard", "err");
+          return;
+        }
+
+        const h = data.headline || {};
+        document.getElementById("headlineRow").innerHTML = `
+          ${kpiCard("Tổng content", h.total_contents || 0)}
+          ${kpiCard("Scale now", h.scale_now || 0)}
+          ${kpiCard("Produce now", h.produce_now || 0)}
+          ${kpiCard("Fix now", h.fix_now || 0)}
+        `;
+
+        const items = data.items || [];
+        document.getElementById("priorityList").innerHTML = items.length ? items.map(x => `
+          <div class="item">
+            <div class="item-t">${escapeHtml(x.title)}</div>
+
+            <div class="row">
+              ${priorityTag(x.priority)}
+              ${aiTag(x.ai)}
+              ${roleGuessTag(x)}
+              <span class="tag">Status: ${escapeHtml(x.status || "-")}</span>
+              <span class="tag">Views: ${escapeHtml(x.views_14d || 0)}</span>
+              <span class="tag">Orders: ${escapeHtml(x.orders_14d || 0)}</span>
+              <span class="tag">Revenue: ${escapeHtml(x.revenue_14d || 0)}</span>
+            </div>
+
+            <div class="inline-actions">
+              ${itemActionButtons(x)}
+            </div>
+
+            <div class="item-d"><b>Lý do:</b> ${escapeHtml((x.priority || {}).reason || "")}</div>
+            <div class="item-d"><b>Gợi ý hành động:</b> ${escapeHtml((x.priority || {}).action_hint || "")}</div>
+            <div class="item-d"><b>AI recommendation:</b> ${escapeHtml((x.ai || {}).recommendation || "")}</div>
+          </div>
+        `).join("") : `<div class="item"><div class="item-t">Chưa có content priority nào</div></div>`;
+
+        setStatus("Đã tải priority dashboard thành công.", "ok");
+      } catch (err) {
+        setStatus("Lỗi tải priority dashboard: " + err.message, "err");
+      }
+    }
+
+    async function generateAutoTasks(){
+      if (!CURRENT_TENANT_ID) {
+        setStatus("Thiếu tenant hiện tại.", "err");
+        return;
+      }
+
+      setStatus("Đang tạo task tự động cho team...", "info");
+
+      try{
+        const res = await fetch(`/api/v1/founder/content-auto-tasks/generate/`, {
+          method: "POST",
+          credentials: "include",
+          headers: authHeaders({
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          }),
+          body: JSON.stringify({ limit: 30 })
+        });
+
+        const data = await readJsonSafe(res);
+
+        if (!res.ok || !data.ok){
+          setStatus(data.message || "Không tạo được auto tasks", "err");
+          return;
+        }
+
+        setStatus(`Đã tạo/cập nhật ${data.count || 0} task tự động cho team.`, "ok");
+      } catch(err){
+        setStatus("Lỗi tạo auto tasks: " + err.message, "err");
+      }
+    }
+
+    async function recomputeEngine(){
+      if (!CURRENT_TENANT_ID) {
+        setStatus("Thiếu tenant hiện tại.", "err");
+        return;
+      }
+
+      setStatus("Đang recompute AI / priority / auto tasks...", "info");
+
+      try{
+        const res = await fetch(`/api/v1/founder/content-recompute/`, {
+          method: "POST",
+          credentials: "include",
+          headers: authHeaders({
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          }),
+          body: JSON.stringify({ limit: 300 })
+        });
+
+        const data = await readJsonSafe(res);
+
+        if (!res.ok || !data.ok){
+          setStatus(data.message || "Recompute thất bại", "err");
+          return;
+        }
+
+        setStatus(
+          `Đã recompute xong. Processed=${data.processed}, snapshots=${data.snapshots}, auto_tasks=${data.auto_tasks}.`,
+          "ok"
+        );
+
+        await loadDashboard();
+      } catch(err){
+        setStatus("Lỗi recompute: " + err.message, "err");
+      }
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

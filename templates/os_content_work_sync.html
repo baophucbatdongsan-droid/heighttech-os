@@ -1,0 +1,105 @@
+{% load static %}
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Content ↔ Work Sync</title>
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=24" />
+  <style>
+    .page-wrap{max-width:980px;margin:0 auto;padding:24px;}
+    .page-title{font-size:28px;font-weight:900;}
+    .page-sub{color:var(--muted);margin-top:6px;line-height:1.5;}
+    .cardx{border:1px solid rgba(255,255,255,.08);border-radius:18px;background:rgba(255,255,255,.03);padding:18px;margin-top:20px;}
+    .status-line{margin-top:14px;font-size:13px;min-height:20px;color:var(--muted);}
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="page-title">Content ↔ Work Sync</div>
+    <div class="page-sub">
+      Đồng bộ ngược từ task của team về trạng thái content để tạo vòng vận hành khép kín.
+    </div>
+
+    <div class="cardx">
+      <div class="muted" style="margin-bottom:8px;">WorkItem ID</div>
+      <input id="workitemId" class="input" placeholder="VD: 125" />
+
+      <div style="margin-top:12px;">
+        <button class="btn primary" type="button" onclick="syncContent()">Sync content từ task</button>
+      </div>
+
+      <div id="syncStatus" class="status-line"></div>
+    </div>
+  </div>
+
+  <script>
+    const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
+
+    function getCookie(name) {
+      const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
+      return m ? decodeURIComponent(m[2]) : "";
+    }
+
+    function authHeaders(extra = {}) {
+      const headers = Object.assign({}, extra || {});
+      if (CURRENT_TENANT_ID) headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
+      const csrf = getCookie("csrftoken");
+      if (csrf) headers["X-CSRFToken"] = csrf;
+      return headers;
+    }
+
+    async function readJsonSafe(res) {
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("application/json")) return await res.json();
+      const txt = await res.text();
+      throw new Error(txt || `HTTP ${res.status}`);
+    }
+
+    function setStatus(msg, type="info"){
+      const el = document.getElementById("syncStatus");
+      el.textContent = msg || "";
+      el.style.color =
+        type === "err" ? "#ff8f9c" :
+        type === "ok" ? "#8fe3a1" :
+        "#8ab4ff";
+    }
+
+    async function syncContent(){
+      const workitemId = document.getElementById("workitemId").value.trim();
+      if (!workitemId){
+        setStatus("Thiếu WorkItem ID", "err");
+        return;
+      }
+
+      setStatus("Đang sync content từ task...", "info");
+
+      try{
+        const res = await fetch(`/api/v1/work-items/${workitemId}/sync-content/`, {
+          method: "POST",
+          credentials: "include",
+          headers: authHeaders({
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          }),
+          body: JSON.stringify({})
+        });
+
+        const data = await readJsonSafe(res);
+
+        if (!res.ok || !data.ok){
+          setStatus(data.message || "Sync thất bại", "err");
+          return;
+        }
+
+        setStatus(
+          `Đã sync thành công. Content #${data.content_id} → status = ${data.content_status}`,
+          "ok"
+        );
+      }catch(err){
+        setStatus("Lỗi sync: " + err.message, "err");
+      }
+    }
+  </script>
+</body>
+</html>

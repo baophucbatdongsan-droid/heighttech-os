@@ -1,0 +1,96 @@
+{% load static %}
+<!doctype html>
+<html data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Channel Content Studio</title>
+<link rel="stylesheet" href="{% static 'os/os.css' %}">
+</head>
+
+<body>
+
+<div class="page-wrap">
+
+<h2>Channel Content Studio</h2>
+
+<div id="contentList"></div>
+
+<h3>Tạo nội dung</h3>
+
+<input id="title" placeholder="Tiêu đề video">
+<input id="pillar" placeholder="Trụ cột nội dung">
+<textarea id="script" placeholder="Kịch bản"></textarea>
+
+<button onclick="createContent()">Tạo nội dung</button>
+
+</div>
+
+<script>
+
+const CONTRACT_ID = {{contract_id}}
+
+async function loadContent(){
+
+ const r = await fetch(`/api/v1/contracts/${CONTRACT_ID}/channel-content/`)
+ const d = await r.json()
+
+ document.getElementById("contentList").innerHTML =
+  d.items.map(x => `
+  <div style="border:1px solid #333;padding:12px;margin:8px 0">
+    <b>${x.title}</b> (${x.status})
+    <div>${x.script_text || ""}</div>
+
+    <button onclick="markAired(${x.id})">Đã air</button>
+
+    <button onclick="addMetric(${x.id})">Nhập view</button>
+  </div>
+  `).join("")
+}
+
+async function createContent(){
+
+ const payload = {
+  title: document.getElementById("title").value,
+  script_text: document.getElementById("script").value,
+  content_pillar: document.getElementById("pillar").value
+ }
+
+ await fetch(`/api/v1/contracts/${CONTRACT_ID}/channel-content/create/`,{
+  method:"POST",
+  headers:{'Content-Type':'application/json'},
+  body:JSON.stringify(payload)
+ })
+
+ loadContent()
+}
+
+async function markAired(id){
+
+ await fetch(`/api/v1/channel-content/${id}/update/`,{
+  method:"POST",
+  headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({aired:true})
+ })
+
+ loadContent()
+}
+
+async function addMetric(id){
+
+ const view = prompt("Views hôm nay")
+
+ await fetch(`/api/v1/channel-content/${id}/metric/`,{
+  method:"POST",
+  headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({views:view})
+ })
+
+ alert("Đã lưu metric")
+}
+
+loadContent()
+
+</script>
+
+</body>
+</html>

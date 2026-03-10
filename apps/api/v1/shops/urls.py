@@ -1,12 +1,10 @@
-# apps/api/v1/shops/urls.py
-from __future__ import annotations
-
 from django.urls import path
 
-from .views_dashboard import ShopDashboardView
-
-app_name = "shops"
+from .views import ShopListApi, ShopCreateApi
+from .workspace import ShopCreateWorkspaceApi
 
 urlpatterns = [
-    path("<int:shop_id>/dashboard/", ShopDashboardView.as_view(), name="shop_dashboard"),
+    path("", ShopListApi.as_view(), name="shop-list"),
+    path("create/", ShopCreateApi.as_view(), name="shop-create"),
+    path("create-workspace/", ShopCreateWorkspaceApi.as_view(), name="shop-create-workspace"),
 ]

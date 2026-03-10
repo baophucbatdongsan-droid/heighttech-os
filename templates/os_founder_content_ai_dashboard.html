@@ -1,0 +1,172 @@
+{% load static %}
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Founder Content AI Dashboard</title>
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=21" />
+  <style>
+    .page-wrap{max-width:1280px;margin:0 auto;padding:24px;}
+    .page-title{font-size:28px;font-weight:900;}
+    .page-sub{color:var(--muted);margin-top:6px;line-height:1.5;}
+    .kpi-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0;}
+    .kpi-card{padding:14px;border-radius:16px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);}
+    .kpi-k{font-size:12px;color:var(--muted);}
+    .kpi-v{font-size:24px;font-weight:900;margin-top:6px;}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+    .cardx{border:1px solid rgba(255,255,255,.08);border-radius:18px;background:rgba(255,255,255,.03);}
+    .cardh{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06);font-weight:800;}
+    .cardb{padding:16px;}
+    .stack{display:flex;flex-direction:column;gap:12px;}
+    .item{border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px;background:rgba(255,255,255,.025);}
+    .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+    .tag{padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);font-size:12px;}
+    .item-t{font-weight:800;}
+    .item-d{font-size:13px;color:var(--muted);line-height:1.5;margin-top:6px;}
+    @media (max-width: 980px){
+      .kpi-row{grid-template-columns:repeat(2,minmax(0,1fr));}
+      .grid{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="page-title">Founder / Leader Content AI Dashboard</div>
+    <div class="page-sub">
+      Theo dõi content mạnh, content yếu, shop đang tăng trưởng và shop cần can thiệp.
+    </div>
+
+    <div class="kpi-row" id="headlineRow"></div>
+
+    <div class="grid">
+      <div class="cardx">
+        <div class="cardh">Top content mạnh nhất</div>
+        <div class="cardb">
+          <div id="topContentList" class="stack"></div>
+        </div>
+      </div>
+
+      <div class="cardx">
+        <div class="cardh">Content yếu / rủi ro</div>
+        <div class="cardb">
+          <div id="weakContentList" class="stack"></div>
+        </div>
+      </div>
+
+      <div class="cardx" style="grid-column:1 / -1;">
+        <div class="cardh">Tổng quan theo shop</div>
+        <div class="cardb">
+          <div id="shopList" class="stack"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CURRENT_TENANT_ID = "1";
+
+    function getCookie(name) {
+      const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
+      return m ? decodeURIComponent(m[2]) : "";
+    }
+
+    function authHeaders(extra = {}) {
+      const headers = Object.assign({}, extra || {});
+      if (CURRENT_TENANT_ID) headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
+      const csrf = getCookie("csrftoken");
+      if (csrf) headers["X-CSRFToken"] = csrf;
+      return headers;
+    }
+
+    function escapeHtml(v){
+      return String(v ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function kpiCard(label, value){
+      return `
+        <div class="kpi-card">
+          <div class="kpi-k">${escapeHtml(label)}</div>
+          <div class="kpi-v">${escapeHtml(value)}</div>
+        </div>
+      `;
+    }
+
+    function aiTag(ai){
+      if (!ai) return `<span class="tag">AI ...</span>`;
+      return `<span class="tag">AI ${escapeHtml(ai.health_score)} • ${escapeHtml(ai.label)}</span>`;
+    }
+
+    async function loadDashboard(){
+      const res = await fetch(`/api/v1/founder/content-ai-dashboard/`, {
+        credentials:"include",
+        headers: authHeaders()
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok){
+        alert(data.message || "Không tải được dashboard");
+        return;
+      }
+
+      const h = data.headline || {};
+      document.getElementById("headlineRow").innerHTML = `
+        ${kpiCard("Tổng content", h.total_contents || 0)}
+        ${kpiCard("Tổng shop", h.total_shops || 0)}
+        ${kpiCard("Content mạnh", h.boostable_contents || 0)}
+        ${kpiCard("Content yếu", h.weak_contents || 0)}
+      `;
+
+      document.getElementById("topContentList").innerHTML = (data.top_contents || []).map(x => `
+        <div class="item">
+          <div class="item-t">${escapeHtml(x.title)}</div>
+          <div class="row">
+            ${aiTag(x.ai)}
+            <span class="tag">${escapeHtml(x.shop_name || "Chưa gắn shop")}</span>
+            <span class="tag">Views: ${escapeHtml(x.views_14d)}</span>
+            <span class="tag">Orders: ${escapeHtml(x.orders_14d)}</span>
+            <span class="tag">Revenue: ${escapeHtml(x.revenue_14d)}</span>
+          </div>
+          <div class="item-d">${escapeHtml((x.ai || {}).recommendation || "")}</div>
+        </div>
+      `).join("");
+
+      document.getElementById("weakContentList").innerHTML = (data.weak_contents || []).map(x => `
+        <div class="item">
+          <div class="item-t">${escapeHtml(x.title)}</div>
+          <div class="row">
+            ${aiTag(x.ai)}
+            <span class="tag">${escapeHtml(x.shop_name || "Chưa gắn shop")}</span>
+            <span class="tag">Views: ${escapeHtml(x.views_14d)}</span>
+            <span class="tag">Orders: ${escapeHtml(x.orders_14d)}</span>
+          </div>
+          <div class="item-d">${escapeHtml((x.ai || {}).recommendation || "")}</div>
+        </div>
+      `).join("");
+
+      document.getElementById("shopList").innerHTML = (data.shops || []).map(x => `
+        <div class="item">
+          <div class="item-t">${escapeHtml(x.shop_name || "Chưa gắn shop")}</div>
+          <div class="row">
+            <span class="tag">Score: ${escapeHtml(x.avg_health_score)}</span>
+            <span class="tag">${escapeHtml(x.shop_label)}</span>
+            <span class="tag">Content: ${escapeHtml(x.total_contents)}</span>
+            <span class="tag">Aired: ${escapeHtml(x.aired_contents)}</span>
+            <span class="tag">Views: ${escapeHtml(x.total_views)}</span>
+            <span class="tag">Orders: ${escapeHtml(x.total_orders)}</span>
+            <span class="tag">Revenue: ${escapeHtml(x.total_revenue)}</span>
+          </div>
+          <div class="item-d">${escapeHtml(x.recommendation || "")}</div>
+        </div>
+      `).join("");
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

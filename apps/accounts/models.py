@@ -1,13 +1,10 @@
-#apps/accounts/models.py
 from __future__ import annotations
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 
 
-# ===============================
-# ROLE CHO MEMBERSHIP (INTERNAL)
-# ===============================
 ROLE_FOUNDER = "founder"
 ROLE_HEAD = "head"
 ROLE_ACCOUNT = "account"
@@ -23,45 +20,34 @@ ROLE_CHOICES = (
 )
 
 
-# ===============================
-# USER (KHÔNG GẮN COMPANY TRỰC TIẾP)
-# ===============================
 class User(AbstractUser):
     """
-    User hệ thống.
-    - Không gắn company trực tiếp.
-    - Company scope qua accounts.Membership (nội bộ).
-    - Client scope qua shops.ShopMember (chủ shop).
+    Giữ username để tránh vỡ code cũ.
+    Login ngoài giao diện bằng email.
     """
+    email = models.EmailField(unique=True)
     created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         verbose_name = "Nhân sự"
         verbose_name_plural = "Nhân sự"
 
+    def save(self, *args, **kwargs):
+        if self.email:
+            self.email = self.email.strip().lower()
+        super().save(*args, **kwargs)
+
     def __str__(self) -> str:
-        return self.username
+        return self.email or self.username
 
 
-# ===============================
-# MEMBERSHIP: USER - COMPANY - ROLE
-# ===============================
 class Membership(models.Model):
-    """
-    1 user có thể thuộc nhiều company (multi-company).
-    Mỗi company có role khác nhau.
-    ✅ 2 chiều:
-      - Nội bộ: dựa vào Membership
-      - Chủ shop/client: dựa vào shops.ShopMember (không nằm ở đây)
-    """
-
-    # ✅ tenant để query nhanh + đảm bảo data consistency multi-tenant
     tenant = models.ForeignKey(
         "tenants.Tenant",
         on_delete=models.CASCADE,
         related_name="memberships",
         db_index=True,
-        )
+    )
 
     user = models.ForeignKey(
         "accounts.User",
@@ -97,12 +83,11 @@ class Membership(models.Model):
             models.Index(fields=["tenant"], name="msh_t_idx"),
             models.Index(fields=["user", "is_active"], name="msh_u_act_idx"),
             models.Index(fields=["company", "is_active"], name="msh_c_act_idx"),
-            models.Index(fields=["tenant", "company", "is_active"], name="msh_t_co_act_idx"),  # < 30 chars ✅
+            models.Index(fields=["tenant", "company", "is_active"], name="msh_t_co_act_idx"),
             models.Index(fields=["role"], name="msh_role_idx"),
         ]
 
     def save(self, *args, **kwargs):
-        # safety: auto sync tenant từ company nếu chưa set
         if not getattr(self, "tenant_id", None) and getattr(self, "company_id", None):
             try:
                 self.tenant_id = self.company.tenant_id
@@ -111,7 +96,8 @@ class Membership(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
-        return f"{self.user.username} - {self.company.name} ({self.role})"
-    
-# cuối apps/accounts/models.py
+        user_label = self.user.email or self.user.username
+        return f"{user_label} - {self.company.name} ({self.role})"
+
+
 from .models_invite import InviteCode  # noqa: F401

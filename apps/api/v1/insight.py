@@ -1,4 +1,3 @@
-# apps/api/v1/insight.py
 from __future__ import annotations
 
 from datetime import timedelta
@@ -16,11 +15,41 @@ from apps.work.models import WorkItem
 
 
 def _get_tenant_id(request) -> Optional[int]:
-    tid = getattr(request, "tenant_id", None)
+    # 1) membership active của user hiện tại
     try:
-        return int(tid) if tid is not None else None
+        user = getattr(request, "user", None)
+        if user and getattr(user, "is_authenticated", False):
+            from apps.accounts.models import Membership
+
+            m = (
+                Membership.objects.filter(user=user, is_active=True)
+                .select_related("tenant", "company")
+                .order_by("id")
+                .first()
+            )
+            if m and getattr(m, "tenant_id", None):
+                return int(m.tenant_id)
     except Exception:
-        return None
+        pass
+
+    # 2) actor context
+    try:
+        actor_ctx = getattr(request, "actor_ctx", None)
+        tid = getattr(actor_ctx, "tenant_id", None)
+        if tid is not None:
+            return int(tid)
+    except Exception:
+        pass
+
+    # 3) fallback từ request
+    try:
+        tid = getattr(request, "tenant_id", None)
+        if tid is not None:
+            return int(tid)
+    except Exception:
+        pass
+
+    return None
 
 
 def _safe_get_model(app_label: str, model_name: str):
@@ -95,7 +124,6 @@ def _events_metrics(tenant_id: int) -> Dict[str, Any]:
     """
     Event = _safe_get_model("events", "Event")
     if not Event:
-        # nhiều codebase đặt tên OutboxEvent / EventOutbox
         Event = _safe_get_model("events", "OutboxEvent") or _safe_get_model("events", "EventOutbox")
 
     if not Event:
@@ -106,7 +134,6 @@ def _events_metrics(tenant_id: int) -> Dict[str, Any]:
 
     pending = None
     failed = None
-    # thử đoán field status/state
     for st_field in ("status", "state"):
         if hasattr(Event, st_field):
             try:
@@ -139,10 +166,6 @@ def _events_metrics(tenant_id: int) -> Dict[str, Any]:
 
 
 def _health_score_for_shop(tenant_id: int, shop_id: int) -> Optional[Dict[str, Any]]:
-    """
-    Optional: nếu có intelligence.shop_health.evaluate_and_emit_shop_health thì dùng.
-    Không có thì bỏ qua.
-    """
     try:
         from apps.intelligence.shop_health import evaluate_and_emit_shop_health  # type: ignore
 
@@ -158,15 +181,6 @@ def _health_score_for_shop(tenant_id: int, shop_id: int) -> Optional[Dict[str, A
 
 
 class FounderInsightApi(APIView):
-    """
-    /api/v1/founder/insight/
-
-    Output:
-    - Overview: tasks + events
-    - Per-shop: health (optional) + task metrics + alerts
-    - Recommendations: actionable suggestions (heuristic)
-    """
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -176,15 +190,11 @@ class FounderInsightApi(APIView):
 
         now = timezone.now()
 
-        # ---- Shops (cap 50 để nhanh) ----
         shops = list(Shop.objects_all.filter(tenant_id=tenant_id).order_by("-id")[:50].values("id", "name"))
-
-        # ---- WorkItems base ----
         base_qs = WorkItem.objects_all.filter(tenant_id=tenant_id)
 
         overall_tasks = _calc_task_metrics(base_qs)
 
-        # ---- per shop metrics ----
         per_shop: List[Dict[str, Any]] = []
         recommendations: List[Dict[str, Any]] = []
         alerts: List[Dict[str, Any]] = []
@@ -198,7 +208,6 @@ class FounderInsightApi(APIView):
 
             health = _health_score_for_shop(tenant_id, sid)
 
-            # alerts heuristic
             if m["overdue"] >= 3:
                 alerts.append({"shop_id": sid, "type": "tasks_overdue", "level": "high", "message": f"{m['overdue']} task quá hạn"})
             if m["blocked"] >= 2:
@@ -209,7 +218,6 @@ class FounderInsightApi(APIView):
             if health and (health.get("level") in {"bad", "critical"} or (health.get("score") is not None and health.get("score", 0) < 50)):
                 alerts.append({"shop_id": sid, "type": "shop_health", "level": "high", "message": f"Shop health thấp: {health.get('score')} ({health.get('level')})"})
 
-            # recommendations heuristic
             if m["overdue"] > 0:
                 recommendations.append(
                     {
@@ -255,10 +263,8 @@ class FounderInsightApi(APIView):
                 }
             )
 
-        # ---- events metrics (optional) ----
         events = _events_metrics(tenant_id)
 
-        # ---- de-dup recs (by shop_id+action) ----
         seen = set()
         dedup_recs = []
         for r in recommendations:

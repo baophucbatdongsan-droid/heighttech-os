@@ -1,0 +1,245 @@
+{% load static %}
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HeightTech OS • SKU</title>
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=15" />
+  <style>
+    .page-wrap{max-width:1240px;margin:0 auto;padding:24px;}
+    .page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
+    .page-title{font-size:28px;font-weight:900;}
+    .page-sub{color:var(--muted);margin-top:6px;line-height:1.5;}
+    .grid-2{display:grid;grid-template-columns:1.02fr .98fr;gap:18px;}
+    .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+    .full{grid-column:1 / -1;}
+    .status-box{margin-top:10px;font-size:13px;min-height:20px;}
+    .list-box{display:flex;flex-direction:column;gap:12px;}
+    .item-card{border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px;background:rgba(255,255,255,.03);}
+    .item-title{font-weight:800;font-size:15px;line-height:1.35;}
+    .item-sub{font-size:13px;color:var(--muted);margin-top:4px;}
+    .item-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+    .tag2{padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);font-size:12px;}
+    .actions-row{display:flex;gap:10px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap;}
+    @media (max-width: 920px){
+      .grid-2{grid-template-columns:1fr;}
+      .form-grid{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="page-head">
+      <div>
+        <div class="page-title">Tạo SKU</div>
+        <div class="page-sub">
+          Tạo SKU nền để import dữ liệu, ghi nhận doanh số, radar SKU và phân tích lãi lỗ.
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a href="/os/" class="btn">← Về OS</a>
+        <button class="btn primary" type="button" onclick="loadSKU()">Làm mới</button>
+      </div>
+    </div>
+
+    <div class="muted" style="margin-bottom:14px;">
+      Tenant hiện tại: <b>{{ current_tenant_id|default:"?" }}</b>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-h">
+          <div>
+            <div class="card-title">Tạo SKU mới</div>
+            <div class="brand-sub">Tạo mã SKU để quản lý sản phẩm theo shop.</div>
+          </div>
+        </div>
+
+        <div class="card-b">
+          <div class="form-grid">
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Company ID</div>
+              <input id="company_id" class="input" placeholder="VD: 2" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Shop ID</div>
+              <input id="shop_id" class="input" placeholder="VD: 15" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Mã SKU</div>
+              <input id="sku" class="input" placeholder="VD: SKU-SON-001" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Tên sản phẩm</div>
+              <input id="name" class="input" placeholder="VD: Son kem lì A" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Danh mục</div>
+              <input id="category" class="input" placeholder="VD: Mỹ phẩm" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Giá bán</div>
+              <input id="price" class="input" placeholder="VD: 199000" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Giá vốn</div>
+              <input id="cost" class="input" placeholder="VD: 85000" />
+            </div>
+
+            <div>
+              <div class="muted" style="margin-bottom:6px;">Tồn kho</div>
+              <input id="stock" class="input" placeholder="VD: 120" />
+            </div>
+          </div>
+
+          <div class="actions-row">
+            <button class="btn" type="button" onclick="resetForm()">Xoá form</button>
+            <button class="btn primary" type="button" onclick="createSKU()">Tạo SKU</button>
+          </div>
+
+          <div id="statusBox" class="status-box muted"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <div>
+            <div class="card-title">Danh sách SKU</div>
+            <div class="brand-sub">Chỉ hiển thị SKU thuộc tenant hiện tại.</div>
+          </div>
+        </div>
+
+        <div class="card-b">
+          <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+            <input id="searchQ" class="input" placeholder="Tìm SKU / tên / danh mục..." />
+            <button class="btn" type="button" onclick="loadSKU()">Tìm</button>
+          </div>
+
+          <div id="skuList" class="list-box"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function escapeHtml(v){
+      return String(v ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function setStatus(msg, type){
+      const el = document.getElementById("statusBox");
+      el.textContent = msg || "";
+      el.style.color = type === "err" ? "#ff8f9c" : type === "ok" ? "#8fe3a1" : "";
+    }
+
+    function resetForm(){
+      ["company_id","shop_id","sku","name","category","price","cost","stock"].forEach(id=>{
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+      setStatus("Đã xoá form.", "ok");
+    }
+
+    async function createSKU(){
+      const payload = {
+        company_id: document.getElementById("company_id").value.trim(),
+        shop_id: document.getElementById("shop_id").value.trim(),
+        sku: document.getElementById("sku").value.trim(),
+        name: document.getElementById("name").value.trim(),
+        category: document.getElementById("category").value.trim(),
+        price: document.getElementById("price").value.trim(),
+        cost: document.getElementById("cost").value.trim(),
+        stock: document.getElementById("stock").value.trim()
+      };
+
+      setStatus("Đang tạo SKU...", "info");
+
+      try{
+        const res = await fetch("/api/v1/os-admin/sku/", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          setStatus(data.message || "Tạo SKU thất bại", "err");
+          return;
+        }
+
+        setStatus("Tạo SKU thành công: " + (data.item?.sku || ""), "ok");
+        resetForm();
+        await loadSKU();
+      }catch(err){
+        setStatus("Lỗi: " + err.message, "err");
+      }
+    }
+
+    function renderSKU(items){
+      const box = document.getElementById("skuList");
+
+      if (!items || !items.length) {
+        box.innerHTML = `<div class="muted">Chưa có SKU nào.</div>`;
+        return;
+      }
+
+      box.innerHTML = items.map(x => `
+        <div class="item-card">
+          <div class="item-title">${escapeHtml(x.sku)} • ${escapeHtml(x.name)}</div>
+          <div class="item-sub">Danh mục: ${escapeHtml(x.category || "Chưa phân loại")}</div>
+          <div class="item-meta">
+            <span class="tag2">ID: ${escapeHtml(x.id)}</span>
+            <span class="tag2">Company: ${escapeHtml(x.company_id ?? "-")}</span>
+            <span class="tag2">Shop: ${escapeHtml(x.shop_id ?? "-")}</span>
+            <span class="tag2">Giá bán: ${escapeHtml(x.price)}</span>
+            <span class="tag2">Giá vốn: ${escapeHtml(x.cost)}</span>
+            <span class="tag2">Tồn kho: ${escapeHtml(x.stock)}</span>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    async function loadSKU(){
+      const q = document.getElementById("searchQ").value.trim();
+
+      try{
+        const url = q
+          ? `/api/v1/os-admin/sku/?q=${encodeURIComponent(q)}`
+          : `/api/v1/os-admin/sku/`;
+
+        const res = await fetch(url, {
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          document.getElementById("skuList").innerHTML = `<div class="muted">Có lỗi khi tải danh sách SKU.</div>`;
+          return;
+        }
+
+        renderSKU(data.items || []);
+      }catch(err){
+        document.getElementById("skuList").innerHTML = `<div class="muted">Có lỗi khi tải danh sách SKU.</div>`;
+      }
+    }
+
+    loadSKU();
+  </script>
+</body>
+</html>
