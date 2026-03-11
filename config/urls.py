@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from django.contrib import admin
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.urls import include, path
 from django.views.generic import TemplateView
 
@@ -27,9 +27,11 @@ admin.site.index_title = "Bảng điều hành hệ thống HeightTech"
 
 def root_view(request):
     user = getattr(request, "user", None)
+
     if user and getattr(user, "is_authenticated", False):
         return redirect("/os/")
-    return redirect("/login/")
+
+    return render(request, "auth/root_landing.html")
 
 
 urlpatterns = [

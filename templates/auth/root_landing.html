@@ -1,0 +1,370 @@
+{% load static %}
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-F9HDX95DEB"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+
+gtag('config', 'G-F9HDX95DEB');
+</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+  <title>HeightTech OS – Commerce Operating System</title>
+
+  <meta name="description" content="HeightTech OS là hệ điều hành vận hành thương mại điện tử dành cho agency và doanh nghiệp. Quản lý shop, booking KOC/KOL, nội dung, vận hành và dữ liệu tăng trưởng trong một nền tảng duy nhất.">
+  <meta name="keywords" content="HeightTech OS, SaaS ecommerce, ecommerce operating system, quản lý shop, KOC booking, agency ecommerce">
+  <meta name="author" content="HeightTech">
+
+  <link rel="canonical" href="https://app.heighttech.vn/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="HeightTech OS">
+  <meta property="og:title" content="HeightTech OS – Ecommerce Operating System">
+  <meta property="og:description" content="Hệ điều hành vận hành thương mại điện tử cho agency và doanh nghiệp. Quản lý shop, booking KOC/KOL, nội dung và dữ liệu tăng trưởng trong một nền tảng duy nhất.">
+  <meta property="og:url" content="https://app.heighttech.vn/">
+  <meta property="og:image" content="https://app.heighttech.vn/static/og/heighttech-preview.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="HeightTech OS – Ecommerce Operating System">
+  <meta name="twitter:description" content="Hệ điều hành vận hành thương mại điện tử dành cho agency và doanh nghiệp.">
+  <meta name="twitter:image" content="https://app.heighttech.vn/static/og/heighttech-preview.jpg">
+
+  <style>
+    :root{
+      --bg:#020617;
+      --panel:#0f172a;
+      --line:rgba(255,255,255,.08);
+      --text:#f8fafc;
+      --muted:#94a3b8;
+      --primary:#2563eb;
+      --primary-2:#3b82f6;
+      --shadow:0 30px 80px rgba(0,0,0,.45);
+      --radius:22px;
+    }
+
+    *{box-sizing:border-box}
+
+    html,body{
+      margin:0;
+      min-height:100%;
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background:
+        radial-gradient(circle at 20% 15%, rgba(37,99,235,.22), transparent 28%),
+        radial-gradient(circle at 80% 10%, rgba(59,130,246,.12), transparent 24%),
+        radial-gradient(circle at 50% 100%, rgba(15,23,42,.9), transparent 38%),
+        var(--bg);
+      color:var(--text);
+    }
+
+    .page{
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px;
+    }
+
+    .shell{
+      width:min(1100px, 100%);
+      display:grid;
+      grid-template-columns:1.1fr .9fr;
+      gap:22px;
+      align-items:stretch;
+    }
+
+    .hero, .panel{
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      background:rgba(15,23,42,.72);
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(12px);
+    }
+
+    .hero{
+      padding:40px;
+    }
+
+    .eyebrow{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:rgba(37,99,235,.12);
+      border:1px solid rgba(59,130,246,.22);
+      color:#bfdbfe;
+      font-size:12px;
+      font-weight:700;
+      margin-bottom:18px;
+    }
+
+    .title{
+      font-size:46px;
+      line-height:1.08;
+      font-weight:900;
+      margin:0;
+      letter-spacing:-.02em;
+    }
+
+    .sub{
+      margin-top:16px;
+      color:var(--muted);
+      font-size:17px;
+      line-height:1.75;
+      max-width:760px;
+    }
+
+    .cta-row{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-top:28px;
+    }
+
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      text-decoration:none;
+      border-radius:14px;
+      padding:14px 18px;
+      font-size:14px;
+      font-weight:800;
+      border:1px solid transparent;
+      transition:.18s ease;
+    }
+
+    .btn:hover{
+      transform:translateY(-1px);
+    }
+
+    .btn-primary{
+      color:#fff;
+      background:linear-gradient(135deg,var(--primary),var(--primary-2));
+      box-shadow:0 16px 34px rgba(37,99,235,.28);
+    }
+
+    .btn-secondary{
+      color:#e5e7eb;
+      background:rgba(255,255,255,.02);
+      border-color:rgba(255,255,255,.1);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:12px;
+      margin-top:30px;
+    }
+
+    .mini-card{
+      padding:16px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.03);
+    }
+
+    .mini-title{
+      font-size:14px;
+      font-weight:800;
+      margin-bottom:8px;
+    }
+
+    .mini-desc{
+      font-size:13px;
+      line-height:1.65;
+      color:var(--muted);
+    }
+
+    .panel{
+      padding:26px;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+    }
+
+    .brand-box{
+      text-align:center;
+      padding-top:8px;
+    }
+
+    .logo{
+      width:68px;
+      height:68px;
+      margin:0 auto 14px;
+      border-radius:20px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:linear-gradient(135deg,var(--primary),var(--primary-2));
+      color:#fff;
+      font-weight:900;
+      font-size:22px;
+      box-shadow:0 18px 40px rgba(37,99,235,.34);
+    }
+
+    .brand-name{
+      font-size:26px;
+      font-weight:900;
+    }
+
+    .brand-sub{
+      margin-top:8px;
+      color:var(--muted);
+      line-height:1.7;
+      font-size:14px;
+    }
+
+    .panel-actions{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      margin-top:24px;
+    }
+
+    .panel-note{
+      margin-top:18px;
+      padding:14px;
+      border-radius:14px;
+      background:rgba(37,99,235,.09);
+      border:1px solid rgba(59,130,246,.16);
+      color:#bfdbfe;
+      font-size:13px;
+      line-height:1.65;
+    }
+
+    .contact{
+      margin-top:20px;
+      text-align:center;
+      font-size:13px;
+      color:var(--muted);
+      line-height:1.7;
+    }
+
+    .contact b{
+      color:#fff;
+      font-size:15px;
+    }
+
+    .footer{
+      margin-top:22px;
+      text-align:center;
+      font-size:12px;
+      color:#64748b;
+    }
+
+    @media (max-width: 960px){
+      .shell{
+        grid-template-columns:1fr;
+      }
+      .title{
+        font-size:36px;
+      }
+    }
+
+    @media (max-width: 640px){
+      .hero, .panel{
+        padding:22px;
+      }
+      .title{
+        font-size:30px;
+      }
+      .grid{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="shell">
+      <section class="hero">
+        <div class="eyebrow">Private Beta • Invite Only</div>
+
+        <h1 class="title">HeightTech OS</h1>
+
+        <div class="sub">
+          Hệ điều hành vận hành thương mại điện tử dành cho agency và doanh nghiệp.
+          Quản lý shop, booking KOC/KOL, nội dung, quy trình vận hành và dữ liệu tăng trưởng
+          trong một nền tảng thống nhất.
+        </div>
+
+        <div class="cta-row">
+          <a class="btn btn-primary" href="/login/">Đăng nhập hệ thống</a>
+          <a class="btn btn-secondary" href="/register/">Tạo workspace</a>
+        </div>
+
+        <div class="grid">
+          <div class="mini-card">
+            <div class="mini-title">Shop & Workspace</div>
+            <div class="mini-desc">
+              Tổ chức nhiều shop, tenant và workspace trong cùng một kiến trúc kiểm soát chặt.
+            </div>
+          </div>
+
+          <div class="mini-card">
+            <div class="mini-title">KOC / KOL Booking</div>
+            <div class="mini-desc">
+              Theo dõi booking, payout, trạng thái air và hiệu quả chiến dịch trong một luồng rõ ràng.
+            </div>
+          </div>
+
+          <div class="mini-card">
+            <div class="mini-title">Content & Operation</div>
+            <div class="mini-desc">
+              Kết nối studio nội dung, vận hành shop và hệ thống công việc trong một flow thống nhất.
+            </div>
+          </div>
+
+          <div class="mini-card">
+            <div class="mini-title">Growth Data</div>
+            <div class="mini-desc">
+              Tập trung dữ liệu vận hành và tín hiệu tăng trưởng để ra quyết định nhanh hơn.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <div>
+          <div class="brand-box">
+            <div class="logo">HT</div>
+            <div class="brand-name">HeightTech OS</div>
+            <div class="brand-sub">
+              Commerce Operating System cho agency, team nội dung,
+              booking và doanh nghiệp thương mại điện tử.
+            </div>
+          </div>
+
+          <div class="panel-actions">
+            <a class="btn btn-primary" href="/login/">Vào hệ thống</a>
+            <a class="btn btn-secondary" href="/register/">Đăng ký workspace</a>
+          </div>
+
+          <div class="panel-note">
+            Nếu chưa có mã mời, anh vui lòng liên hệ trực tiếp để được cấp quyền tạo workspace trong giai đoạn private beta.
+          </div>
+        </div>
+
+        <div>
+          <div class="contact">
+            Liên hệ founder để nhận mã đăng ký<br>
+            <b>0792 818 883</b>
+          </div>
+
+          <div class="footer">
+            © HeightTech • Commerce Infrastructure
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</body>
+</html>

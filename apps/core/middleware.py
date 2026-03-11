@@ -67,6 +67,7 @@ SKIP_PATH_EXACT = ("/favicon.ico", "/robots.txt", "/healthz")
 SAFE_BYPASS_PREFIXES = (
     "/admin/",
     "/login/",
+    "/register/",
     "/logout/",
     "/static/",
     "/media/",
@@ -78,11 +79,16 @@ SAFE_BYPASS_PREFIXES = (
     "/api/",
 )
 
+SAFE_BYPASS_EXACT = {
+    "/",
+}
+
 SUSPEND_ALLOW_PREFIXES = (
     "/admin/",
     "/healthz",
     "/billing/",
     "/login/",
+    "/register/",
     "/logout/",
     "/static/",
     "/media/",
@@ -211,6 +217,8 @@ def _is_allowed_when_suspended(path: str) -> bool:
 def _is_safe_bypass_path(path: str) -> bool:
     if not path:
         return True
+    if path in SAFE_BYPASS_EXACT:
+        return True
     return any(path.startswith(p) for p in SAFE_BYPASS_PREFIXES)
 
 
@@ -232,12 +240,14 @@ class CurrentRequestMiddleware(MiddlewareMixin):
 
         path = getattr(request, "path", "") or ""
 
-        # admin / static / login / os / api public -> bypass nhẹ
+        # admin / static / login / register / os / api public -> bypass nhẹ
         if _is_safe_bypass_path(path):
             tenant = getattr(request, "tenant", None)
             if tenant is not None:
                 request.tenant_id = getattr(tenant, "id", None)
                 set_current_tenant(tenant)
+            else:
+                request.tenant_id = None
             return None
 
         tenant = getattr(request, "tenant", None)

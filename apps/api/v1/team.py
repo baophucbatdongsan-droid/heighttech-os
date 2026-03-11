@@ -24,7 +24,7 @@ User = get_user_model()
 
 ALLOWED_ROLES = {
     ROLE_FOUNDER,
-    ROLE_HEAD,  # legacy
+    ROLE_HEAD,
     ROLE_LEADER_CHANNEL,
     ROLE_LEADER_BOOKING,
     ROLE_LEADER_OPERATION,
@@ -66,10 +66,7 @@ def _tenant_id_from_request(request):
             .first()
         )
         if m and m.tenant_id:
-            try:
-                return int(m.tenant_id)
-            except Exception:
-                pass
+            return int(m.tenant_id)
 
     return None
 
@@ -79,7 +76,7 @@ def _default_company_for_actor(request, tenant_id: int):
     if user and user.is_authenticated:
         m = (
             Membership.objects.select_related("company")
-            .filter(user=user, tenant_id=tenant_id, is_active=True)
+            .filter(user=user, is_active=True)
             .order_by("id")
             .first()
         )
@@ -100,10 +97,7 @@ class TeamListApi(APIView):
     def get(self, request):
         tenant_id = _tenant_id_from_request(request)
         if not tenant_id:
-            return Response(
-                {"ok": False, "message": "Không xác định được tenant hiện tại"},
-                status=400,
-            )
+            return Response({"ok": False, "message": "Không xác định được tenant hiện tại"}, status=400)
 
         members = (
             Membership.objects
@@ -115,23 +109,16 @@ class TeamListApi(APIView):
         items = []
         for m in members:
             u = m.user
-            items.append(
-                {
-                    "user_id": u.id,
-                    "email": u.email,
-                    "username": u.username,
-                    "role": m.role,
-                    "company_id": m.company_id,
-                    "company_name": getattr(m.company, "name", "") if m.company_id else "",
-                }
-            )
+            items.append({
+                "user_id": u.id,
+                "email": u.email,
+                "username": u.username,
+                "role": m.role,
+                "company_id": m.company_id,
+                "company_name": getattr(m.company, "name", "") if m.company_id else "",
+            })
 
-        return Response(
-            {
-                "ok": True,
-                "items": items,
-            }
-        )
+        return Response({"ok": True, "items": items})
 
 
 class TeamCreateApi(APIView):
@@ -140,10 +127,7 @@ class TeamCreateApi(APIView):
     def post(self, request):
         tenant_id = _tenant_id_from_request(request)
         if not tenant_id:
-            return Response(
-                {"ok": False, "message": "Không xác định được tenant hiện tại"},
-                status=400,
-            )
+            return Response({"ok": False, "message": "Không xác định được tenant hiện tại"}, status=400)
 
         email = str(request.data.get("email") or "").strip().lower()
         username = str(request.data.get("username") or "").strip()
@@ -152,33 +136,19 @@ class TeamCreateApi(APIView):
         company_id = request.data.get("company_id")
 
         if not email or not password:
-            return Response(
-                {"ok": False, "message": "Cần nhập email và mật khẩu"},
-                status=400,
-            )
+            return Response({"ok": False, "message": "Cần nhập email và mật khẩu"}, status=400)
 
         if not username:
             username = email.split("@")[0]
 
         if role not in ALLOWED_ROLES:
-            return Response(
-                {"ok": False, "message": f"Vai trò không hợp lệ: {role}"},
-                status=400,
-            )
+            return Response({"ok": False, "message": f"Vai trò không hợp lệ: {role}"}, status=400)
 
         if User.objects.filter(email__iexact=email).exists():
-            return Response(
-                {"ok": False, "message": "Email đã tồn tại"},
-                status=400,
-            )
+            return Response({"ok": False, "message": "Email đã tồn tại"}, status=400)
 
         if User.objects.filter(username__iexact=username).exists():
-            return Response(
-                {"ok": False, "message": "Username đã tồn tại"},
-                status=400,
-            )
-
-        company = None
+            return Response({"ok": False, "message": "Username đã tồn tại"}, status=400)
 
         if company_id not in (None, "", "null"):
             try:
@@ -191,10 +161,7 @@ class TeamCreateApi(APIView):
                 company = None
 
             if not company:
-                return Response(
-                    {"ok": False, "message": "Company không tồn tại trong tenant hiện tại"},
-                    status=400,
-                )
+                return Response({"ok": False, "message": "Company không tồn tại trong tenant hiện tại"}, status=400)
         else:
             company = _default_company_for_actor(request, int(tenant_id))
 
@@ -203,6 +170,7 @@ class TeamCreateApi(APIView):
                 {
                     "ok": False,
                     "message": "Không tìm thấy company mặc định. Anh cần chọn Company ID hoặc tạo company trước.",
+                    "debug_tenant_id": tenant_id,
                 },
                 status=400,
             )

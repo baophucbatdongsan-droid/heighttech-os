@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django import forms
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
@@ -12,7 +13,39 @@ from apps.tenants.models import Tenant
 User = get_user_model()
 
 
+def _allowed_invite_codes() -> set[str]:
+    """
+    Hỗ trợ cả:
+    - REGISTER_INVITE_CODES = "CODE1,CODE2"
+    - REGISTER_INVITE_CODES = ["CODE1", "CODE2"]
+    """
+    raw = getattr(settings, "REGISTER_INVITE_CODES", "")
+
+    if isinstance(raw, (list, tuple, set)):
+        return {str(x).strip() for x in raw if str(x).strip()}
+
+    if isinstance(raw, str):
+        return {x.strip() for x in raw.split(",") if x.strip()}
+
+    return set()
+
+
 class RegisterForm(forms.Form):
+    invite_code = forms.CharField(
+        label="Mã mời",
+        required=True,
+        max_length=120,
+        widget=forms.TextInput(
+            attrs={
+                "placeholder": "Nhập mã mời để tạo workspace",
+                "autocomplete": "off",
+            }
+        ),
+        error_messages={
+            "required": "Mã mời không được để trống.",
+        },
+    )
+
     email = forms.EmailField(
         label="Email",
         required=True,
@@ -78,6 +111,23 @@ class RegisterForm(forms.Form):
 
         for name in self.fields:
             self.fields[name].widget.attrs.update({"class": "input"})
+
+    def clean_invite_code(self):
+        invite_code = (self.cleaned_data.get("invite_code") or "").strip()
+        allowed_codes = _allowed_invite_codes()
+
+        if not invite_code:
+            raise forms.ValidationError("Mã mời không được để trống.")
+
+        if not allowed_codes:
+            raise forms.ValidationError(
+                "Đăng ký công khai đang bị tắt. Anh cần cấu hình REGISTER_INVITE_CODES trong settings."
+            )
+
+        if invite_code not in allowed_codes:
+            raise forms.ValidationError("Mã mời không hợp lệ.")
+
+        return invite_code
 
     def clean_email(self):
         email = (self.cleaned_data.get("email") or "").strip().lower()

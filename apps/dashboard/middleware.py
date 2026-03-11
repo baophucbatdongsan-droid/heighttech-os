@@ -6,8 +6,8 @@ from django.utils.deprecation import MiddlewareMixin
 SESSION_ACTIVE_SHOP_ID = "active_shop_id"
 
 ALLOW_PREFIXES = (
-    "/",
     "/login/",
+    "/register/",
     "/logout/",
     "/admin/",
     "/static/",
@@ -17,8 +17,8 @@ ALLOW_PREFIXES = (
     "/os/",
     "/work/",
     "/sales/",
-    "/app/",   # workspace layer luôn được vào để chọn shop
-    "/api/",   # API không chặn để tránh loop
+    "/app/",
+    "/api/",
 )
 
 
@@ -31,6 +31,9 @@ class WorkspaceRequiredMiddleware(MiddlewareMixin):
 
     def process_request(self, request):
         path = request.path or "/"
+
+        if path == "/":
+            return None
 
         if any(path.startswith(p) for p in ALLOW_PREFIXES):
             return None

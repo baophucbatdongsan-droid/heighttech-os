@@ -13,13 +13,20 @@ SESSION_TENANT_ID = "tenant_id"
 BYPASS_PREFIXES = (
     "/admin/",
     "/login/",
+    "/register/",
     "/logout/",
     "/static/",
     "/media/",
     "/metrics/",
+    "/favicon.ico",
+    "/robots.txt",
     "/os/",
     "/app/",
 )
+
+BYPASS_EXACT_PATHS = {
+    "/",
+}
 
 DEV_HOSTS = {"localhost", "127.0.0.1", "testserver"}
 
@@ -77,7 +84,6 @@ def _get_default_tenant() -> Optional[Tenant]:
 class TenantResolveMiddleware(MiddlewareMixin):
 
     def process_request(self, request):
-
         if getattr(request, "_tenant_resolved", False):
             return None
 
@@ -86,48 +92,49 @@ class TenantResolveMiddleware(MiddlewareMixin):
 
         tenant: Optional[Tenant] = None
 
-        # 1 header
         allow_header = bool(getattr(settings, "ALLOW_TENANT_HEADER", False))
 
+        # 1) header
         if settings.DEBUG or allow_header:
             tid = _get_header_tenant_id(request)
             if tid:
                 tenant = Tenant.objects.filter(id=tid, is_active=True).first()
 
-        # 2 query
+        # 2) query
         if tenant is None:
             tid = _get_query_tenant_id(request)
             if tid:
                 tenant = Tenant.objects.filter(id=tid, is_active=True).first()
 
-        # 3 session
+        # 3) session
         if tenant is None:
             tid = _get_session_tenant_id(request)
             if tid:
                 tenant = Tenant.objects.filter(id=tid, is_active=True).first()
 
-        # 4 domain
+        # 4) domain
         if tenant is None:
             td = (
                 TenantDomain.objects.select_related("tenant")
                 .filter(domain=host, is_active=True, tenant__is_active=True)
                 .first()
             )
-
             if td:
                 tenant = td.tenant
 
-        # 5 dev fallback
+        # 5) dev fallback
         if tenant is None and host in DEV_HOSTS:
             tenant = _get_default_tenant()
 
-        # bypass public routes
-        if tenant is None and any(path.startswith(p) for p in BYPASS_PREFIXES):
-            request.tenant = None
-            request.tenant_id = None
-            request._tenant_resolved = True
-            return None
+        # 6) public route thì cho đi tiếp kể cả chưa resolve tenant
+        if tenant is None:
+            if path in BYPASS_EXACT_PATHS or any(path.startswith(p) for p in BYPASS_PREFIXES):
+                request.tenant = None
+                request.tenant_id = None
+                request._tenant_resolved = True
+                return None
 
+        # 7) còn lại mới 404
         if tenant is None:
             raise Http404("Tenant not found")
 

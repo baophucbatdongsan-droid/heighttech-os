@@ -1,7 +1,22 @@
+
 from __future__ import annotations
 
 from django.core.cache import cache
 from django.http import Http404
+
+
+PUBLIC_PATH_PREFIXES = (
+    "/login/",
+    "/register/",
+    "/logout/",
+    "/admin/",
+    "/static/",
+    "/media/",
+    "/metrics/",
+    "/favicon.ico",
+)
+
+TENANT_CACHE_TTL = 300  # 5 phút
 
 
 def _clean_host(raw_host: str) -> str:
@@ -10,12 +25,16 @@ def _clean_host(raw_host: str) -> str:
         host = host.split(":", 1)[0]
     return host
 
-TENANT_CACHE_TTL = 300  # 5 phút
-
 
 def resolve_tenant_cached(request):
     from django.conf import settings
     from apps.tenants.models import Tenant, TenantDomain
+
+    path = request.path or ""
+
+    # Public routes: không ép phải resolve tenant
+    if any(path.startswith(p) for p in PUBLIC_PATH_PREFIXES):
+        return None
 
     tenant_id = (
         request.headers.get("X-Tenant-ID")
@@ -44,7 +63,7 @@ def resolve_tenant_cached(request):
         cache.set(cache_key, td.tenant, TENANT_CACHE_TTL)
         return td.tenant
 
-    if host in {"localhost", "127.0.0.1"}:
+    if host in {"localhost", "127.0.0.1", "testserver"}:
         default_id = getattr(settings, "DEFAULT_TENANT_ID", None)
         if default_id:
             t = Tenant.objects.filter(id=default_id, is_active=True).first()

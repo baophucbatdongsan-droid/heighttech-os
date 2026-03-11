@@ -44,6 +44,7 @@ AUTHENTICATION_BACKENDS = [
     "apps.accounts.backends.EmailAuthBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
+REGISTER_INVITE_CODES = ["HTBETA100"]
 # ==================================================
 # APPLICATIONS
 # ==================================================

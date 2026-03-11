@@ -3,55 +3,192 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8"/>
-  <title>HeightTech OS • Đăng nhập</title>
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-F9HDX95DEB"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+
+gtag('config', 'G-F9HDX95DEB');
+</script>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+  <title>HeightTech OS – Đăng nhập hệ điều hành vận hành thương mại điện tử</title>
+
+  <meta name="description" content="Đăng nhập HeightTech OS – hệ điều hành vận hành thương mại điện tử dành cho agency và doanh nghiệp: quản lý shop, KOC booking, vận hành nội dung và dữ liệu tăng trưởng trong một hệ thống duy nhất.">
+  <meta name="keywords" content="HeightTech OS, SaaS ecommerce, hệ điều hành thương mại điện tử, quản lý shop, KOC booking, agency ecommerce">
+  <meta name="author" content="HeightTech">
+
+  <link rel="canonical" href="https://app.heighttech.vn/login/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="HeightTech OS">
+  <meta property="og:title" content="HeightTech OS – Ecommerce Operating System">
+  <meta property="og:description" content="Hệ điều hành vận hành thương mại điện tử cho agency và doanh nghiệp. Quản lý shop, KOC booking, nội dung và dữ liệu trong một nền tảng duy nhất.">
+  <meta property="og:url" content="https://app.heighttech.vn/login/">
+  <meta property="og:image" content="https://app.heighttech.vn/static/og/heighttech-preview.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="HeightTech OS – Ecommerce Operating System">
+  <meta name="twitter:description" content="Hệ điều hành vận hành thương mại điện tử dành cho agency và doanh nghiệp.">
+  <meta name="twitter:image" content="https://app.heighttech.vn/static/og/heighttech-preview.jpg">
+
   <style>
     :root{
-      --bg:#f6f7fb; --card:#fff; --line:#e6e8ef; --text:#111; --muted:#667085;
-      --primary:#2563eb; --shadow: 0 18px 40px rgba(16,24,40,.12); --radius:16px;
+      --bg:#0f172a;
+      --card:#111827;
+      --line:#1f2937;
+      --text:#f3f4f6;
+      --muted:#9ca3af;
+      --primary:#2563eb;
+      --shadow:0 25px 60px rgba(0,0,0,.45);
+      --radius:18px;
     }
-    *{ box-sizing:border-box; }
+
+    *{box-sizing:border-box}
+
     body{
-      margin:0; height:100vh; display:flex; align-items:center; justify-content:center;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      background:var(--bg); color:var(--text); padding:16px;
+      margin:0;
+      height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background:radial-gradient(circle at 30% 20%,#1e293b,#020617);
+      color:var(--text);
+      padding:20px;
     }
-    .wrap{ width:420px; max-width:96vw; }
-    .brand{ text-align:center; margin-bottom:18px; }
-    .brand h1{ margin:0; font-size:22px; letter-spacing:.2px; }
-    .brand p{ margin:6px 0 0; font-size:13px; color:var(--muted); }
+
+    .wrap{
+      width:440px;
+      max-width:95vw;
+    }
+
+    .brand{
+      text-align:center;
+      margin-bottom:24px;
+    }
+
+    .brand h1{
+      margin:0;
+      font-size:26px;
+      font-weight:800;
+      letter-spacing:.5px;
+    }
+
+    .brand p{
+      margin:8px 0 0;
+      font-size:14px;
+      color:var(--muted);
+      line-height:1.5;
+    }
+
     .card{
-      background:var(--card); border:1px solid var(--line);
-      border-radius:var(--radius); padding:26px; box-shadow:var(--shadow);
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:30px;
+      box-shadow:var(--shadow);
     }
-    .field{ margin-bottom:14px; }
-    label{ display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
+
+    .field{
+      margin-bottom:16px;
+    }
+
+    label{
+      display:block;
+      font-size:13px;
+      color:var(--muted);
+      margin-bottom:6px;
+    }
+
     input{
-      width:100%; padding:11px 12px; border:1px solid #d0d5dd; border-radius:12px;
-      outline:none; font-size:14px;
+      width:100%;
+      padding:12px 13px;
+      border:1px solid #374151;
+      border-radius:12px;
+      outline:none;
+      font-size:14px;
+      background:#020617;
+      color:#fff;
     }
+
     input:focus{
-      border-color: rgba(37,99,235,.6);
-      box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+      border-color:#2563eb;
+      box-shadow:0 0 0 3px rgba(37,99,235,.25);
     }
+
+    .btn{
+      width:100%;
+      padding:13px;
+      border:none;
+      border-radius:12px;
+      background:linear-gradient(135deg,#2563eb,#3b82f6);
+      color:#fff;
+      font-weight:700;
+      cursor:pointer;
+      font-size:14px;
+      margin-top:4px;
+    }
+
+    .btn:hover{
+      opacity:.95;
+    }
+
     .error{
-      background:#fff5f6; border:1px solid #ffd3d8;
-      padding:10px; border-radius:12px; font-size:13px; color:#b42318;
+      background:#3f1d1d;
+      border:1px solid #7f1d1d;
+      padding:10px;
+      border-radius:12px;
+      font-size:13px;
+      color:#fecaca;
       margin-bottom:14px;
     }
-    .btn{
-      width:100%; padding:12px; border:none; border-radius:12px;
-      background:var(--primary); color:#fff; font-weight:700; cursor:pointer; font-size:14px;
-    }
-    .btn:hover{ opacity:.96; }
+
     .meta{
-      display:flex; justify-content:space-between; align-items:center;
-      margin-top:14px; font-size:12px; color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-top:18px;
+      font-size:12px;
+      color:var(--muted);
     }
-    .meta b{ color:#344054; }
-    .mini{ font-size:12px; color:var(--muted); margin-top:12px; text-align:center; }
+
+    .meta b{
+      color:#f3f4f6;
+    }
+
+    .mini{
+      margin-top:18px;
+      text-align:center;
+      font-size:13px;
+      color:var(--muted);
+      line-height:1.6;
+    }
+
+    .mini a{
+      color:#60a5fa;
+      text-decoration:none;
+      font-weight:600;
+    }
+
+    .desc{
+      margin-top:18px;
+      font-size:13px;
+      color:#9ca3af;
+      line-height:1.6;
+      text-align:center;
+    }
+
     ul.errorlist{
-      list-style:none; padding:0; margin:6px 0 0; color:#b42318; font-size:13px;
+      list-style:none;
+      padding:0;
+      margin:6px 0 0;
+      color:#f87171;
+      font-size:13px;
     }
   </style>
 </head>
@@ -59,45 +196,54 @@
   <div class="wrap">
     <div class="brand">
       <h1>HeightTech OS</h1>
-      <p>Commerce Operating System</p>
+      <p>
+        Commerce Operating System<br>
+        Nền tảng vận hành dành cho agency và doanh nghiệp thương mại điện tử
+      </p>
     </div>
 
     <div class="card">
       {% if form.non_field_errors %}
-        <div class="error">
-          {% for err in form.non_field_errors %}
-            <div>{{ err }}</div>
-          {% endfor %}
-        </div>
+      <div class="error">
+        {% for err in form.non_field_errors %}
+        <div>{{ err }}</div>
+        {% endfor %}
+      </div>
       {% endif %}
 
-      <form method="post" action="">
+      <form method="post">
         {% csrf_token %}
 
         <div class="field">
-          <label for="{{ form.username.id_for_label }}">Email</label>
+          <label>Email</label>
           {{ form.username }}
           {{ form.username.errors }}
         </div>
 
         <div class="field">
-          <label for="{{ form.password.id_for_label }}">Mật khẩu</label>
+          <label>Mật khẩu</label>
           {{ form.password }}
           {{ form.password.errors }}
         </div>
 
-        <button class="btn" type="submit">Đăng nhập</button>
+        <button class="btn">Đăng nhập hệ thống</button>
 
         <div class="meta">
-          <span>Workspace: <b>Height Entertainment</b></span>
-          <span>v0.1</span>
+          <span>Workspace OS</span>
+          <span>Version <b>0.1</b></span>
         </div>
       </form>
     </div>
 
+    <div class="desc">
+      HeightTech OS giúp agency và doanh nghiệp thương mại điện tử
+      quản lý shop, KOC booking, vận hành nội dung và dữ liệu tăng trưởng
+      trong một hệ điều hành duy nhất.
+    </div>
+
     <div class="mini">
-      Chưa có tài khoản? <a href="/register/">Đăng ký</a><br/>
-      © HeightTech • OS-grade access control
+      Chưa có workspace? <a href="/register/">Đăng ký</a><br>
+      © HeightTech • Commerce Infrastructure
     </div>
   </div>
 </body>
