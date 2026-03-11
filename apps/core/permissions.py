@@ -1,4 +1,3 @@
-# apps/core/permissions.py
 from __future__ import annotations
 
 from typing import List, Set, Tuple, Optional
@@ -22,6 +21,12 @@ ROLE_OPERATOR = "operator"
 ROLE_CLIENT = "client"
 ROLE_NONE = "none"
 
+# ✅ thêm role đang dùng thật trong Membership
+ROLE_LEADER_OPERATION = "leader_operation"
+ROLE_LEADER_CHANNEL = "leader_channel"
+ROLE_LEADER_BOOKING = "leader_booking"
+ROLE_EDITOR = "editor"
+
 
 # =====================================================
 # ABILITY CONSTANTS
@@ -35,11 +40,18 @@ VIEW_API_FOUNDER = "api:view_founder"
 # =====================================================
 ROLE_TO_ABILITIES = {
     ROLE_FOUNDER: {VIEW_API_DASHBOARD, VIEW_API_FOUNDER},
+
     ROLE_HEAD: {VIEW_API_DASHBOARD},
     ROLE_ACCOUNT: {VIEW_API_DASHBOARD},
     ROLE_SALE: {VIEW_API_DASHBOARD},
     ROLE_OPERATOR: {VIEW_API_DASHBOARD},
     ROLE_CLIENT: {VIEW_API_DASHBOARD},
+
+    # ✅ leader/editor cũng vào được dashboard/work
+    ROLE_LEADER_OPERATION: {VIEW_API_DASHBOARD},
+    ROLE_LEADER_CHANNEL: {VIEW_API_DASHBOARD},
+    ROLE_LEADER_BOOKING: {VIEW_API_DASHBOARD},
+    ROLE_EDITOR: {VIEW_API_DASHBOARD},
 }
 
 
@@ -85,7 +97,9 @@ def get_user_memberships(user):
 def get_user_roles(user) -> Set[str]:
     if not _is_authenticated(user):
         return set()
-    return set(get_user_memberships(user).values_list("role", flat=True))
+
+    roles = set(get_user_memberships(user).values_list("role", flat=True))
+    return {str(r).strip().lower() for r in roles if r}
 
 
 # =====================================================
@@ -145,11 +159,18 @@ def is_client(user) -> bool:
 def resolve_user_role(user) -> str:
     """
     Priority:
-      superuser/founder > head > account > sale > operator > client > none
+      superuser/founder
+      > head
+      > leader_operation / leader_channel / leader_booking
+      > account
+      > sale
+      > editor
+      > operator
+      > client
+      > none
 
     ✅ Nâng cấp:
     - Nếu không có Membership nhưng có ShopMember => ROLE_CLIENT
-      (khỏi bị 403 missing ability khi portal 2 chiều)
     """
     if not _is_authenticated(user):
         return ROLE_NONE
@@ -158,12 +179,23 @@ def resolve_user_role(user) -> str:
         return ROLE_FOUNDER
 
     roles = get_user_roles(user)
+
     if ROLE_HEAD in roles:
         return ROLE_HEAD
+
+    if ROLE_LEADER_OPERATION in roles:
+        return ROLE_LEADER_OPERATION
+    if ROLE_LEADER_CHANNEL in roles:
+        return ROLE_LEADER_CHANNEL
+    if ROLE_LEADER_BOOKING in roles:
+        return ROLE_LEADER_BOOKING
+
     if ROLE_ACCOUNT in roles:
         return ROLE_ACCOUNT
     if ROLE_SALE in roles:
         return ROLE_SALE
+    if ROLE_EDITOR in roles:
+        return ROLE_EDITOR
     if ROLE_OPERATOR in roles:
         return ROLE_OPERATOR
 
