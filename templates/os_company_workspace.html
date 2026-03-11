@@ -1,0 +1,45 @@
+{% load static %}
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% if company %}{{ company.name }}{% else %}Company{% endif %} • HeightTech OS</title>
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=50">
+  <style>
+    .page-wrap{max-width:1200px;margin:0 auto;padding:24px}
+    .page-title{font-size:28px;font-weight:900}
+    .page-sub{color:var(--muted);margin-top:6px;line-height:1.6}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:20px}
+    .card-link{
+      display:block;
+      padding:18px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.03);
+      text-decoration:none;
+      color:inherit;
+    }
+    .card-link:hover{transform:translateY(-1px)}
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="page-title">
+      {% if company %}{{ company.name }}{% else %}Không tìm thấy Công Ty / Đối Tác{% endif %}
+    </div>
+    <div class="page-sub">
+      Workspace của Công Ty / Đối Tác trong HeightTech OS.
+    </div>
+
+    {% if company %}
+    <div class="grid">
+      <a class="card-link" href="/os/shops/?company_id={{ company.id }}">Shop</a>
+      <a class="card-link" href="/os/sku/?company_id={{ company.id }}">SKU</a>
+      <a class="card-link" href="/os/contracts/?company_id={{ company.id }}">Hợp đồng</a>
+      <a class="card-link" href="/work/?company_id={{ company.id }}">Khu làm việc</a>
+    </div>
+    {% endif %}
+  </div>
+</body>
+</html>

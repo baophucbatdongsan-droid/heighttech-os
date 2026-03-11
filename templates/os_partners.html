@@ -1,0 +1,137 @@
+<!-- templates/os_partners.html -->
+{% load static %}
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Công Ty / Đối Tác • HeightTech OS</title>
+
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=41">
+
+  <style>
+    .page-wrap{max-width:1180px;margin:0 auto;padding:24px}
+    .page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+
+    .page-title{font-size:28px;font-weight:900}
+    .page-sub{color:var(--muted);margin-top:6px;line-height:1.6;max-width:780px}
+
+    .page-actions{display:flex;gap:10px;flex-wrap:wrap}
+
+    .card{
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.03);
+      border-radius:20px;
+      padding:18px;
+    }
+
+    .search-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+    .search-row input{min-width:260px}
+
+    .partner-list{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+      gap:14px;
+    }
+
+    .partner-card{
+      display:block;
+      text-decoration:none;
+      color:inherit;
+      transition:.15s ease;
+    }
+
+    .partner-card:hover{
+      transform:translateY(-2px);
+      border-color:rgba(96,165,250,.28);
+      background:rgba(255,255,255,.045);
+    }
+
+    .partner-name{font-size:18px;font-weight:800}
+    .partner-meta{margin-top:8px;color:var(--muted);font-size:13px}
+
+    .flash{
+      margin-bottom:12px;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.08);
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="page-wrap">
+
+  <div class="page-head">
+
+    <div>
+      <div class="page-title">Công Ty / Đối Tác</div>
+
+      <div class="page-sub">
+        Quản trị đơn vị khách hàng / đối tác trong tenant hiện tại.
+        Đây là gốc để tạo Brand, Shop và Hợp đồng.
+      </div>
+
+      <div class="page-sub" style="margin-top:8px">
+        Tenant hiện tại: {{ tenant_id|default:"-" }}
+      </div>
+    </div>
+
+    <div class="page-actions">
+      <a class="btn" href="/os/">← Về OS</a>
+      <a class="btn primary" href="/os/partners/new/">＋ Tạo Công Ty / Đối Tác</a>
+    </div>
+
+  </div>
+
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="flash card">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+
+  <!-- SEARCH -->
+  <form method="get" class="search-row">
+    <input type="text" name="q" value="{{ q }}" placeholder="Tìm theo tên Công Ty / Đối Tác">
+    <button class="btn" type="submit">Tìm</button>
+  </form>
+
+
+  <!-- LIST -->
+  <div class="partner-list">
+
+    {% for x in items %}
+
+      <a class="card partner-card" href="/os/company/{{ x.id }}/">
+
+        <div class="partner-name">
+          {{ x.name }}
+        </div>
+
+        <div class="partner-meta">
+          ID: {{ x.id }}
+        </div>
+
+        <div class="partner-meta">
+          Tenant: {{ x.tenant_id }}
+        </div>
+
+      </a>
+
+    {% empty %}
+
+      <div class="card">
+        Chưa có Công Ty / Đối Tác nào trong tenant hiện tại.
+      </div>
+
+    {% endfor %}
+
+  </div>
+
+</div>
+
+</body>
+</html>

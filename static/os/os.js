@@ -4679,6 +4679,31 @@
       console.warn("updateHeroStats error:", e);
     }
   }
+  document.addEventListener("DOMContentLoaded", function () {
+    const wrap = document.getElementById("osQuickCreate");
+    const btn = document.getElementById("osQuickCreateBtn");
+    const menu = document.getElementById("osQuickCreateMenu");
+
+    if (!wrap || !btn || !menu) return;
+
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      menu.hidden = !menu.hidden;
+    });
+
+    document.addEventListener("click", function (e) {
+      if (!wrap.contains(e.target)) {
+        menu.hidden = true;
+      }
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") {
+        menu.hidden = true;
+      }
+    });
+  });
 window.safeRefreshAll = safeRefreshAll;
 window.htRefreshWork = refreshWorkData;
 window.htFindTask = findTaskById;

@@ -17,8 +17,11 @@ from apps.os.views import (
     shops_page,
     sku_page,
 )
+from apps.os.views_partners import PartnerCreateView, PartnerListView
 from apps.sales.views_client_sales import client_sales_home
 from apps.work.views_client import client_work_home
+from apps.os.views_company import company_workspace_page
+
 
 admin.site.site_header = "HeightTech OS"
 admin.site.site_title = "HeightTech OS"
@@ -78,8 +81,6 @@ urlpatterns = [
     path("os/team/", TemplateView.as_view(template_name="os_team.html"), name="os_team"),
     path("os/contracts/", contracts_page, name="os_contracts"),
     path("os/contracts/<int:contract_id>/", contract_detail_page, name="os_contract_detail"),
-    path("os/shops/", shops_page, name="os_shops"),
-    path("os/sku/", sku_page, name="os_sku"),
     path(
         "os/contracts/<int:contract_id>/client/shop/<int:shop_id>/progress/",
         contract_client_progress_page,
@@ -90,6 +91,14 @@ urlpatterns = [
         contract_channel_content_page,
         name="os_contract_channel_content",
     ),
+
+    path("os/shops/", shops_page, name="os_shops"),
+
+    path("os/sku/", sku_page, name="os_sku"),
+
+    path("os/partners/", PartnerListView.as_view(), name="os_partners"),
+    path("os/partners/new/", PartnerCreateView.as_view(), name="os_partner_new"),
+
     path(
         "os/founder/content-ai/",
         founder_content_ai_dashboard_page,
@@ -104,5 +113,10 @@ urlpatterns = [
         "os/content-work-sync/",
         content_work_sync_page,
         name="os_content_work_sync",
+    ),
+    path(
+        "os/company/<int:company_id>/",
+        company_workspace_page,
+        name="os_company_workspace",
     ),
 ]

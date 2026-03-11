@@ -1,0 +1,51 @@
+<!-- templates/os_partner_new.html -->
+{% load static %}
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tạo Công Ty / Đối Tác • HeightTech OS</title>
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=40">
+  <style>
+    .page-wrap{max-width:860px;margin:0 auto;padding:24px}
+    .page-title{font-size:28px;font-weight:900}
+    .page-sub{color:var(--muted);margin-top:6px;line-height:1.6}
+    .card{margin-top:18px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);border-radius:20px;padding:18px}
+    .field{margin-bottom:14px}
+    .field label{display:block;margin-bottom:8px;font-size:14px;font-weight:700}
+    .field input{width:100%}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    .flash{margin-top:12px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.08)}
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="page-title">Tạo Công Ty / Đối Tác mới</div>
+    <div class="page-sub">
+      Dùng để khởi tạo đơn vị khách hàng / đối tác trước khi tạo Hợp đồng, Brand và Shop.
+    </div>
+    <div class="page-sub" style="margin-top:8px">Tenant hiện tại: {{ tenant_id|default:"-" }}</div>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="flash card">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post" class="card">
+      {% csrf_token %}
+
+      <div class="field">
+        <label for="id_name">Tên Công Ty / Đối Tác</label>
+        <input id="id_name" name="name" type="text" placeholder="VD: Công ty Cổ phần 70mai" required>
+      </div>
+
+      <div class="actions">
+        <a class="btn" href="/os/partners/">← Quay lại</a>
+        <button class="btn primary" type="submit">Tạo mới</button>
+      </div>
+    </form>
+  </div>
+</body>
+</html>
