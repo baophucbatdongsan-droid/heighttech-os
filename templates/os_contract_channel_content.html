@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <title>Channel Content Studio</title>
 
-<link rel="stylesheet" href="{% static 'os/os.css' %}">
+<link rel="stylesheet" href="{% static 'os/os.css' %}?v=21">
 
 <style>
 .page-wrap{
@@ -160,6 +160,37 @@ function escapeHtml(v){
     .replaceAll("'", "&#039;");
 }
 
+function normalizeInt(v){
+  const s = String(v ?? "").trim();
+  if (!s) return "";
+  const n = Number(s);
+  return Number.isFinite(n) ? String(n) : "";
+}
+
+function buildCreateTaskUrlForContent(x){
+  const p = new URLSearchParams();
+  p.set("open_create_task", "1");
+  p.set("target_type", "contract_channel_content");
+  p.set("target_id", String(x.id));
+  p.set("title", x.title ? `Viết content: ${x.title}` : `Viết content #${x.id}`);
+
+  const companyId = normalizeInt(x.company_id);
+  const shopId = normalizeInt(x.shop_id);
+  const projectId = normalizeInt(x.project_id);
+
+  if (companyId) p.set("company_id", companyId);
+  if (shopId) p.set("shop_id", shopId);
+  if (projectId) p.set("project_id", projectId);
+
+  if (x.company_name) p.set("company_label", x.company_name);
+  if (x.shop_name) p.set("shop_label", x.shop_name);
+  if (x.project_name) p.set("project_label", x.project_name);
+  if (x.title) p.set("content_label", x.title);
+  if (x.contract_code) p.set("contract_label", x.contract_code);
+
+  return `/os/?${p.toString()}`;
+}
+
 async function fetchAiScore(contentId){
   try{
     const res = await fetch(`/api/v1/channel-content/${contentId}/ai-score/`, {
@@ -208,6 +239,7 @@ async function loadContent(){
 
   for (const x of data.items){
     const ai = await fetchAiScore(x.id);
+    const createTaskUrl = buildCreateTaskUrlForContent(x);
 
     htmlParts.push(`
       <div class="item">
@@ -217,6 +249,7 @@ async function loadContent(){
           <span class="tag">${escapeHtml(x.status)}</span>
           ${x.visible_to_client ? "<span class='tag'>client thấy</span>" : ""}
           ${aiBadge(ai)}
+          <span class="tag">content_id: ${escapeHtml(x.id)}</span>
         </div>
 
         <div style="margin-top:8px; white-space:pre-wrap;">
@@ -232,6 +265,7 @@ async function loadContent(){
         <div class="actions-row">
           <button onclick="markAired(${x.id})">Đã air</button>
           <button onclick="addMetric(${x.id})">Nhập view</button>
+          <a class="btn" href="${createTaskUrl}">Tạo task content</a>
           <a class="btn" href="/os/content-work-sync/?contract_id=${CONTRACT_ID}&content_id=${x.id}">Viết tiếp</a>
         </div>
       </div>

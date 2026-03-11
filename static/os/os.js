@@ -45,6 +45,7 @@
 
     work: {
       selectedTaskId: null,
+      pendingCreated: {},
       open: [],
       todo: [],
       doing: [],
@@ -210,6 +211,62 @@
 
     return p;
   }
+  function isTaskVisibleInCurrentScope(task) {
+    if (!task) return false;
+
+    const scope = String(STATE.scope.scope || "tenant");
+    const companyId = String(STATE.scope.company_id || "").trim();
+    const shopId = String(STATE.scope.shop_id || "").trim();
+    const projectId = String(STATE.scope.project_id || "").trim();
+
+    const taskCompanyId = String(task.company_id || "").trim();
+    const taskShopId = String(task.shop_id || "").trim();
+    const taskProjectId = String(task.project_id || "").trim();
+
+    if (scope === "tenant") return true;
+    if (scope === "company") return !!companyId && taskCompanyId === companyId;
+    if (scope === "shop") return !!shopId && taskShopId === shopId;
+    if (scope === "project") return !!projectId && taskProjectId === projectId;
+
+    return true;
+  }
+  function syncScopeToTask(task) {
+    if (!task) return;
+
+    const nextCompanyId = String(task.company_id || "").trim();
+    const nextShopId = String(task.shop_id || "").trim();
+    const nextProjectId = String(task.project_id || "").trim();
+
+    if (nextProjectId) {
+      STATE.scope.scope = "project";
+      STATE.scope.project_id = nextProjectId;
+      STATE.scope.shop_id = nextShopId || "";
+      STATE.scope.company_id = nextCompanyId || "";
+    } else if (nextShopId) {
+      STATE.scope.scope = "shop";
+      STATE.scope.shop_id = nextShopId;
+      STATE.scope.project_id = "";
+      STATE.scope.company_id = nextCompanyId || "";
+    } else if (nextCompanyId) {
+      STATE.scope.scope = "company";
+      STATE.scope.company_id = nextCompanyId;
+      STATE.scope.shop_id = "";
+      STATE.scope.project_id = "";
+    } else {
+      STATE.scope.scope = "tenant";
+      STATE.scope.company_id = "";
+      STATE.scope.shop_id = "";
+      STATE.scope.project_id = "";
+    }
+
+    localStorage.setItem("ht_scope", STATE.scope.scope);
+    localStorage.setItem("ht_company_id", STATE.scope.company_id || "");
+    localStorage.setItem("ht_shop_id", STATE.scope.shop_id || "");
+    localStorage.setItem("ht_project_id", STATE.scope.project_id || "");
+
+    applyScopeUI();
+    renderCurrentShopNotice();
+  }
   function renderCurrentShopNotice() {
     const shopId = getCurrentShopId();
     const shops = getKnownShops();
@@ -237,6 +294,7 @@
 
     renderQuickShopSelector();
   }
+
   function getCurrentShopId() {
     const shopId =
       String(STATE?.scope?.shop_id || "").trim() ||
@@ -276,6 +334,100 @@
 
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }
+
+  function getKnownProjects() {
+  const map = new Map();
+
+  const pushProject = (projectId, projectName, companyId = "", shopId = "") => {
+    const pid = String(projectId || "").trim();
+    if (!pid) return;
+
+    map.set(pid, {
+      id: pid,
+      name: String(projectName || `Dự án #${pid}`),
+      company_id: String(companyId || "").trim(),
+      shop_id: String(shopId || "").trim(),
+    });
+  };
+
+  // từ work hiện có
+  (STATE.work.all || []).forEach((x) => {
+    pushProject(
+      x.project_id,
+      x.project_name || x.project_title,
+      x.company_id,
+      x.shop_id
+    );
+  });
+
+  // từ work open
+  (STATE.work.open || []).forEach((x) => {
+    pushProject(
+      x.project_id,
+      x.project_name || x.project_title,
+      x.company_id,
+      x.shop_id
+    );
+  });
+
+  // nếu đang scope project thì vẫn show nó lên
+  if (STATE.scope.project_id) {
+    pushProject(
+      STATE.scope.project_id,
+      `Dự án #${STATE.scope.project_id}`,
+      STATE.scope.company_id,
+      STATE.scope.shop_id
+    );
+  }
+
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function renderCreateTaskProjectOptions() {
+  const selectEl = $("createTaskProjectSelect");
+  const manualEl = $("createTaskProjectId");
+
+  if (!selectEl) return;
+
+  const companyId = String(($("createTaskCompanyId")?.value || STATE.scope.company_id || "")).trim();
+  const shopId = String(($("createTaskShopId")?.value || STATE.scope.shop_id || "")).trim();
+  const currentProjectId = String(($("createTaskProjectId")?.value || STATE.scope.project_id || "")).trim();
+
+  let projects = getKnownProjects();
+
+    if (shopId) {
+      projects = projects.filter((x) => !x.shop_id || String(x.shop_id) === String(shopId));
+    } else if (companyId) {
+      projects = projects.filter((x) => !x.company_id || String(x.company_id) === String(companyId));
+    }
+
+    let html = `<option value="">-- Chọn dự án --</option>`;
+
+    projects.forEach((p) => {
+      const selected = String(p.id) === String(currentProjectId) ? "selected" : "";
+      html += `<option value="${escapeHtml(p.id)}" ${selected}>${escapeHtml(p.name)}</option>`;
+    });
+
+    selectEl.innerHTML = html;
+
+    // nếu chỉ có đúng 1 project thì auto chọn luôn
+    if (!currentProjectId && projects.length === 1) {
+      selectEl.value = String(projects[0].id);
+      if (manualEl) manualEl.value = String(projects[0].id);
+    }
+
+    // nếu current project không có trong list thì vẫn giữ input tay
+    if (currentProjectId && !projects.find((x) => String(x.id) === String(currentProjectId))) {
+      if (manualEl) manualEl.value = currentProjectId;
+    }
+  }
+
+  function syncCreateTaskProjectInputFromSelect() {
+    const selectEl = $("createTaskProjectSelect");
+    const inputEl = $("createTaskProjectId");
+    if (!selectEl || !inputEl) return;
+    inputEl.value = String(selectEl.value || "").trim();
+  }
   function renderQuickShopSelector() {
     const el = document.getElementById("shopQuickSelector");
     if (!el) return;
@@ -287,6 +439,22 @@
 
     shops.forEach((shop) => {
       const selected = String(shop.id) === String(currentShopId) ? "selected" : "";
+      html += `<option value="${escapeHtml(shop.id)}" ${selected}>${escapeHtml(shop.name)}</option>`;
+    });
+
+    el.innerHTML = html;
+  }
+  function renderCreateTaskShopOptions() {
+    const el = $("createTaskShopId");
+    if (!el) return;
+
+    const shops = getKnownShops();
+    const currentShopId = String(STATE.scope.shop_id || "").trim();
+
+    let html = `<option value="">-- Chọn shop --</option>`;
+
+    shops.forEach((shop) => {
+      const selected = String(shop.id) === currentShopId ? "selected" : "";
       html += `<option value="${escapeHtml(shop.id)}" ${selected}>${escapeHtml(shop.name)}</option>`;
     });
 
@@ -309,6 +477,176 @@
       project_id: "",
     });
   }
+
+  function getShopContextById(shopId) {
+    const sid = String(shopId || "").trim();
+    if (!sid) return null;
+
+    const candidates = [];
+
+    // 1) từ home.blocks.shops_health
+    const homeShops = (((STATE.raw || {}).home || {}).blocks || {}).shops_health || [];
+    homeShops.forEach((x) => {
+      const id = String(
+        x.shop_id ??
+        x.id ??
+        x.shop?.id ??
+        ""
+      ).trim();
+
+      if (!id || id !== sid) return;
+
+      candidates.push({
+        shop_id: id,
+        shop_name: x.shop_name || x.name || x.shop?.name || "",
+        company_id: String(
+          x.company_id ??
+          x.company?.id ??
+          ""
+        ).trim(),
+        company_name: x.company_name || x.company?.name || "",
+        project_id: String(
+          x.project_id ??
+          x.project?.id ??
+          ""
+        ).trim(),
+        project_name: x.project_name || x.project?.name || "",
+      });
+    });
+
+    // 2) từ work cache
+    (STATE.work?.all || []).forEach((x) => {
+      const id = String(x.shop_id || "").trim();
+      if (!id || id !== sid) return;
+
+      candidates.push({
+        shop_id: id,
+        shop_name: x.shop_name || "",
+        company_id: String(x.company_id || "").trim(),
+        company_name: x.company_name || "",
+        project_id: String(x.project_id || "").trim(),
+        project_name: x.project_name || "",
+      });
+    });
+
+    // 3) gộp lấy dữ liệu tốt nhất
+    if (!candidates.length) {
+      return {
+        shop_id: sid,
+        shop_name: "",
+        company_id: "",
+        company_name: "",
+        project_id: "",
+        project_name: "",
+      };
+    }
+
+    const merged = {
+      shop_id: sid,
+      shop_name: "",
+      company_id: "",
+      company_name: "",
+      project_id: "",
+      project_name: "",
+    };
+
+    candidates.forEach((x) => {
+      if (!merged.shop_name && x.shop_name) merged.shop_name = x.shop_name;
+      if (!merged.company_id && x.company_id) merged.company_id = x.company_id;
+      if (!merged.company_name && x.company_name) merged.company_name = x.company_name;
+      if (!merged.project_id && x.project_id) merged.project_id = x.project_id;
+      if (!merged.project_name && x.project_name) merged.project_name = x.project_name;
+    });
+
+    return merged;
+  }
+
+  function hydrateCreateTaskCompanyFromShop() {
+    const shopId =
+      String(($("createTaskShopId")?.value || "").trim()) ||
+      String(STATE.scope.shop_id || "").trim();
+
+    const companyTextEl = $("createTaskCompanyText");
+    const companyIdEl = $("createTaskCompanyId");
+
+    if (!companyTextEl || !companyIdEl) return;
+
+    if (!shopId) {
+      companyIdEl.value = STATE.scope.company_id || "";
+      companyTextEl.value = STATE.scope.company_id
+        ? `Công ty #${STATE.scope.company_id}`
+        : "";
+      return;
+    }
+
+    const ctx = getShopContextById(shopId);
+
+    if (ctx?.company_id) {
+      companyIdEl.value = ctx.company_id;
+      companyTextEl.value = ctx.company_name || `Công ty #${ctx.company_id}`;
+      return;
+    }
+
+    // fallback theo scope company hiện tại
+    if (STATE.scope.company_id) {
+      companyIdEl.value = STATE.scope.company_id;
+      companyTextEl.value = `Công ty #${STATE.scope.company_id}`;
+      return;
+    }
+
+    companyIdEl.value = "";
+    companyTextEl.value = "";
+  }
+
+  function hydrateCreateTaskProjectByShop() {
+    const shopId =
+      String(($("createTaskShopId")?.value || "").trim()) ||
+      String(STATE.scope.shop_id || "").trim();
+
+    const projectSelect = $("createTaskProjectSelect");
+    const projectIdInput = $("createTaskProjectId");
+
+    if (!projectSelect || !projectIdInput) return;
+
+    const ctx = getShopContextById(shopId);
+
+    let html = `<option value="">-- Chọn dự án --</option>`;
+
+    if (ctx?.project_id) {
+      html += `<option value="${escapeHtml(ctx.project_id)}">${escapeHtml(ctx.project_name || ("Dự án #" + ctx.project_id))}</option>`;
+    }
+
+    projectSelect.innerHTML = html;
+
+    if (ctx?.project_id) {
+      projectSelect.value = ctx.project_id;
+      projectIdInput.value = ctx.project_id;
+    } else if (STATE.scope.project_id) {
+      projectSelect.value = "";
+      projectIdInput.value = STATE.scope.project_id;
+    } else {
+      projectIdInput.value = "";
+    }
+  }
+
+  function hydrateCreateTaskContextRich() {
+    hydrateCreateTaskCompanyFromShop();
+    hydrateCreateTaskProjectByShop();
+
+    const shopId = $("createTaskShopId")?.value || "";
+    const projectId = $("createTaskProjectId")?.value || "";
+
+    const parts = [];
+    if (shopId) parts.push("Shop #" + shopId);
+    if (projectId) parts.push("Project #" + projectId);
+
+    if ($("createTaskContextLine")) {
+      $("createTaskContextLine").textContent = parts.length
+        ? "Ngữ cảnh hiện tại: " + parts.join(" • ")
+        : "Tạo việc theo shop và dự án vận hành hiện tại.";
+    }
+  }
+
   function setTheme(theme) {
     STATE.ui.theme = theme === "light" ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", STATE.ui.theme);
@@ -845,21 +1183,7 @@
       };
     }
 
-    function buildAllWork() {
-      const map = new Map();
-
-      [
-        ...(STATE.work.open || []),
-        ...(STATE.work.todo || []),
-        ...(STATE.work.doing || []),
-        ...(STATE.work.blocked || []),
-        ...(STATE.work.done || []),
-      ].forEach((x) => {
-        map.set(String(x.id), x);
-      });
-
-      STATE.work.all = Array.from(map.values());
-    }
+    
 
     function findTaskById(taskId) {
       return STATE.work.all.find((x) => String(x.id) === String(taskId)) || null;
@@ -1333,7 +1657,7 @@
 
     return payload;
   }
-  bindQuickCreateInputs();
+
 
   async function quickCreateByGroup(groupType, groupKey, inputEl) {
     const title = (inputEl?.value || "").trim();
@@ -1554,17 +1878,7 @@
       body: JSON.stringify(payload),
     });
   }
-  function getStatusColumnItems(status) {
-    return STATE.work.all
-      .filter((x) => String(x.status || "").toLowerCase() === String(status || "").toLowerCase())
-      .sort((a, b) => {
-        const ra = String(a.rank || "");
-        const rb = String(b.rank || "");
-        if (ra < rb) return -1;
-        if (ra > rb) return 1;
-        return Number(a.id) - Number(b.id);
-      });
-  }
+
 
   function calcDropPosition(col, draggedId) {
     const cards = qsa(".kcard", col).filter((x) => String(x.dataset.id) !== String(draggedId));
@@ -1586,28 +1900,65 @@
   }
   function patchTaskLocal(taskId, patch = {}) {
     const id = String(taskId);
+    let found = false;
 
-    STATE.work.all = STATE.work.all.map((x) =>
-      String(x.id) === id ? { ...x, ...patch } : x
-    );
+    STATE.work.all = (Array.isArray(STATE.work.all) ? STATE.work.all : []).map((x) => {
+      if (String(x.id) === id) {
+        found = true;
+        return { ...x, ...patch };
+      }
+      return x;
+    });
+
+    if (!found) {
+      STATE.work.all.unshift(normalizeTaskItem({
+        id: taskId,
+        status: patch.status || "todo",
+        ...patch,
+      }));
+    }
+
+    const safeStatus = (v) => String(v || "").toLowerCase();
 
     STATE.work.open = STATE.work.all.filter(
-      (x) => !["done", "cancelled"].includes(String(x.status || "").toLowerCase())
+      (x) => !["done", "cancelled"].includes(safeStatus(x.status))
     );
-    STATE.work.todo = STATE.work.all.filter(
-      (x) => String(x.status || "").toLowerCase() === "todo"
-    );
-    STATE.work.doing = STATE.work.all.filter(
-      (x) => String(x.status || "").toLowerCase() === "doing"
-    );
-    STATE.work.blocked = STATE.work.all.filter(
-      (x) => String(x.status || "").toLowerCase() === "blocked"
-    );
-    STATE.work.done = STATE.work.all.filter(
-      (x) => String(x.status || "").toLowerCase() === "done"
-    );
+    STATE.work.todo = STATE.work.all.filter((x) => safeStatus(x.status) === "todo");
+    STATE.work.doing = STATE.work.all.filter((x) => safeStatus(x.status) === "doing");
+    STATE.work.blocked = STATE.work.all.filter((x) => safeStatus(x.status) === "blocked");
+    STATE.work.done = STATE.work.all.filter((x) => safeStatus(x.status) === "done");
   }
   
+  function normalizeTaskItem(raw) {
+    const x = raw || {};
+    const status = String(x.status || "todo").toLowerCase();
+
+    return {
+      ...x,
+      id: x.id,
+      title: x.title || `Task #${x.id || ""}`,
+      description: x.description || "",
+      status,
+      priority: Number(x.priority || 2),
+      company_id: x.company_id || "",
+      shop_id: x.shop_id || "",
+      project_id: x.project_id || "",
+      company_name: x.company_name || (x.company_id ? `#${x.company_id}` : "-"),
+      shop_name: x.shop_name || (x.shop_id ? `#${x.shop_id}` : "-"),
+      project_name: x.project_name || (x.project_id ? `#${x.project_id}` : "-"),
+      assignee_id: x.assignee_id || "",
+      assignee_name: x.assignee_name || "",
+      assignee_email: x.assignee_email || "",
+      due_at: x.due_at || null,
+      created_at: x.created_at || new Date().toISOString(),
+      updated_at: x.updated_at || new Date().toISOString(),
+    };
+  }
+
+ 
+
+  
+
   let MOVE_LOCK = false;
 
   async function moveTask(id, status, toPosition = null) {
@@ -1742,7 +2093,8 @@
   }
 
   async function createTaskFromUI(payloadOverride = null) {
-    const payload = payloadOverride || {};
+    const payload = payloadOverride ? { ...payloadOverride } : {};
+    let created = null;
 
     if (!payloadOverride) {
       const title = ($("newTaskTitle")?.value || "").trim();
@@ -1766,7 +2118,7 @@
       if (p.get("project_id")) payload.project_id = Number(p.get("project_id"));
       if (assigneeId) payload.assignee_id = Number(assigneeId);
 
-      const created = await createTask(payload);
+      created = await createTask(payload);
 
       try {
         const id = created?.item?.id || created?.id;
@@ -1787,8 +2139,10 @@
       if ($("newTaskDueAt")) $("newTaskDueAt").value = "";
       if ($("newTaskPriority")) $("newTaskPriority").value = "2";
     } else {
-      await createTask(payload);
+      created = await createTask(payload);
     }
+
+    const rawNewItem = created?.item || created?.data || created || null;
 
     STATE.work.filters.assignee = "";
     STATE.work.filters.keyword = "";
@@ -1807,11 +2161,31 @@
     STATE.ui.boardGroupBy = "status";
     localStorage.setItem("ht_board_group_by", "status");
 
-    await refreshWorkData();
+    if (rawNewItem && rawNewItem.id) {
+      const newItem = normalizeTaskItem({
+        ...rawNewItem,
+        status: rawNewItem.status || "todo",
+      });
+
+      STATE.work.pendingCreated[String(newItem.id)] = newItem;
+
+      if (!isTaskVisibleInCurrentScope(newItem)) {
+        syncScopeToTask(newItem);
+      }
+
+      patchTaskLocal(newItem.id, newItem);
+    }
+
     switchWorkView("board");
-    renderWorkBoard();
-    await refreshTimeline(true);
-    await refreshHome();
+    renderAllWork();
+
+    setTimeout(() => {
+      refreshTimeline(true).catch(console.warn);
+      refreshHome().catch(console.warn);
+    }, 300);
+
+
+    return created;
   }
   function renderTaskSummary(task) {
     const el = $("taskSummaryList");
@@ -2147,60 +2521,101 @@
       if (rt) rt.textContent = "realtime off";
     }
   }
-  function normalizeInt(v) {
+    function normalizeInt(v) {
     return String(v || "").trim().replace(/\D/g, "");
   }
+  function ensureCreateTaskModalAtBody() {
+      const modal = $("createTaskModal");
+      if (!modal) return;
 
-  function openCreateTaskModal() {
+      if (modal.parentNode !== document.body) {
+        document.body.appendChild(modal);
+      }
+    }
+
+    let CREATE_TASK_MODAL_LOCK = false;
+
+  function openCreateTaskModal(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     const m = $("createTaskModal");
     if (!m) return;
 
-    $("createTaskCompanyId").value = STATE.scope.company_id || "";
-    $("createTaskShopId").value = STATE.scope.shop_id || "";
-    $("createTaskProjectId").value = STATE.scope.project_id || "";
-    $("createTaskPriority").value = "2";
-    $("createTaskError").textContent = "";
-    $("createTaskOk").textContent = "";
+    CREATE_TASK_MODAL_LOCK = true;
 
-    const parts = [];
-    if (STATE.scope.company_id) parts.push("Company #" + STATE.scope.company_id);
-    if (STATE.scope.shop_id) parts.push("Shop #" + STATE.scope.shop_id);
-    if (STATE.scope.project_id) parts.push("Project #" + STATE.scope.project_id);
+      renderCreateTaskShopOptions();
 
-    $("createTaskContextLine").textContent = parts.length
-      ? "Ngữ cảnh hiện tại: " + parts.join(" • ")
-      : "Chưa khóa company/shop/project. Anh nên chọn ngữ cảnh trước khi tạo task.";
+      if ($("createTaskProjectId")) {
+        $("createTaskProjectId").value = STATE.scope.project_id || "";
+      }
 
-    m.setAttribute("aria-hidden", "false");
-    document.body.style.overflow = "hidden";
+      if ($("createTaskPriority")) $("createTaskPriority").value = "2";
+      if ($("createTaskError")) $("createTaskError").textContent = "";
+      if ($("createTaskOk")) $("createTaskOk").textContent = "";
 
-    setTimeout(() => {
-      $("createTaskTitle")?.focus();
-    }, 50);
-  }
+      hydrateCreateTaskContextRich();
 
-  function closeCreateTaskModal() {
-    const m = $("createTaskModal");
-    if (!m) return;
-    m.setAttribute("aria-hidden", "true");
-    document.body.style.overflow = "";
-  }
+      m.setAttribute("aria-hidden", "false");
+      m.classList.add("open");
+      m.style.display = "flex";
+      document.body.style.overflow = "hidden";
 
-  function resetCreateTaskModal() {
-    if ($("createTaskTitle")) $("createTaskTitle").value = "";
-    if ($("createTaskDescription")) $("createTaskDescription").value = "";
-    if ($("createTaskCompanyId")) $("createTaskCompanyId").value = STATE.scope.company_id || "";
-    if ($("createTaskShopId")) $("createTaskShopId").value = STATE.scope.shop_id || "";
-    if ($("createTaskProjectId")) $("createTaskProjectId").value = STATE.scope.project_id || "";
-    if ($("createTaskPriority")) $("createTaskPriority").value = "2";
-    if ($("createTaskAssigneeId")) $("createTaskAssigneeId").value = "";
-    if ($("createTaskTargetType")) $("createTaskTargetType").value = "";
-    if ($("createTaskTargetId")) $("createTaskTargetId").value = "";
-    if ($("createTaskError")) $("createTaskError").textContent = "";
-    if ($("createTaskOk")) $("createTaskOk").textContent = "";
-  }
+      setTimeout(() => {
+        CREATE_TASK_MODAL_LOCK = false;
+        $("createTaskTitle")?.focus();
+      }, 250);
+    }
 
-  async function submitCreateTaskModal() {
+
+    function closeCreateTaskModal(e) {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      if (CREATE_TASK_MODAL_LOCK) return;
+
+      const m = $("createTaskModal");
+      if (!m) return;
+
+      m.setAttribute("aria-hidden", "true");
+      m.classList.remove("open");
+      m.style.display = "none";
+      m.hidden = true;
+      m.style.pointerEvents = "";
+      document.body.style.overflow = "";
+    }
+
+    function resetCreateTaskModal() {
+      if ($("createTaskTitle")) $("createTaskTitle").value = "";
+      if ($("createTaskDescription")) $("createTaskDescription").value = "";
+      if ($("createTaskPriority")) $("createTaskPriority").value = "2";
+      if ($("createTaskAssigneeId")) $("createTaskAssigneeId").value = "";
+      if ($("createTaskTargetType")) $("createTaskTargetType").value = "";
+      if ($("createTaskTargetId")) $("createTaskTargetId").value = "";
+      if ($("createTaskCompanyId")) $("createTaskCompanyId").value = "";
+      if ($("createTaskCompanyText")) $("createTaskCompanyText").value = "";
+      if ($("createTaskProjectId")) $("createTaskProjectId").value = "";
+      if ($("createTaskError")) $("createTaskError").textContent = "";
+      if ($("createTaskOk")) $("createTaskOk").textContent = "";
+
+      renderCreateTaskShopOptions();
+
+      if ($("createTaskProjectSelect")) {
+        $("createTaskProjectSelect").innerHTML = `<option value="">-- Chọn dự án --</option>`;
+      }
+
+      hydrateCreateTaskContextRich();
+    }
+
+    async function submitCreateTaskModal() {
+    if ($("createTaskProjectSelect") && $("createTaskProjectId")) {
+      $("createTaskProjectId").value = $("createTaskProjectSelect").value || "";
+    }
+
     const payload = {
       title: ($("createTaskTitle")?.value || "").trim(),
       description: ($("createTaskDescription")?.value || "").trim(),
@@ -2209,6 +2624,9 @@
       project_id: normalizeInt($("createTaskProjectId")?.value || ""),
       priority: Number(normalizeInt($("createTaskPriority")?.value || "2") || 2),
       assignee_id: normalizeInt($("createTaskAssigneeId")?.value || ""),
+      due_at: ($("createTaskDueAt")?.value || "").trim() || null,
+      department: ($("createTaskDepartment")?.value || "").trim(),
+      brand_name: ($("createTaskBrandName")?.value || "").trim(),
       target_type: ($("createTaskTargetType")?.value || "").trim(),
       target_id: normalizeInt($("createTaskTargetId")?.value || ""),
     };
@@ -2217,21 +2635,24 @@
     if ($("createTaskOk")) $("createTaskOk").textContent = "";
 
     if (!payload.title) {
-      $("createTaskError").textContent = "Anh cần nhập tiêu đề task.";
+      if ($("createTaskError")) $("createTaskError").textContent = "Anh cần nhập tiêu đề task.";
       $("createTaskTitle")?.focus();
       return;
     }
 
-    if (!payload.company_id && !payload.project_id && !(payload.target_type && payload.target_id)) {
-      $("createTaskError").textContent = "Cần ít nhất 1 ngữ cảnh: Company ID, Project ID hoặc Target.";
+    if (!payload.shop_id) {
+      if ($("createTaskError")) $("createTaskError").textContent = "Anh cần chọn shop.";
+      $("createTaskShopId")?.focus();
       return;
     }
 
     if (!payload.description) delete payload.description;
     if (!payload.company_id) delete payload.company_id;
-    if (!payload.shop_id) delete payload.shop_id;
     if (!payload.project_id) delete payload.project_id;
     if (!payload.assignee_id) delete payload.assignee_id;
+    if (!payload.due_at) delete payload.due_at;
+    if (!payload.department) delete payload.department;
+    if (!payload.brand_name) delete payload.brand_name;
     if (!payload.target_type) delete payload.target_type;
     if (!payload.target_id) delete payload.target_id;
 
@@ -2243,13 +2664,19 @@
 
     try {
       await createTaskFromUI(payload);
-      $("createTaskOk").textContent = "Đã tạo task thành công.";
+
+      if ($("createTaskOk")) {
+        $("createTaskOk").textContent = "Đã tạo task thành công.";
+      }
+
       setTimeout(() => {
         closeCreateTaskModal();
         resetCreateTaskModal();
-      }, 450);
+      }, 150);
     } catch (err) {
-      $("createTaskError").textContent = "Tạo task lỗi: " + err.message;
+      if ($("createTaskError")) {
+        $("createTaskError").textContent = "Tạo task lỗi: " + (err?.message || err);
+      }
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -2498,11 +2925,51 @@
         }
       });
     });
-    $("btnNewTask")?.addEventListener("click", openCreateTaskModal);
-    $("closeCreateTaskBtn")?.addEventListener("click", closeCreateTaskModal);
-    $("createTaskBackdrop")?.addEventListener("click", closeCreateTaskModal);
+
+    // ===== CREATE TASK MODAL =====
+    $("createTaskModal")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+
+    document.querySelector("#createTaskModal .modal-card")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+
+    $("createTaskProjectSelect")?.addEventListener("change", (e) => {
+      if ($("createTaskProjectId")) {
+        $("createTaskProjectId").value = e.target.value || "";
+      }
+      hydrateCreateTaskContextRich();
+    });
+
+    $("createTaskShopId")?.addEventListener("change", () => {
+      hydrateCreateTaskContextRich();
+    });
+
+    $("createTaskCompanyId")?.addEventListener("input", () => {
+      renderCreateTaskProjectOptions();
+    });
+
+    $("btnNewTask")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openCreateTaskModal(e);
+    });
+
+    $("closeCreateTaskBtn")?.addEventListener("click", (e) => {
+      closeCreateTaskModal(e);
+    });
+
+    $("createTaskBackdrop")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeCreateTaskModal(e);
+    });
+
     $("resetCreateTaskBtn")?.addEventListener("click", resetCreateTaskModal);
     $("submitCreateTaskBtn")?.addEventListener("click", submitCreateTaskModal);
+
+    // ===== THEME / HELP / CMD =====
     $("themeToggle")?.addEventListener("click", () => {
       setTheme(STATE.ui.theme === "dark" ? "light" : "dark");
     });
@@ -2541,6 +3008,7 @@
       if (e.key === "Escape") closeModal("cmdModal");
     });
 
+    // ===== TIMELINE / HOME =====
     $("loadMoreTimeline")?.addEventListener("click", () => refreshTimeline(false));
     $("btnRefreshKernel")?.addEventListener("click", refreshHome);
 
@@ -2563,7 +3031,8 @@
         renderRawJson();
       });
     });
-    
+
+    // ===== WORK VIEW =====
     qsa(".work-view-tab").forEach((btn) => {
       btn.addEventListener("click", async () => {
         STATE.ui.activeTab = "work";
@@ -2579,7 +3048,6 @@
       });
     });
 
-
     $("btnCancelTask")?.addEventListener("click", () => {
       if ($("workCreateBox")) $("workCreateBox").style.display = "none";
     });
@@ -2590,6 +3058,7 @@
       await refreshWorkData();
     });
 
+    // ===== INPUT FILTER =====
     document.addEventListener("input", (e) => {
       if (e.target?.id === "filterAssigneeFinal") {
         STATE.work.filters.assignee = e.target.value || "";
@@ -2616,6 +3085,7 @@
       }
     });
 
+    // ===== CHANGE =====
     document.addEventListener("change", (e) => {
       if (e.target?.id === "filterStatusFinal") {
         STATE.work.filters.status = e.target.value || "";
@@ -2632,6 +3102,7 @@
       }
     });
 
+    // ===== CLICK DELEGATION =====
     document.addEventListener("click", async (e) => {
       const quickLinkBtn = e.target.closest(".os-quick-link-btn");
       if (quickLinkBtn) {
@@ -2662,7 +3133,6 @@
         if ($("filterCompanyFinal")) $("filterCompanyFinal").value = "";
         if ($("filterShopFinal")) $("filterShopFinal").value = "";
         if ($("filterStatusFinal")) $("filterStatusFinal").value = "";
-
 
         renderAllWork();
         return;
@@ -2827,30 +3297,38 @@
       }
     });
 
+    // ===== GLOBAL KEYDOWN: CHỈ 1 CỤM DUY NHẤT =====
     document.addEventListener("keydown", (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+      const key = String(e.key || "").toLowerCase();
+
+      if ((e.ctrlKey || e.metaKey) && key === "k") {
         e.preventDefault();
         openModal("cmdModal");
         setCmdHints();
         setTimeout(() => $("cmdInput")?.focus(), 50);
+        return;
       }
 
-      if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+      if ((e.ctrlKey || e.metaKey) && key === "/") {
         e.preventDefault();
         setTheme(STATE.ui.theme === "dark" ? "light" : "dark");
+        return;
       }
 
-      if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === "r") {
+      if (!e.ctrlKey && !e.metaKey && key === "r") {
         safeRefreshAll();
+        return;
       }
 
       if (e.key === "Escape") {
         closeTaskDrawer();
         closeModal("cmdModal");
         closeModal("helpModal");
+        closeCreateTaskModal(e);
       }
     });
 
+    // ===== BOTTOM BAR =====
     qsa(".bb-item").forEach((b) => {
       b.addEventListener("click", () => {
         qsa(".bb-item").forEach((x) => x.classList.remove("active"));
@@ -2884,6 +3362,7 @@
       }
     });
 
+    // ===== TASK DRAWER =====
     $("btnCloseTaskDrawer")?.addEventListener("click", closeTaskDrawer);
 
     qsa("[data-drawer-close='1']").forEach((x) => {
@@ -2916,6 +3395,7 @@
       }
     });
 
+    // ===== QUICK CREATE ENTER =====
     document.addEventListener("keydown", async (e) => {
       if (e.target?.classList?.contains("kb-col-create-title") && e.key === "Enter") {
         e.preventDefault();
@@ -2932,6 +3412,7 @@
       }
     });
 
+    // ===== DRAG =====
     document.addEventListener("dragstart", (e) => {
       const card = e.target.closest(".kcard");
       if (!card) return;
@@ -2946,6 +3427,7 @@
       qsa(".kanban-list").forEach((x) => x.classList.remove("drag-over"));
     });
 
+    // ===== COMMENT =====
     $("btnSubmitTaskComment")?.addEventListener("click", async (e) => {
       e.preventDefault();
 
@@ -2971,6 +3453,8 @@
         }
       }
     });
+
+    // ===== SCROLL =====
     window.addEventListener("scroll", () => {
       syncOSQuickLinksByScroll();
     }, { passive: true });
@@ -3144,8 +3628,22 @@
     `;
     document.head.appendChild(style);
   }
+  function getCreateTaskPrefill() {
+    const url = new URL(window.location.href);
+    const q = url.searchParams;
 
-  async function boot() {
+    return {
+      open: q.get("open_create_task") === "1",
+      company_id: q.get("company_id") || "",
+      shop_id: q.get("shop_id") || "",
+      project_id: q.get("project_id") || "",
+      target_type: q.get("target_type") || "",
+      target_id: q.get("target_id") || "",
+      title: q.get("title") || "",
+    };
+  }
+    async function boot() {
+    ensureCreateTaskModalAtBody();
     ensureStyles();
     setTheme(STATE.ui.theme);
     applyScopeUI();
@@ -3167,74 +3665,82 @@
       STATE.ui.boardGroupBy = localStorage.getItem("ht_board_group_by") || "status";
     }
 
+    const qp = getCreateTaskPrefill();
+
+    if (qp.company_id) {
+      STATE.scope.company_id = qp.company_id;
+      localStorage.setItem("ht_company_id", STATE.scope.company_id);
+      STATE.scope.scope = "company";
+      localStorage.setItem("ht_scope", STATE.scope.scope);
+    }
+
+    if (qp.shop_id) {
+      STATE.scope.shop_id = qp.shop_id;
+      localStorage.setItem("ht_shop_id", STATE.scope.shop_id);
+      STATE.scope.scope = "shop";
+      localStorage.setItem("ht_scope", STATE.scope.scope);
+    }
+
+    if (qp.project_id) {
+      STATE.scope.project_id = qp.project_id;
+      localStorage.setItem("ht_project_id", STATE.scope.project_id);
+      STATE.scope.scope = "project";
+      localStorage.setItem("ht_scope", STATE.scope.scope);
+    }
+
     await safeRefreshAll(true);
 
     if ($("boardGroupByFinal")) {
       $("boardGroupByFinal").value = STATE.ui.boardGroupBy;
     }
 
+    if (qp.open) {
+      switchWorkView("board");
+      openCreateTaskModal();
+
+      if ($("createTaskShopId") && qp.shop_id) {
+        $("createTaskShopId").value = qp.shop_id;
+      }
+
+      if ($("createTaskProjectId") && qp.project_id) {
+        $("createTaskProjectId").value = qp.project_id;
+      }
+
+      if ($("createTaskTargetType") && qp.target_type) {
+        $("createTaskTargetType").value = qp.target_type;
+      }
+
+      if ($("createTaskTargetId") && qp.target_id) {
+        $("createTaskTargetId").value = qp.target_id;
+      }
+
+      if ($("createTaskTitle") && qp.title) {
+        $("createTaskTitle").value = qp.title;
+      }
+
+      hydrateCreateTaskContextRich();
+
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete("open_create_task");
+      cleanUrl.searchParams.delete("company_id");
+      cleanUrl.searchParams.delete("shop_id");
+      cleanUrl.searchParams.delete("project_id");
+      cleanUrl.searchParams.delete("target_type");
+      cleanUrl.searchParams.delete("target_id");
+      cleanUrl.searchParams.delete("title");
+
+      window.history.replaceState(
+        {},
+        "",
+        cleanUrl.pathname + (cleanUrl.search ? cleanUrl.search : "")
+      );
+    }
+
     setTimeout(() => {
       restartSSE();
     }, 1500);
   }
-  async function quickCreateTasks(text, status="todo"){
-    const resp = await http("/api/v1/os/work/quick-create/",{
-      method:"POST",
-      headers:{"content-type":"application/json"},
-      body:JSON.stringify({
-        text,
-        status
-      })
-    });
 
-    if(resp?.items){
-      resp.items.forEach(x=>{
-        STATE.work.all.push(x);
-      });
-
-      renderAllWork();
-    }
-
-    return resp;
-  }
-
-  async function quickCreateTask(title, status) {
-    const resp = await http("/api/v1/os/work/create/", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        title,
-        status,
-      }),
-    });
-
-    if (resp?.item) {
-      STATE.work.all.push(resp.item);
-      renderAllWork();
-    }
-
-    return resp;
-  }
-
-  function bindQuickCreateInputs() {
-    qsa(".kanban-add-input").forEach((input) => {
-      input.addEventListener("keydown", async (e) => {
-        if (e.key !== "Enter") return;
-
-        const title = input.value.trim();
-        const status = input.dataset.status;
-
-        if (!title) return;
-
-        try {
-          await quickCreateTask(title, status);
-          input.value = "";
-        } catch (err) {
-          console.error("create task lỗi", err);
-        }
-      });
-    });
-  }
 
   function renderTaskComments(items) {
     const box = $("taskCommentsList");
@@ -4647,60 +5153,7 @@
 
     `;
   }
-  async function submitSales() {
-    const sku = (document.getElementById("skuInput")?.value || "").trim();
-    const units = document.getElementById("unitsSoldInput")?.value || 0;
-    const revenue = document.getElementById("revenueInput")?.value || 0;
-    const ads = document.getElementById("adsInput")?.value || 0;
-    const result = document.getElementById("salesResult");
-    const shopId = getCurrentShopId();
 
-    if (!shopId) {
-      alert("Anh chọn shop trước nha, rồi mới nhập doanh số SKU được.");
-      return;
-    }
-
-    if (!sku) {
-      alert("Anh nhập mã SKU trước nha");
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/v1/os/products/daily-stats/upsert/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          shop_id: parseInt(shopId, 10),
-          sku: sku,
-          units_sold: parseInt(units || 0, 10),
-          revenue: parseFloat(revenue || 0),
-          ads_spend: parseFloat(ads || 0),
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.ok) {
-        result.innerHTML = `<span style="color:#f87171;">Lưu dữ liệu lỗi: ${data.message || "Không xác định"}</span>`;
-        return;
-      }
-
-      result.innerHTML =
-        `Đã ghi nhận cho shop <b>#${shopId}</b> • ` +
-        `ROAS: <b>${data.item?.roas_estimate ?? "-"}</b> • ` +
-        `Lợi nhuận ước tính: <b>${data.item?.profit_estimate ?? "-"}</b>`;
-
-      if (window.safeRefreshAll) {
-        setTimeout(() => window.safeRefreshAll(true), 300);
-      }
-    } catch (e) {
-      result.innerHTML = `<span style="color:#f87171;">Gửi dữ liệu lỗi, vui lòng thử lại</span>`;
-      console.error("submitSales error:", e);
-    }
-  }
   async function submitSales() {
     const sku = (document.getElementById("skuInput")?.value || "").trim();
     const units = document.getElementById("unitsSoldInput")?.value || 0;

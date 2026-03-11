@@ -932,7 +932,7 @@
         <div>
           <div class="modal-title">Tạo công việc mới</div>
           <div class="modal-sub" id="createTaskContextLine">
-            Chọn đúng ngữ cảnh company / shop / project để task hiện đúng trên board.
+            Tạo việc theo shop và dự án vận hành hiện tại.
           </div>
         </div>
         <button class="btn" id="closeCreateTaskBtn" type="button">Đóng</button>
@@ -940,6 +940,7 @@
 
       <div class="modal-b">
         <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+
           <div style="grid-column:1 / -1;">
             <div class="muted" style="margin-bottom:6px;">Tiêu đề *</div>
             <input id="createTaskTitle" class="input" placeholder="VD: Viết content hook cho 70mai">
@@ -951,22 +952,35 @@
           </div>
 
           <div>
-            <div class="muted" style="margin-bottom:6px;">Company ID</div>
-            <input id="createTaskCompanyId" class="input" placeholder="Tự nhận theo scope nếu có">
+            <div class="muted" style="margin-bottom:6px;">Phòng ban</div>
+            <select id="createTaskDepartment" class="input">
+              <option value="production">Sản xuất</option>
+              <option value="operation">Vận hành</option>
+              <option value="booking">Booking</option>
+            </select>
           </div>
 
           <div>
-            <div class="muted" style="margin-bottom:6px;">Shop ID</div>
-            <input id="createTaskShopId" class="input" placeholder="Tự nhận theo scope nếu có">
+            <div class="muted" style="margin-bottom:6px;">Shop *</div>
+            <select id="createTaskShopId" class="input">
+              <option value="">-- Chọn shop --</option>
+            </select>
           </div>
 
           <div>
-            <div class="muted" style="margin-bottom:6px;">Project ID</div>
-            <input id="createTaskProjectId" class="input" placeholder="Không bắt buộc">
+            <div class="muted" style="margin-bottom:6px;">Brand / Nhãn hàng</div>
+            <input id="createTaskBrandName" class="input" placeholder="VD: 70mai, AHC...">
           </div>
 
           <div>
-            <div class="muted" style="margin-bottom:6px;">Priority</div>
+            <div class="muted" style="margin-bottom:6px;">Dự án chiến dịch</div>
+            <select id="createTaskProjectSelect" class="input">
+              <option value="">-- Chọn dự án --</option>
+            </select>
+          </div>
+
+          <div>
+            <div class="muted" style="margin-bottom:6px;">Ưu tiên</div>
             <select id="createTaskPriority" class="input">
               <option value="1">Thấp</option>
               <option value="2" selected>Vừa</option>
@@ -976,19 +990,21 @@
           </div>
 
           <div>
-            <div class="muted" style="margin-bottom:6px;">Assignee ID</div>
+            <div class="muted" style="margin-bottom:6px;">Người phụ trách</div>
             <input id="createTaskAssigneeId" class="input" placeholder="Không bắt buộc">
           </div>
 
           <div>
-            <div class="muted" style="margin-bottom:6px;">Target type</div>
-            <input id="createTaskTargetType" class="input" placeholder="VD: contract_channel_content">
+            <div class="muted" style="margin-bottom:6px;">Deadline</div>
+            <input id="createTaskDueAt" type="datetime-local" class="input">
           </div>
 
-          <div>
-            <div class="muted" style="margin-bottom:6px;">Target ID</div>
-            <input id="createTaskTargetId" class="input" placeholder="Không bắt buộc">
-          </div>
+          <!-- hidden -->
+          <input id="createTaskCompanyId" type="hidden">
+          <input id="createTaskCompanyText" type="hidden">
+          <input id="createTaskProjectId" type="hidden">
+          <input type="hidden" id="createTaskTargetType">
+          <input type="hidden" id="createTaskTargetId">
         </div>
 
         <div id="createTaskError" style="margin-top:12px;color:#ff8f9c;font-size:13px;"></div>
