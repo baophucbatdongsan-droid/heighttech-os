@@ -34,10 +34,10 @@
 
     {% if company %}
     <div class="grid">
-      <a class="card-link" href="/os/shops/?company_id={{ company.id }}">Shop</a>
-      <a class="card-link" href="/os/sku/?company_id={{ company.id }}">SKU</a>
-      <a class="card-link" href="/os/contracts/?company_id={{ company.id }}">Hợp đồng</a>
-      <a class="card-link" href="/work/?company_id={{ company.id }}">Khu làm việc</a>
+    <a class="card-link" href="/os/shops/?company_id={{ company.id }}">Shop</a>
+    <a class="card-link" href="/os/sku/?company_id={{ company.id }}">SKU</a>
+    <a class="card-link" href="/os/contracts/?company_id={{ company.id }}">Hợp đồng</a>
+    <a class="card-link" href="/work/?scope=company&company_id={{ company.id }}">Khu làm việc</a>
     </div>
     {% endif %}
   </div>

@@ -22,6 +22,8 @@ BYPASS_PREFIXES = (
     "/robots.txt",
     "/os/",
     "/app/",
+    "/work/",
+    "/api/",
 )
 
 BYPASS_EXACT_PATHS = {
@@ -126,7 +128,7 @@ class TenantResolveMiddleware(MiddlewareMixin):
         if tenant is None and host in DEV_HOSTS:
             tenant = _get_default_tenant()
 
-        # 6) public route thì cho đi tiếp kể cả chưa resolve tenant
+        # 6) public / hub routes thì cho đi tiếp kể cả chưa resolve tenant
         if tenant is None:
             if path in BYPASS_EXACT_PATHS or any(path.startswith(p) for p in BYPASS_PREFIXES):
                 request.tenant = None

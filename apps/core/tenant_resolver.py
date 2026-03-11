@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from django.core.cache import cache
@@ -14,6 +13,11 @@ PUBLIC_PATH_PREFIXES = (
     "/media/",
     "/metrics/",
     "/favicon.ico",
+    "/robots.txt",
+    "/os/",
+    "/app/",
+    "/work/",
+    "/api/",
 )
 
 TENANT_CACHE_TTL = 300  # 5 phút
@@ -32,7 +36,7 @@ def resolve_tenant_cached(request):
 
     path = request.path or ""
 
-    # Public routes: không ép phải resolve tenant
+    # Public / hub routes: không ép resolve tenant theo host
     if any(path.startswith(p) for p in PUBLIC_PATH_PREFIXES):
         return None
 

@@ -77,6 +77,7 @@ SAFE_BYPASS_PREFIXES = (
     "/app/",
     "/os/",
     "/api/",
+    "/work/",
 )
 
 SAFE_BYPASS_EXACT = {
@@ -95,6 +96,7 @@ SUSPEND_ALLOW_PREFIXES = (
     "/app/",
     "/os/",
     "/api/",
+    "/work/",
 )
 SUSPEND_ALLOW_EXACT = ("/",)
 
@@ -240,7 +242,7 @@ class CurrentRequestMiddleware(MiddlewareMixin):
 
         path = getattr(request, "path", "") or ""
 
-        # admin / static / login / register / os / api public -> bypass nhẹ
+        # admin / static / login / register / os / api / work -> bypass nhẹ
         if _is_safe_bypass_path(path):
             tenant = getattr(request, "tenant", None)
             if tenant is not None:
