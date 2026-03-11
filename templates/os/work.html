@@ -1,0 +1,263 @@
+{% load static %}
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>HeightTech • Work OS</title>
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=1" />
+  <link rel="stylesheet" href="{% static 'os/work.css' %}?v=1" />
+</head>
+<body data-page="work-os">
+  <script>
+    window.HT_TENANT_ID = "{{ request.tenant.id|default:'' }}";
+    window.HT_OS_WORK = {
+      inbox: "/api/v1/os/work/inbox/",
+      create: "/api/v1/os/work/create/",
+      assignBase: "/api/v1/os/work/",
+      updateBase: "/api/v1/os/work/",
+      commentsBase: "/api/v1/os/work/"
+    };
+  </script>
+
+  <div class="work-shell">
+    <header class="work-topbar">
+      <div class="work-brand">
+        <div class="work-logo">HT</div>
+        <div>
+          <div class="work-title">HeightTech • Work OS</div>
+          <div class="work-sub">Kanban • Workflow • Logs</div>
+        </div>
+      </div>
+
+      <div class="work-topbar-right">
+        <div class="work-scope-line">
+          <span class="scope-pill" id="workScopePill">tenant</span>
+          <span class="scope-id" id="workScopeText">Tenant {{ request.tenant.id|default:"-" }}</span>
+        </div>
+        <button class="btn mini" id="btnOpenCreateTask" type="button">+ Việc mới</button>
+        <a class="btn mini" href="/os">OS</a>
+      </div>
+    </header>
+
+    <section class="work-kpis" id="workKpis">
+      <div class="wkpi">
+        <div class="wkpi-label">Total Work</div>
+        <div class="wkpi-value" id="kpiTotal">0</div>
+      </div>
+      <div class="wkpi">
+        <div class="wkpi-label">Todo</div>
+        <div class="wkpi-value" id="kpiTodo">0</div>
+      </div>
+      <div class="wkpi">
+        <div class="wkpi-label">Doing</div>
+        <div class="wkpi-value" id="kpiDoing">0</div>
+      </div>
+      <div class="wkpi">
+        <div class="wkpi-label">Blocked</div>
+        <div class="wkpi-value" id="kpiBlocked">0</div>
+      </div>
+      <div class="wkpi">
+        <div class="wkpi-label">Done</div>
+        <div class="wkpi-value" id="kpiDone">0</div>
+      </div>
+      <div class="wkpi">
+        <div class="wkpi-label">Overdue</div>
+        <div class="wkpi-value" id="kpiOverdue">0</div>
+      </div>
+    </section>
+
+    <section class="work-toolbar card">
+      <div class="card-b">
+        <div class="work-toolbar-row">
+          <input id="filterKeyword" class="input" placeholder="Tìm title / description / assignee / shop..." />
+          <select id="filterStatus" class="input">
+            <option value="">All status</option>
+            <option value="todo">todo</option>
+            <option value="doing">doing</option>
+            <option value="blocked">blocked</option>
+            <option value="done">done</option>
+            <option value="cancelled">cancelled</option>
+          </select>
+          <select id="filterPriority" class="input">
+            <option value="">All priority</option>
+            <option value="1">Thấp</option>
+            <option value="2">Vừa</option>
+            <option value="3">Cao</option>
+            <option value="4">Gấp</option>
+          </select>
+          <input id="filterAssignee" class="input" placeholder="Assignee" />
+          <input id="filterShop" class="input" placeholder="Shop" />
+          <button class="btn mini" id="btnApplyFilter" type="button">Apply</button>
+          <button class="btn mini" id="btnResetFilter" type="button">Reset</button>
+          <button class="btn mini" id="btnRefreshWork" type="button">Refresh</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="work-board-wrap card">
+      <div class="card-h">
+        <div>
+          <div class="card-t">OS Board</div>
+          <div class="muted">Kéo thả công việc giữa các cột</div>
+        </div>
+      </div>
+      <div class="card-b">
+        <div class="work-board" id="workBoard"></div>
+      </div>
+    </section>
+  </div>
+
+  <aside class="task-drawer" id="taskDrawer" aria-hidden="true">
+    <div class="task-drawer-backdrop" data-drawer-close="1"></div>
+    <div class="task-drawer-panel">
+      <div class="task-drawer-head">
+        <div>
+          <div class="task-drawer-title">Chi tiết công việc</div>
+          <div class="task-drawer-sub" id="taskDrawerSub">Task</div>
+        </div>
+        <button class="btn mini" id="btnCloseTaskDrawer" type="button">Đóng</button>
+      </div>
+
+      <div class="task-drawer-body">
+        <div class="task-form-grid">
+          <div class="task-form-block full">
+            <label>Tiêu đề</label>
+            <input id="taskEditTitle" class="input" />
+          </div>
+
+          <div class="task-form-block full">
+            <label>Mô tả</label>
+            <textarea id="taskEditDescription" class="input" rows="4"></textarea>
+          </div>
+
+          <div class="task-form-block">
+            <label>Trạng thái</label>
+            <select id="taskEditStatus" class="input">
+              <option value="todo">todo</option>
+              <option value="doing">doing</option>
+              <option value="blocked">blocked</option>
+              <option value="done">done</option>
+              <option value="cancelled">cancelled</option>
+            </select>
+          </div>
+
+          <div class="task-form-block">
+            <label>Ưu tiên</label>
+            <select id="taskEditPriority" class="input">
+              <option value="1">Thấp</option>
+              <option value="2">Vừa</option>
+              <option value="3">Cao</option>
+              <option value="4">Gấp</option>
+            </select>
+          </div>
+
+          <div class="task-form-block">
+            <label>Deadline</label>
+            <input id="taskEditDueAt" class="input" type="datetime-local" />
+          </div>
+
+          <div class="task-form-block">
+            <label>Assignee ID</label>
+            <input id="taskEditAssigneeId" class="input" />
+          </div>
+
+          <div class="task-form-block">
+            <label>Shop ID</label>
+            <input id="taskEditShopId" class="input" />
+          </div>
+
+          <div class="task-form-block">
+            <label>Project ID</label>
+            <input id="taskEditProjectId" class="input" />
+          </div>
+        </div>
+
+        <div class="drawer-actions">
+          <button class="btn" id="btnSaveTaskDrawer" type="button">Lưu thay đổi</button>
+          <button class="btn mini" id="btnMoveNextTaskDrawer" type="button">Đẩy sang bước tiếp</button>
+        </div>
+
+        <div class="drawer-section">
+          <div class="drawer-section-title">Comment</div>
+          <div class="comment-box">
+            <textarea id="taskCommentInput" class="input" rows="3" placeholder="Viết comment..."></textarea>
+            <button class="btn mini" id="btnSubmitTaskComment" type="button">Gửi comment</button>
+          </div>
+          <div id="taskCommentsList"></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="modal" id="createTaskModal" aria-hidden="true">
+    <div class="modal-backdrop" id="createTaskBackdrop"></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title">Tạo công việc mới</div>
+          <div class="modal-sub">Tạo task cho workflow vận hành</div>
+        </div>
+        <button class="btn mini" id="closeCreateTaskBtn" type="button">Đóng</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="task-form-grid">
+          <div class="task-form-block full">
+            <label>Tiêu đề</label>
+            <input id="createTaskTitle" class="input" />
+          </div>
+
+          <div class="task-form-block full">
+            <label>Mô tả</label>
+            <textarea id="createTaskDescription" class="input" rows="4"></textarea>
+          </div>
+
+          <div class="task-form-block">
+            <label>Shop ID</label>
+            <input id="createTaskShopId" class="input" />
+          </div>
+
+          <div class="task-form-block">
+            <label>Project ID</label>
+            <input id="createTaskProjectId" class="input" />
+          </div>
+
+          <div class="task-form-block">
+            <label>Ưu tiên</label>
+            <select id="createTaskPriority" class="input">
+              <option value="2">Vừa</option>
+              <option value="1">Thấp</option>
+              <option value="3">Cao</option>
+              <option value="4">Gấp</option>
+            </select>
+          </div>
+
+          <div class="task-form-block">
+            <label>Deadline</label>
+            <input id="createTaskDueAt" class="input" type="datetime-local" />
+          </div>
+
+          <div class="task-form-block">
+            <label>Assignee ID</label>
+            <input id="createTaskAssigneeId" class="input" />
+          </div>
+        </div>
+
+        <div id="createTaskError" class="form-error"></div>
+
+        <div class="drawer-actions">
+          <button class="btn mini" id="resetCreateTaskBtn" type="button">Reset</button>
+          <button class="btn" id="submitCreateTaskBtn" type="button">Tạo task</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.HT_TENANT_ID = "{{ current_tenant_id|default:'' }}";
+    </script>
+
+    <script src="{% static 'os/work.js' %}?v=1"></script>
+</body>
+</html>

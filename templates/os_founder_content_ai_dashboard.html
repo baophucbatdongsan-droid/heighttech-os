@@ -64,7 +64,8 @@
   </div>
 
   <script>
-    const CURRENT_TENANT_ID = "1";
+    const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
+
 
     function getCookie(name) {
       const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));

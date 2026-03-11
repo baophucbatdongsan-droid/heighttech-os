@@ -1,0 +1,34 @@
+{% load static %}
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>HeightTech Work</title>
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=26" />
+</head>
+<body>
+  <div id="os-root"></div>
+
+  <script>
+    window.HT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}";
+
+    window.HT_OS = {
+      workInbox: "/api/v1/os/work/inbox/",
+      workCreate: "/api/v1/os/work/create/",
+      workAssignBase: "/api/v1/os/work/",
+      workUpdateBase: "/api/v1/os/work/",
+      workCommentsBase: "/api/v1/os/work/",
+      workAssignBy: "/api/v1/os/work/assign-by/",
+      notifications: "/api/v1/os/notifications/",
+      timeline: "/api/v1/os/timeline/",
+      home: "/api/v1/os/home/",
+      controlCenter: "/api/v1/os/control-center/",
+      stream: "/api/v1/os/stream/",
+      commandCenter: "/api/v1/os/command/"
+    };
+  </script>
+
+  <script src="{% static 'os/work.js' %}?v=26"></script>
+</body>
+</html>

@@ -42,6 +42,51 @@ def _current_tenant_id(request):
 
 
 @login_required
+def work_page(request):
+    tenant_id = _current_tenant_id(request)
+    if not tenant_id:
+      raise Http404("Không xác định được tenant hiện tại")
+
+    return render(
+        request,
+        "os/work.html",
+        {
+            "current_tenant_id": tenant_id,
+        },
+    )
+
+
+@login_required
+def client_work_page(request):
+    tenant_id = _current_tenant_id(request)
+    if not tenant_id:
+        raise Http404("Không xác định được tenant hiện tại")
+
+    return render(
+        request,
+        "os/work.html",
+        {
+            "current_tenant_id": tenant_id,
+        },
+    )
+
+
+@login_required
+def os_team_page(request):
+    tenant_id = _current_tenant_id(request)
+    if not tenant_id:
+        raise Http404("Không xác định được tenant hiện tại")
+
+    return render(
+        request,
+        "os_team.html",
+        {
+            "current_tenant_id": tenant_id,
+        },
+    )
+
+
+@login_required
 def contracts_page(request):
     tenant_id = _current_tenant_id(request)
     if not tenant_id:
@@ -81,6 +126,31 @@ def contract_detail_page(request, contract_id: int):
 
 
 @login_required
+def contract_client_progress_page(request, contract_id: int, shop_id: int):
+    return render(
+        request,
+        "os_contract_client_progress.html",
+        {
+            "current_tenant_id": _current_tenant_id(request),
+            "contract_id": int(contract_id),
+            "shop_id": int(shop_id),
+        },
+    )
+
+
+@login_required
+def contract_channel_content_page(request, contract_id: int):
+    return render(
+        request,
+        "os_contract_channel_content.html",
+        {
+            "contract_id": int(contract_id),
+            "current_tenant_id": _current_tenant_id(request),
+        },
+    )
+
+
+@login_required
 def shops_page(request):
     tenant_id = _current_tenant_id(request)
     if not tenant_id:
@@ -106,31 +176,6 @@ def sku_page(request):
         "os_sku.html",
         {
             "current_tenant_id": tenant_id,
-        },
-    )
-
-
-@login_required
-def contract_client_progress_page(request, contract_id: int, shop_id: int):
-    return render(
-        request,
-        "os_contract_client_progress.html",
-        {
-            "current_tenant_id": _current_tenant_id(request),
-            "contract_id": int(contract_id),
-            "shop_id": int(shop_id),
-        },
-    )
-
-
-@login_required
-def contract_channel_content_page(request, contract_id: int):
-    return render(
-        request,
-        "os_contract_channel_content.html",
-        {
-            "contract_id": int(contract_id),
-            "current_tenant_id": _current_tenant_id(request),
         },
     )
 
