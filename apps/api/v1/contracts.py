@@ -11,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.brands.models import Brand
 from apps.companies.models import Company
 from apps.contracts.models import Contract, ContractShop
 from apps.shops.models import Shop
@@ -67,6 +68,10 @@ def _company_qs():
 
 def _shop_qs():
     return getattr(Shop, "objects_all", Shop.objects)
+
+
+def _brand_qs():
+    return getattr(Brand, "objects_all", Brand.objects)
 
 
 def _int_or_none(v):
@@ -243,6 +248,118 @@ def _build_contract_meta(data) -> Dict[str, Any]:
     }
 
 
+def _first_non_empty(*values: Optional[str]) -> str:
+    for v in values:
+        s = str(v or "").strip()
+        if s:
+            return s
+    return ""
+
+
+def _shop_code_from_contract(code: str) -> str:
+    base = str(code or "").strip().upper()
+    if not base:
+        base = "SHOP"
+    base = base.replace(" ", "-").replace("/", "-").replace("\\", "-").replace("_", "-")
+    while "--" in base:
+        base = base.replace("--", "-")
+    base = base.strip("-")
+    return f"SHOP-{base}"[:50]
+
+
+def _auto_attach_shop_for_contract(
+    contract: Contract,
+    company: Optional[Company],
+    contract_kind: str,
+) -> None:
+    """
+    Tự tạo Brand + Shop + ContractShop cho các loại hợp đồng cần shop:
+    - operation
+    - channel_build
+
+    Không chạy nếu contract đã có shop link rồi.
+    """
+
+    if contract_kind not in {"operation", "channel_build"}:
+        return
+
+    existed = ContractShop.objects_all.filter(
+        tenant_id=contract.tenant_id,
+        contract_id=contract.id,
+    ).exists()
+    if existed:
+        return
+
+    brand_name = _first_non_empty(
+        getattr(company, "name", None) if company else None,
+        contract.partner_name,
+        contract.name,
+        contract.code,
+    )
+
+    shop_name = _first_non_empty(
+        contract.partner_name,
+        getattr(company, "name", None) if company else None,
+        contract.name,
+        contract.code,
+    )
+
+    if not brand_name:
+        brand_name = contract.code
+
+    if not shop_name:
+        shop_name = contract.code
+
+    brand_qs = _brand_qs().filter(
+        tenant_id=contract.tenant_id,
+        name__iexact=brand_name,
+    )
+
+    if company:
+        brand_qs = brand_qs.filter(company_id=company.id)
+
+    brand = brand_qs.first()
+
+    if not brand:
+        if not company:
+            raise ValueError("Không thể auto tạo brand/shop khi thiếu company_id")
+
+        brand = _brand_qs().create(
+            tenant_id=contract.tenant_id,
+            company_id=company.id,
+            name=brand_name,
+            is_active=True,
+        )
+
+    shop_code = _shop_code_from_contract(contract.code)
+    original_code = shop_code
+    seq = 1
+
+    while _shop_qs().filter(tenant_id=contract.tenant_id, code=shop_code).exists():
+        seq += 1
+        suffix = f"-{seq}"
+        shop_code = f"{original_code[:50-len(suffix)]}{suffix}"
+
+    shop = _shop_qs().create(
+        tenant_id=contract.tenant_id,
+        brand=brand,
+        code=shop_code,
+        name=shop_name,
+        platform="tiktok",
+        description="Auto created from contract",
+        status="active",
+        industry_code="general",
+        rule_version="v1",
+        is_active=True,
+    )
+
+    ContractShop.objects_all.create(
+        tenant_id=contract.tenant_id,
+        contract=contract,
+        shop=shop,
+    )
+
+
 class ContractListApi(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -401,10 +518,16 @@ class ContractCreateApi(APIView):
                         contract=obj,
                         shop=shop,
                     )
+                else:
+                    _auto_attach_shop_for_contract(
+                        contract=obj,
+                        company=company,
+                        contract_kind=contract_kind,
+                    )
 
-        except IntegrityError:
+        except IntegrityError as e:
             return Response(
-                {"ok": False, "message": "Không tạo được hợp đồng. Kiểm tra lại mã hợp đồng hoặc dữ liệu liên kết."},
+                {"ok": False, "message": f"IntegrityError: {str(e)}"},
                 status=400,
             )
         except Exception as e:
