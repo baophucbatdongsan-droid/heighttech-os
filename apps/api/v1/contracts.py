@@ -474,6 +474,14 @@ class ContractCreateApi(APIView):
                     {"ok": False, "message": "Company không thuộc tenant hiện tại"},
                     status=400,
                 )
+        if contract_kind in {"operation", "channel_build"} and not company:
+            return Response(
+                {
+                    "ok": False,
+                    "message": "Loại hợp đồng này bắt buộc phải có company_id hợp lệ để auto tạo brand/shop."
+                },
+                status=400,
+            )
 
         shop = None
         if shop_id:
