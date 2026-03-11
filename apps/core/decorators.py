@@ -1,12 +1,10 @@
-# apps/core/decorators.py
 from __future__ import annotations
 
 from functools import wraps
 
 from django.http import HttpResponseForbidden
 
-from apps.core.permissions import resolve_user_role
-from apps.core.policy import role_has_ability
+from apps.core.permissions import resolve_user_role, role_has_ability
 
 
 def require_ability(ability: str):
