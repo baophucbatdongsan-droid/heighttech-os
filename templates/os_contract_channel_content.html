@@ -13,46 +13,39 @@
   margin:0 auto;
   padding:24px;
 }
-
 .page-title{
   font-size:28px;
   font-weight:900;
   margin-bottom:12px;
 }
-
 .page-sub{
   color:var(--muted);
   margin-bottom:12px;
   line-height:1.5;
 }
-
 .toolbar{
   display:flex;
   gap:10px;
   flex-wrap:wrap;
   margin-bottom:18px;
 }
-
 .stack{
   display:flex;
   flex-direction:column;
   gap:12px;
 }
-
 .item{
   border:1px solid rgba(255,255,255,.1);
   padding:14px;
   border-radius:14px;
   background:rgba(255,255,255,.03);
 }
-
 .row{
   display:flex;
   gap:10px;
   flex-wrap:wrap;
   margin-top:8px;
 }
-
 .input{
   width:100%;
   padding:10px 12px;
@@ -61,14 +54,12 @@
   border:1px solid #333;
   color:white;
 }
-
 .tag{
   padding:4px 10px;
   border-radius:999px;
   background:#222;
   font-size:12px;
 }
-
 button{
   padding:8px 12px;
   border:none;
@@ -77,14 +68,12 @@ button{
   background:#444;
   color:white;
 }
-
 .actions-row{
   display:flex;
   gap:10px;
   flex-wrap:wrap;
   margin-top:12px;
 }
-
 .status-box{
   min-height:20px;
   font-size:13px;
@@ -92,13 +81,10 @@ button{
   color:var(--muted);
 }
 </style>
-
 </head>
 
 <body>
-
 <div class="page-wrap">
-
   <div class="page-title">Channel Content Studio</div>
   <div class="page-sub">
     Quản lý nội dung theo từng hợp đồng, theo dõi AI score, trạng thái air và hiệu quả nội dung.
@@ -112,7 +98,6 @@ button{
   </div>
 
   <div class="stack">
-
     <div class="item">
       <h3 style="margin-top:0;">Tạo nội dung mới</h3>
 
@@ -133,9 +118,7 @@ button{
     </div>
 
     <div id="contentList" class="stack"></div>
-
   </div>
-
 </div>
 
 <script>
@@ -184,9 +167,7 @@ async function fetchAiScore(contentId){
       headers: authHeaders()
     });
     const data = await readJsonSafe(res);
-    if (!res.ok || !data.ok) {
-      return null;
-    }
+    if (!res.ok || !data.ok) return null;
     return data.ai || null;
   }catch(err){
     return null;
@@ -251,7 +232,7 @@ async function loadContent(){
         <div class="actions-row">
           <button onclick="markAired(${x.id})">Đã air</button>
           <button onclick="addMetric(${x.id})">Nhập view</button>
-          <a class="btn" href="/os/content-work-sync/?contract_id=${CONTRACT_ID}">Viết tiếp</a>
+          <a class="btn" href="/os/content-work-sync/?contract_id=${CONTRACT_ID}&content_id=${x.id}">Viết tiếp</a>
         </div>
       </div>
     `);
@@ -297,37 +278,61 @@ async function createContent(){
 }
 
 async function markAired(id){
-  await fetch(`/api/v1/channel-content/${id}/update/`, {
+  const res = await fetch(`/api/v1/channel-content/${id}/update/`, {
     method:"POST",
     credentials:"include",
     headers: authHeaders({"Content-Type":"application/json"}),
     body:JSON.stringify({aired:true})
   });
 
+  const data = await readJsonSafe(res);
+  if (!res.ok || !data.ok) {
+    alert(data.message || "Cập nhật trạng thái air thất bại");
+    return;
+  }
+
   loadContent();
 }
 
 async function addMetric(id){
   const views = prompt("Views hôm nay");
-  const likes = prompt("Likes hôm nay", "0");
-  const comments = prompt("Comments hôm nay", "0");
-  const shares = prompt("Shares hôm nay", "0");
-  const orders = prompt("Orders hôm nay", "0");
-  const revenue = prompt("Revenue hôm nay", "0");
+  if (views === null) return;
 
-  await fetch(`/api/v1/channel-content/${id}/metric/`, {
+  const likes = prompt("Likes hôm nay", "0");
+  if (likes === null) return;
+
+  const comments = prompt("Comments hôm nay", "0");
+  if (comments === null) return;
+
+  const shares = prompt("Shares hôm nay", "0");
+  if (shares === null) return;
+
+  const orders = prompt("Orders hôm nay", "0");
+  if (orders === null) return;
+
+  const revenue = prompt("Revenue hôm nay", "0");
+  if (revenue === null) return;
+
+  const res = await fetch(`/api/v1/channel-content/${id}/metric/`, {
     method:"POST",
     credentials:"include",
     headers: authHeaders({"Content-Type":"application/json"}),
     body:JSON.stringify({
-      views: views,
-      likes: likes,
-      comments: comments,
-      shares: shares,
-      orders: orders,
-      revenue: revenue
+      views,
+      likes,
+      comments,
+      shares,
+      orders,
+      revenue
     })
   });
+
+  const data = await readJsonSafe(res);
+
+  if (!res.ok || !data.ok) {
+    alert(data.message || "Lưu metric thất bại");
+    return;
+  }
 
   alert("Đã lưu metric");
   loadContent();
@@ -335,6 +340,5 @@ async function addMetric(id){
 
 loadContent();
 </script>
-
 </body>
 </html>

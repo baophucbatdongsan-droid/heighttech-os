@@ -5,13 +5,27 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Content ↔ Work Sync</title>
-  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=24" />
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=25" />
   <style>
     .page-wrap{max-width:980px;margin:0 auto;padding:24px;}
     .page-title{font-size:28px;font-weight:900;}
     .page-sub{color:var(--muted);margin-top:6px;line-height:1.5;}
-    .cardx{border:1px solid rgba(255,255,255,.08);border-radius:18px;background:rgba(255,255,255,.03);padding:18px;margin-top:20px;}
-    .status-line{margin-top:14px;font-size:13px;min-height:20px;color:var(--muted);}
+    .cardx{
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;
+      background:rgba(255,255,255,.03);
+      padding:18px;
+      margin-top:20px;
+    }
+    .status-line{
+      margin-top:14px;
+      font-size:13px;
+      min-height:20px;
+      color:var(--muted);
+      line-height:1.5;
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
   </style>
 </head>
 <body>
@@ -23,7 +37,7 @@
 
     <div class="cardx">
       <div class="muted" style="margin-bottom:8px;">WorkItem ID</div>
-      <input id="workitemId" class="input" placeholder="VD: 125" />
+      <input id="workitemId" class="input" placeholder="VD: 3 hoặc #3" />
 
       <div style="margin-top:12px;">
         <button class="btn primary" type="button" onclick="syncContent()">Sync content từ task</button>
@@ -51,12 +65,16 @@
 
     async function readJsonSafe(res) {
       const ct = res.headers.get("content-type") || "";
-      if (ct.includes("application/json")) return await res.json();
+
+      if (ct.includes("application/json")) {
+        return await res.json();
+      }
+
       const txt = await res.text();
       throw new Error(txt || `HTTP ${res.status}`);
     }
 
-    function setStatus(msg, type="info"){
+    function setStatus(msg, type = "info") {
       const el = document.getElementById("syncStatus");
       el.textContent = msg || "";
       el.style.color =
@@ -65,29 +83,37 @@
         "#8ab4ff";
     }
 
-    async function syncContent(){
-      const workitemId = document.getElementById("workitemId").value.trim();
-      if (!workitemId){
-        setStatus("Thiếu WorkItem ID", "err");
+    function normalizeWorkItemId(raw) {
+      const cleaned = String(raw || "").trim().replace(/\D/g, "");
+      return cleaned;
+    }
+
+    async function syncContent() {
+      const rawInput = document.getElementById("workitemId").value || "";
+      const workitemId = normalizeWorkItemId(rawInput);
+
+      if (!workitemId) {
+        setStatus("Thiếu WorkItem ID hợp lệ", "err");
         return;
       }
 
       setStatus("Đang sync content từ task...", "info");
 
-      try{
+      try {
         const res = await fetch(`/api/v1/work-items/${workitemId}/sync-content/`, {
           method: "POST",
           credentials: "include",
           headers: authHeaders({
             "Content-Type": "application/json",
-            "Accept": "application/json"
+            "Accept": "application/json",
+            "X-Requested-With": "XMLHttpRequest"
           }),
           body: JSON.stringify({})
         });
 
         const data = await readJsonSafe(res);
 
-        if (!res.ok || !data.ok){
+        if (!res.ok || !data.ok) {
           setStatus(data.message || "Sync thất bại", "err");
           return;
         }
@@ -96,8 +122,8 @@
           `Đã sync thành công. Content #${data.content_id} → status = ${data.content_status}`,
           "ok"
         );
-      }catch(err){
-        setStatus("Lỗi sync: " + err.message, "err");
+      } catch (err) {
+        setStatus("Lỗi sync: " + (err.message || err), "err");
       }
     }
   </script>

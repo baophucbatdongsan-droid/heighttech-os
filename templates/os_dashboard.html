@@ -86,6 +86,13 @@
     display:flex;
     gap:10px;
     align-items:center;
+    flex-wrap:wrap;
+  }
+  .kanbanHead .right{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
   }
   .btn{
     background:#0b1220;
@@ -96,15 +103,25 @@
     cursor:pointer;
     font-weight:700;
   }
+  .btn.primary{
+    background:#172554;
+    border-color:#3b82f6;
+  }
   .btn:active{ transform: translateY(1px); }
   .btn.mini{ padding:6px 8px; border-radius:7px; font-weight:700; font-size:12px; }
-  .input{
+  .input, .textarea, .select{
     background:#0b1220;
     color:white;
     border:1px solid #263244;
     padding:8px 10px;
     border-radius:8px;
     outline:none;
+    width:100%;
+    box-sizing:border-box;
+  }
+  .textarea{
+    min-height:96px;
+    resize:vertical;
   }
   .muted{ opacity:.7; }
 
@@ -189,24 +206,96 @@
     100%{ box-shadow:0 0 0 rgba(59,130,246,0); }
   }
 
+  /* ===== Modal create task ===== */
   .modal{
     position:fixed;
     inset:0;
     display:none;
-    align-items:center;
-    justify-content:center;
-    background:rgba(0,0,0,.55);
-    padding:20px;
+    z-index:120;
   }
-  .modal.open{ display:flex; }
+  .modal.open{
+    display:block;
+  }
+  .modal-backdrop{
+    position:absolute;
+    inset:0;
+    background:rgba(0,0,0,.58);
+  }
   .modalBox{
+    position:absolute;
+    left:50%;
+    top:6%;
+    transform:translateX(-50%);
     width:min(760px, 96vw);
     background:#0b1220;
     border:1px solid #243244;
     border-radius:16px;
     padding:16px;
+    box-sizing:border-box;
+    box-shadow:0 24px 80px rgba(0,0,0,.45);
   }
-  .modalBox h3{ margin:0 0 10px 0; }
+  .modalBox h3{
+    margin:0;
+  }
+  .modalHead{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+    margin-bottom:12px;
+  }
+  .modalSub{
+    font-size:12px;
+    opacity:.75;
+    margin-top:6px;
+    line-height:1.5;
+  }
+  .formGrid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px;
+  }
+  .formBlock{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .full{
+    grid-column:1 / -1;
+  }
+  .label{
+    font-size:12px;
+    opacity:.8;
+    font-weight:700;
+  }
+  .msgErr{
+    color:#ff8f9c;
+    font-size:13px;
+    min-height:18px;
+    margin-top:10px;
+  }
+  .msgOk{
+    color:#8fe3a1;
+    font-size:13px;
+    min-height:18px;
+    margin-top:6px;
+  }
+
+  @media (max-width: 980px){
+    .cards{ grid-template-columns:repeat(2,1fr); }
+    .grid{ grid-template-columns:1fr; }
+    .kanban{ grid-template-columns:1fr 1fr; }
+  }
+
+  @media (max-width: 680px){
+    .cards{ grid-template-columns:1fr; }
+    .kanban{ grid-template-columns:1fr; }
+    .formGrid{ grid-template-columns:1fr; }
+    .header{
+      flex-direction:column;
+      align-items:flex-start;
+    }
+  }
 </style>
 </head>
 
@@ -250,9 +339,10 @@
       <div class="left">
         <h3 style="margin:0;">Work Kanban</h3>
         <span class="muted" id="workHint">drag & drop để đổi trạng thái</span>
+        <span class="pill" id="workContextPill">Chưa khóa context</span>
       </div>
       <div class="right">
-        <button class="btn" id="btnNewTask">+ New</button>
+        <button type="button" class="btn primary" id="openCreateTaskBtn">+ Mới</button>
         <button class="btn" id="btnRefreshWork">Refresh</button>
       </div>
     </div>
@@ -282,46 +372,91 @@
 
 </div>
 
-<!-- Modal create task -->
-<div class="modal" id="createModal">
+<!-- ===== Modal create task mới ===== -->
+<div class="modal" id="createTaskModal">
+  <div class="modal-backdrop" id="createTaskBackdrop"></div>
+
   <div class="modalBox">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-      <h3>Create Task</h3>
-      <button class="btn mini" id="btnCloseModal">Close</button>
+    <div class="modalHead">
+      <div>
+        <h3>Tạo công việc mới</h3>
+        <div class="modalSub" id="createTaskContextLine">
+          Chọn đúng company / shop / project trước khi tạo task để hệ thống hiểu ngữ cảnh.
+        </div>
+      </div>
+      <button class="btn mini" id="closeCreateTaskBtn" type="button">Đóng</button>
     </div>
-    <div class="row">
-      <input class="input" style="flex:1;min-width:240px" id="newTitle" placeholder="Task title...">
-      <input class="input" style="width:140px" id="newPriority" placeholder="priority 1-4">
-      <input class="input" style="width:160px" id="newAssignee" placeholder="assignee_id">
+
+    <div class="formGrid">
+      <div class="formBlock full">
+        <div class="label">Tiêu đề *</div>
+        <input class="input" id="createTaskTitle" placeholder="VD: Viết content hook cho 70mai">
+      </div>
+
+      <div class="formBlock full">
+        <div class="label">Mô tả</div>
+        <textarea class="textarea" id="createTaskDescription" placeholder="Mô tả ngắn task cần làm..."></textarea>
+      </div>
+
+      <div class="formBlock">
+        <div class="label">Company ID</div>
+        <input class="input" id="createTaskCompanyId" placeholder="Tự nhận nếu đang lọc company">
+      </div>
+
+      <div class="formBlock">
+        <div class="label">Shop ID</div>
+        <input class="input" id="createTaskShopId" placeholder="Tự nhận nếu đang lọc shop">
+      </div>
+
+      <div class="formBlock">
+        <div class="label">Project ID</div>
+        <input class="input" id="createTaskProjectId" placeholder="Không bắt buộc">
+      </div>
+
+      <div class="formBlock">
+        <div class="label">Priority</div>
+        <select class="select" id="createTaskPriority">
+          <option value="1">Thấp</option>
+          <option value="2" selected>Vừa</option>
+          <option value="3">Cao</option>
+          <option value="4">Khẩn cấp</option>
+        </select>
+      </div>
+
+      <div class="formBlock">
+        <div class="label">Assignee ID</div>
+        <input class="input" id="createTaskAssigneeId" placeholder="Không bắt buộc">
+      </div>
+
+      <div class="formBlock">
+        <div class="label">Target type</div>
+        <input class="input" id="createTaskTargetType" placeholder="VD: contract_channel_content">
+      </div>
+
+      <div class="formBlock">
+        <div class="label">Target ID</div>
+        <input class="input" id="createTaskTargetId" placeholder="Không bắt buộc">
+      </div>
     </div>
+
+    <div class="msgErr" id="createTaskError"></div>
+    <div class="msgOk" id="createTaskOk"></div>
+
     <div class="row">
-      <button class="btn" id="btnCreate">Create</button>
-      <span class="muted" id="createMsg"></span>
+      <button class="btn" id="resetCreateTaskBtn" type="button">Xóa form</button>
+      <button class="btn primary" id="submitCreateTaskBtn" type="button">Tạo task</button>
     </div>
   </div>
 </div>
 
 <script>
-/**
- * HeightTech OS Kanban + Dashboard
- * - dùng session cookie (khuyến nghị) hoặc Token nếu anh muốn giữ như cũ
- * - endpoints:
- *   /api/v1/os/control-center/
- *   /api/v1/os/timeline/
- *   /api/v1/os/notifications/
- *   /api/v1/os/work/inbox/
- *   /api/v1/os/work/create/
- *   /api/v1/os/work/<id>/move/   <-- em thêm API này ở file os_work.py dưới
- */
-
 const CFG = {
   controlCenter: "/api/v1/os/control-center/",
   timeline: "/api/v1/os/timeline/",
   notifications: "/api/v1/os/notifications/",
   workInbox: "/api/v1/os/work/inbox/",
   workCreate: "/api/v1/os/work/create/",
-  workMoveBase: "/api/v1/os/work/", // + {id}/move/
-  // token: "...." // nếu cần
+  workMoveBase: "/api/v1/os/work/",
 };
 
 const SCOPE = {
@@ -352,16 +487,15 @@ async function http(url, opts={}){
   const headers = Object.assign({}, opts.headers || {});
   const method = (opts.method || "GET").toUpperCase();
 
-  // CSRF (nếu dùng session)
   const csrf = getCookie("csrftoken");
   if (csrf && method !== "GET") headers["X-CSRFToken"] = csrf;
 
-  // Token (nếu dùng token)
   if (CFG.token) headers["Authorization"] = "Token " + CFG.token;
 
   const res = await fetch(url, Object.assign({ credentials: "include", headers }, opts));
   const ct = res.headers.get("content-type") || "";
   const data = ct.includes("application/json") ? await res.json() : await res.text();
+
   if (!res.ok) {
     const msg = (data && data.message) ? data.message : (typeof data === "string" ? data : JSON.stringify(data));
     throw new Error(msg || ("HTTP " + res.status));
@@ -420,7 +554,7 @@ async function loadDashboard(){
 }
 
 /* ===== Kanban ===== */
-let WORK_CACHE = []; // items open
+let WORK_CACHE = [];
 
 function groupByStatus(items){
   const g = { todo:[], doing:[], blocked:[], done:[] };
@@ -490,9 +624,8 @@ async function refreshWork(){
   const data = await http(CFG.workInbox + "?" + p.toString());
   WORK_CACHE = data.items || [];
   renderKanban(WORK_CACHE);
-
-  // update KPI open tasks
   $("tasks").innerText = data.open_count ?? (WORK_CACHE.length);
+  renderWorkContextPill();
 }
 
 async function moveTask(taskId, toStatus){
@@ -535,50 +668,141 @@ function bindDropzones(){
   });
 }
 
-/* ===== Create task ===== */
-function openModal(){ $("createModal").classList.add("open"); $("newTitle").focus(); }
-function closeModal(){ $("createModal").classList.remove("open"); $("createMsg").innerText=""; }
+/* ===== Create task modal mới ===== */
+function normalizeInt(v){
+  return String(v || "").trim().replace(/\D/g, "");
+}
+
+function renderWorkContextPill(){
+  const parts = [];
+  if (SCOPE.company_id) parts.push("Company #" + SCOPE.company_id);
+  if (SCOPE.shop_id) parts.push("Shop #" + SCOPE.shop_id);
+  if (SCOPE.project_id) parts.push("Project #" + SCOPE.project_id);
+  $("workContextPill").innerText = parts.length ? parts.join(" • ") : "Chưa khóa context";
+}
+
+function openCreateTaskModal(){
+  $("createTaskModal").classList.add("open");
+  hydrateCreateTaskContext();
+  $("createTaskTitle").focus();
+}
+
+function closeCreateTaskModal(){
+  $("createTaskModal").classList.remove("open");
+}
+
+function clearCreateTaskMessages(){
+  $("createTaskError").innerText = "";
+  $("createTaskOk").innerText = "";
+}
+
+function hydrateCreateTaskContext(){
+  if (!$("createTaskCompanyId").value.trim()) $("createTaskCompanyId").value = SCOPE.company_id || "";
+  if (!$("createTaskShopId").value.trim()) $("createTaskShopId").value = SCOPE.shop_id || "";
+  if (!$("createTaskProjectId").value.trim()) $("createTaskProjectId").value = SCOPE.project_id || "";
+
+  const parts = [];
+  if ($("createTaskCompanyId").value.trim()) parts.push("Company #" + $("createTaskCompanyId").value.trim());
+  if ($("createTaskShopId").value.trim()) parts.push("Shop #" + $("createTaskShopId").value.trim());
+  if ($("createTaskProjectId").value.trim()) parts.push("Project #" + $("createTaskProjectId").value.trim());
+
+  $("createTaskContextLine").innerText = parts.length
+    ? ("Ngữ cảnh hiện tại: " + parts.join(" • "))
+    : "Chưa khóa company/shop/project. Anh nên chọn ngữ cảnh trước khi tạo task.";
+}
+
+function resetCreateTaskForm(){
+  $("createTaskTitle").value = "";
+  $("createTaskDescription").value = "";
+  $("createTaskCompanyId").value = SCOPE.company_id || "";
+  $("createTaskShopId").value = SCOPE.shop_id || "";
+  $("createTaskProjectId").value = SCOPE.project_id || "";
+  $("createTaskPriority").value = "2";
+  $("createTaskAssigneeId").value = "";
+  $("createTaskTargetType").value = "";
+  $("createTaskTargetId").value = "";
+  clearCreateTaskMessages();
+  hydrateCreateTaskContext();
+}
 
 async function createTask(){
-  const title = ($("newTitle").value || "").trim();
-  const pr = ($("newPriority").value || "").trim();
-  const assignee = ($("newAssignee").value || "").trim();
-  if(!title){ $("createMsg").innerText = "Nhập title nha anh"; return; }
+  clearCreateTaskMessages();
 
-  const payload = { title };
-  if (pr) payload.priority = pr;
-  if (assignee) payload.assignee_id = assignee;
+  const payload = {
+    title: ($("createTaskTitle").value || "").trim(),
+    description: ($("createTaskDescription").value || "").trim(),
+    company_id: normalizeInt($("createTaskCompanyId").value),
+    shop_id: normalizeInt($("createTaskShopId").value),
+    project_id: normalizeInt($("createTaskProjectId").value),
+    priority: normalizeInt($("createTaskPriority").value) || "2",
+    assignee_id: normalizeInt($("createTaskAssigneeId").value),
+    target_type: ($("createTaskTargetType").value || "").trim(),
+    target_id: normalizeInt($("createTaskTargetId").value),
+  };
 
-  // scope ids
-  const p = scopeParams();
-  if (p.get("company_id")) payload.company_id = p.get("company_id");
-  if (p.get("shop_id")) payload.shop_id = p.get("shop_id");
-  if (p.get("project_id")) payload.project_id = p.get("project_id");
+  if (!payload.title) {
+    $("createTaskError").innerText = "Anh cần nhập tiêu đề task.";
+    $("createTaskTitle").focus();
+    return;
+  }
 
-  $("createMsg").innerText = "Creating...";
-  await http(CFG.workCreate, {
-    method:"POST",
-    headers: {"content-type":"application/json"},
-    body: JSON.stringify(payload),
-  });
+  if (!payload.company_id && !payload.project_id && !(payload.target_type && payload.target_id)) {
+    $("createTaskError").innerText = "Cần ít nhất 1 ngữ cảnh: Company ID, Project ID hoặc Target.";
+    return;
+  }
 
-  $("newTitle").value="";
-  $("newPriority").value="";
-  $("newAssignee").value="";
-  $("createMsg").innerText = "Created ✅";
-  closeModal();
-  await refreshWork();
+  if (!payload.company_id) delete payload.company_id;
+  if (!payload.shop_id) delete payload.shop_id;
+  if (!payload.project_id) delete payload.project_id;
+  if (!payload.assignee_id) delete payload.assignee_id;
+  if (!payload.target_type) delete payload.target_type;
+  if (!payload.target_id) delete payload.target_id;
+  if (!payload.description) delete payload.description;
+
+  const btn = $("submitCreateTaskBtn");
+  btn.disabled = true;
+  btn.innerText = "Đang tạo...";
+
+  try{
+    const data = await http(CFG.workCreate, {
+      method:"POST",
+      headers: {"content-type":"application/json"},
+      body: JSON.stringify(payload),
+    });
+
+    $("createTaskOk").innerText = `Đã tạo task #${data.id || ""} thành công.`;
+    setTimeout(async ()=>{
+      closeCreateTaskModal();
+      resetCreateTaskForm();
+      await refreshWork();
+    }, 600);
+  }catch(err){
+    $("createTaskError").innerText = "Tạo task lỗi: " + err.message;
+  }finally{
+    btn.disabled = false;
+    btn.innerText = "Tạo task";
+  }
 }
 
 /* ===== Boot ===== */
 async function boot(){
   $("scopePill").innerText = SCOPE.scope || "tenant";
+  renderWorkContextPill();
 
   $("btnRefresh").addEventListener("click", loadDashboard);
   $("btnRefreshWork").addEventListener("click", refreshWork);
-  $("btnNewTask").addEventListener("click", openModal);
-  $("btnCloseModal").addEventListener("click", closeModal);
-  $("btnCreate").addEventListener("click", createTask);
+
+  $("openCreateTaskBtn").addEventListener("click", openCreateTaskModal);
+  $("closeCreateTaskBtn").addEventListener("click", closeCreateTaskModal);
+  $("createTaskBackdrop").addEventListener("click", closeCreateTaskModal);
+  $("resetCreateTaskBtn").addEventListener("click", resetCreateTaskForm);
+  $("submitCreateTaskBtn").addEventListener("click", createTask);
+
+  document.addEventListener("keydown", function(e){
+    if (e.key === "Escape" && $("createTaskModal").classList.contains("open")) {
+      closeCreateTaskModal();
+    }
+  });
 
   bindDropzones();
 

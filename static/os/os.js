@@ -1741,56 +1741,78 @@
     await refreshHome();
   }
 
-  async function createTaskFromUI() {
-    const title = ($("newTaskTitle")?.value || "").trim();
-    const assigneeId = ($("newTaskAssignee")?.value || "").trim();
-    const assigneeBy = ($("newTaskAssigneeBy")?.value || "").trim();
-    const dueAt = ($("newTaskDueAt")?.value || "").trim();
-    const priority = Number(($("newTaskPriority")?.value || "2").trim() || 2);
+  async function createTaskFromUI(payloadOverride = null) {
+    const payload = payloadOverride || {};
 
-    if (!title) {
-      alert("Nhập title task nha anh");
-      return;
-    }
+    if (!payloadOverride) {
+      const title = ($("newTaskTitle")?.value || "").trim();
+      const assigneeId = ($("newTaskAssignee")?.value || "").trim();
+      const assigneeBy = ($("newTaskAssigneeBy")?.value || "").trim();
+      const dueAt = ($("newTaskDueAt")?.value || "").trim();
+      const priority = Number(($("newTaskPriority")?.value || "2").trim() || 2);
 
-    const p = scopeParams();
-    const payload = {
-      title,
-      priority,
-      due_at: dueAt || null,
-    };
-
-    if (p.get("company_id")) payload.company_id = Number(p.get("company_id"));
-    if (p.get("shop_id")) payload.shop_id = Number(p.get("shop_id"));
-    if (p.get("project_id")) payload.project_id = Number(p.get("project_id"));
-    if (assigneeId) payload.assignee_id = Number(assigneeId);
-
-    const created = await createTask(payload);
-
-    try {
-      const id = created?.item?.id;
-      if (id && assigneeBy && CFG.workAssignBy) {
-        await http(CFG.workAssignBy, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ task_id: id, q: assigneeBy }),
-        });
+      if (!title) {
+        alert("Nhập title task nha anh");
+        return;
       }
-    } catch (e) {
-      console.warn(e);
+
+      const p = scopeParams();
+      payload.title = title;
+      payload.priority = priority;
+      payload.due_at = dueAt || null;
+
+      if (p.get("company_id")) payload.company_id = Number(p.get("company_id"));
+      if (p.get("shop_id")) payload.shop_id = Number(p.get("shop_id"));
+      if (p.get("project_id")) payload.project_id = Number(p.get("project_id"));
+      if (assigneeId) payload.assignee_id = Number(assigneeId);
+
+      const created = await createTask(payload);
+
+      try {
+        const id = created?.item?.id || created?.id;
+        if (id && assigneeBy && CFG.workAssignBy) {
+          await http(CFG.workAssignBy, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ task_id: id, q: assigneeBy }),
+          });
+        }
+      } catch (e) {
+        console.warn(e);
+      }
+
+      if ($("newTaskTitle")) $("newTaskTitle").value = "";
+      if ($("newTaskAssignee")) $("newTaskAssignee").value = "";
+      if ($("newTaskAssigneeBy")) $("newTaskAssigneeBy").value = "";
+      if ($("newTaskDueAt")) $("newTaskDueAt").value = "";
+      if ($("newTaskPriority")) $("newTaskPriority").value = "2";
+    } else {
+      await createTask(payload);
     }
 
-    if ($("newTaskTitle")) $("newTaskTitle").value = "";
-    if ($("newTaskAssignee")) $("newTaskAssignee").value = "";
-    if ($("newTaskAssigneeBy")) $("newTaskAssigneeBy").value = "";
-    if ($("newTaskDueAt")) $("newTaskDueAt").value = "";
-    if ($("newTaskPriority")) $("newTaskPriority").value = "2";
+    STATE.work.filters.assignee = "";
+    STATE.work.filters.keyword = "";
+    STATE.work.filters.company = "";
+    STATE.work.filters.shop = "";
+    STATE.work.filters.status = "";
+
+    if ($("filterAssigneeFinal")) $("filterAssigneeFinal").value = "";
+    if ($("filterKeywordFinal")) $("filterKeywordFinal").value = "";
+    if ($("filterCompanyFinal")) $("filterCompanyFinal").value = "";
+    if ($("filterShopFinal")) $("filterShopFinal").value = "";
+    if ($("filterStatusFinal")) $("filterStatusFinal").value = "";
+
+    STATE.ui.workView = "board";
+    localStorage.setItem("ht_work_view", "board");
+    STATE.ui.boardGroupBy = "status";
+    localStorage.setItem("ht_board_group_by", "status");
 
     await refreshWorkData();
+    switchWorkView("board");
+    renderWorkBoard();
     await refreshTimeline(true);
     await refreshHome();
   }
-
   function renderTaskSummary(task) {
     const el = $("taskSummaryList");
     if (!el) return;
@@ -2125,6 +2147,116 @@
       if (rt) rt.textContent = "realtime off";
     }
   }
+  function normalizeInt(v) {
+    return String(v || "").trim().replace(/\D/g, "");
+  }
+
+  function openCreateTaskModal() {
+    const m = $("createTaskModal");
+    if (!m) return;
+
+    $("createTaskCompanyId").value = STATE.scope.company_id || "";
+    $("createTaskShopId").value = STATE.scope.shop_id || "";
+    $("createTaskProjectId").value = STATE.scope.project_id || "";
+    $("createTaskPriority").value = "2";
+    $("createTaskError").textContent = "";
+    $("createTaskOk").textContent = "";
+
+    const parts = [];
+    if (STATE.scope.company_id) parts.push("Company #" + STATE.scope.company_id);
+    if (STATE.scope.shop_id) parts.push("Shop #" + STATE.scope.shop_id);
+    if (STATE.scope.project_id) parts.push("Project #" + STATE.scope.project_id);
+
+    $("createTaskContextLine").textContent = parts.length
+      ? "Ngữ cảnh hiện tại: " + parts.join(" • ")
+      : "Chưa khóa company/shop/project. Anh nên chọn ngữ cảnh trước khi tạo task.";
+
+    m.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+
+    setTimeout(() => {
+      $("createTaskTitle")?.focus();
+    }, 50);
+  }
+
+  function closeCreateTaskModal() {
+    const m = $("createTaskModal");
+    if (!m) return;
+    m.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+  }
+
+  function resetCreateTaskModal() {
+    if ($("createTaskTitle")) $("createTaskTitle").value = "";
+    if ($("createTaskDescription")) $("createTaskDescription").value = "";
+    if ($("createTaskCompanyId")) $("createTaskCompanyId").value = STATE.scope.company_id || "";
+    if ($("createTaskShopId")) $("createTaskShopId").value = STATE.scope.shop_id || "";
+    if ($("createTaskProjectId")) $("createTaskProjectId").value = STATE.scope.project_id || "";
+    if ($("createTaskPriority")) $("createTaskPriority").value = "2";
+    if ($("createTaskAssigneeId")) $("createTaskAssigneeId").value = "";
+    if ($("createTaskTargetType")) $("createTaskTargetType").value = "";
+    if ($("createTaskTargetId")) $("createTaskTargetId").value = "";
+    if ($("createTaskError")) $("createTaskError").textContent = "";
+    if ($("createTaskOk")) $("createTaskOk").textContent = "";
+  }
+
+  async function submitCreateTaskModal() {
+    const payload = {
+      title: ($("createTaskTitle")?.value || "").trim(),
+      description: ($("createTaskDescription")?.value || "").trim(),
+      company_id: normalizeInt($("createTaskCompanyId")?.value || ""),
+      shop_id: normalizeInt($("createTaskShopId")?.value || ""),
+      project_id: normalizeInt($("createTaskProjectId")?.value || ""),
+      priority: Number(normalizeInt($("createTaskPriority")?.value || "2") || 2),
+      assignee_id: normalizeInt($("createTaskAssigneeId")?.value || ""),
+      target_type: ($("createTaskTargetType")?.value || "").trim(),
+      target_id: normalizeInt($("createTaskTargetId")?.value || ""),
+    };
+
+    if ($("createTaskError")) $("createTaskError").textContent = "";
+    if ($("createTaskOk")) $("createTaskOk").textContent = "";
+
+    if (!payload.title) {
+      $("createTaskError").textContent = "Anh cần nhập tiêu đề task.";
+      $("createTaskTitle")?.focus();
+      return;
+    }
+
+    if (!payload.company_id && !payload.project_id && !(payload.target_type && payload.target_id)) {
+      $("createTaskError").textContent = "Cần ít nhất 1 ngữ cảnh: Company ID, Project ID hoặc Target.";
+      return;
+    }
+
+    if (!payload.description) delete payload.description;
+    if (!payload.company_id) delete payload.company_id;
+    if (!payload.shop_id) delete payload.shop_id;
+    if (!payload.project_id) delete payload.project_id;
+    if (!payload.assignee_id) delete payload.assignee_id;
+    if (!payload.target_type) delete payload.target_type;
+    if (!payload.target_id) delete payload.target_id;
+
+    const btn = $("submitCreateTaskBtn");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Đang tạo...";
+    }
+
+    try {
+      await createTaskFromUI(payload);
+      $("createTaskOk").textContent = "Đã tạo task thành công.";
+      setTimeout(() => {
+        closeCreateTaskModal();
+        resetCreateTaskModal();
+      }, 450);
+    } catch (err) {
+      $("createTaskError").textContent = "Tạo task lỗi: " + err.message;
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Tạo task";
+      }
+    }
+  }
     function openModal(id) {
     const m = $(id);
     if (!m) return;
@@ -2366,7 +2498,11 @@
         }
       });
     });
-
+    $("btnNewTask")?.addEventListener("click", openCreateTaskModal);
+    $("closeCreateTaskBtn")?.addEventListener("click", closeCreateTaskModal);
+    $("createTaskBackdrop")?.addEventListener("click", closeCreateTaskModal);
+    $("resetCreateTaskBtn")?.addEventListener("click", resetCreateTaskModal);
+    $("submitCreateTaskBtn")?.addEventListener("click", submitCreateTaskModal);
     $("themeToggle")?.addEventListener("click", () => {
       setTheme(STATE.ui.theme === "dark" ? "light" : "dark");
     });
@@ -2443,12 +2579,6 @@
       });
     });
 
-    $("btnNewTask")?.addEventListener("click", () => {
-      const box = $("workCreateBox");
-      if (!box) return;
-      box.style.display = box.style.display === "none" ? "" : "none";
-      $("newTaskTitle")?.focus();
-    });
 
     $("btnCancelTask")?.addEventListener("click", () => {
       if ($("workCreateBox")) $("workCreateBox").style.display = "none";
@@ -2532,6 +2662,7 @@
         if ($("filterCompanyFinal")) $("filterCompanyFinal").value = "";
         if ($("filterShopFinal")) $("filterShopFinal").value = "";
         if ($("filterStatusFinal")) $("filterStatusFinal").value = "";
+
 
         renderAllWork();
         return;
