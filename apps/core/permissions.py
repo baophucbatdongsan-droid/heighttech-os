@@ -31,6 +31,9 @@ ROLE_EDITOR = "editor"
 # =====================================================
 # ABILITY CONSTANTS
 # =====================================================
+VIEW_DASHBOARD = "view_dashboard"
+VIEW_FOUNDER = "view_founder"
+
 VIEW_API_DASHBOARD = "api:view_dashboard"
 VIEW_API_FOUNDER = "api:view_founder"
 
@@ -39,19 +42,58 @@ VIEW_API_FOUNDER = "api:view_founder"
 # ROLE → ABILITY POLICY
 # =====================================================
 ROLE_TO_ABILITIES = {
-    ROLE_FOUNDER: {VIEW_API_DASHBOARD, VIEW_API_FOUNDER},
+    ROLE_FOUNDER: {
+        VIEW_DASHBOARD,
+        VIEW_FOUNDER,
+        VIEW_API_DASHBOARD,
+        VIEW_API_FOUNDER,
+    },
 
-    ROLE_HEAD: {VIEW_API_DASHBOARD},
-    ROLE_ACCOUNT: {VIEW_API_DASHBOARD},
-    ROLE_SALE: {VIEW_API_DASHBOARD},
-    ROLE_OPERATOR: {VIEW_API_DASHBOARD},
-    ROLE_CLIENT: {VIEW_API_DASHBOARD},
+    ROLE_HEAD: {
+        VIEW_DASHBOARD,
+        VIEW_API_DASHBOARD,
+    },
+
+    ROLE_ACCOUNT: {
+        VIEW_DASHBOARD,
+        VIEW_API_DASHBOARD,
+    },
+
+    ROLE_SALE: {
+        VIEW_DASHBOARD,
+        VIEW_API_DASHBOARD,
+    },
+
+    ROLE_OPERATOR: {
+        VIEW_DASHBOARD,
+        VIEW_API_DASHBOARD,
+    },
+
+    ROLE_CLIENT: {
+        VIEW_DASHBOARD,
+        VIEW_API_DASHBOARD,
+    },
 
     # ✅ leader/editor cũng vào được dashboard/work
-    ROLE_LEADER_OPERATION: {VIEW_API_DASHBOARD},
-    ROLE_LEADER_CHANNEL: {VIEW_API_DASHBOARD},
-    ROLE_LEADER_BOOKING: {VIEW_API_DASHBOARD},
-    ROLE_EDITOR: {VIEW_API_DASHBOARD},
+    ROLE_LEADER_OPERATION: {
+        VIEW_DASHBOARD,
+        VIEW_API_DASHBOARD,
+    },
+
+    ROLE_LEADER_CHANNEL: {
+        VIEW_DASHBOARD,
+        VIEW_API_DASHBOARD,
+    },
+
+    ROLE_LEADER_BOOKING: {
+        VIEW_DASHBOARD,
+        VIEW_API_DASHBOARD,
+    },
+
+    ROLE_EDITOR: {
+        VIEW_DASHBOARD,
+        VIEW_API_DASHBOARD,
+    },
 }
 
 
@@ -87,7 +129,6 @@ def get_user_memberships(user):
     tenant_id = _current_tenant_id()
     qs = Membership.objects.filter(user=user, is_active=True)
 
-    # nếu Membership có tenant_id thì filter theo tenant
     if tenant_id and hasattr(qs.model, "tenant_id"):
         qs = qs.filter(tenant_id=tenant_id)
 
@@ -106,10 +147,6 @@ def get_user_roles(user) -> Set[str]:
 # SHOPMEMBER HELPERS (shops.ShopMember)
 # =====================================================
 def get_user_shop_memberships(user):
-    """
-    Shop-level membership.
-    Lưu ý: nhiều project dùng soft-delete/custom manager nên ưu tiên objects_all.
-    """
     if not _is_authenticated(user):
         return _mgr(ShopMember).none()
 
@@ -133,9 +170,6 @@ def user_has_any_shop_membership(user) -> bool:
 # ROLE CHECKERS
 # =====================================================
 def is_founder(user) -> bool:
-    """
-    founder = superuser OR có role founder trong Membership.
-    """
     if not _is_authenticated(user):
         return False
     if getattr(user, "is_superuser", False):
@@ -144,10 +178,6 @@ def is_founder(user) -> bool:
 
 
 def is_client(user) -> bool:
-    """
-    ✅ Client = có ShopMember (được gán shop) nhưng KHÔNG cần có Membership.
-    Đây là tối ưu onboarding: shop được add vào portal là dùng được ngay.
-    """
     if not _is_authenticated(user):
         return False
     return user_has_any_shop_membership(user)
@@ -157,21 +187,6 @@ def is_client(user) -> bool:
 # ROLE RESOLVER (UI/API)
 # =====================================================
 def resolve_user_role(user) -> str:
-    """
-    Priority:
-      superuser/founder
-      > head
-      > leader_operation / leader_channel / leader_booking
-      > account
-      > sale
-      > editor
-      > operator
-      > client
-      > none
-
-    ✅ Nâng cấp:
-    - Nếu không có Membership nhưng có ShopMember => ROLE_CLIENT
-    """
     if not _is_authenticated(user):
         return ROLE_NONE
 
@@ -199,7 +214,6 @@ def resolve_user_role(user) -> str:
     if ROLE_OPERATOR in roles:
         return ROLE_OPERATOR
 
-    # ✅ auto client từ ShopMember
     if is_client(user):
         return ROLE_CLIENT
 
@@ -239,11 +253,6 @@ class FounderOnlyPermission(BasePermission):
 # COMPANY SCOPE RESOLVER (X-Company-Id)
 # =====================================================
 def resolve_company_scope_for_request(request) -> Tuple[Optional[int], List[int]]:
-    """
-    Trả về:
-    - selected_company_id (có thể None)
-    - allowed_company_ids
-    """
     user = getattr(request, "user", None)
     if not _is_authenticated(user):
         return None, []
