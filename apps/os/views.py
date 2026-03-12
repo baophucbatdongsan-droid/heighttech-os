@@ -6,6 +6,7 @@ from django.shortcuts import render
 
 from apps.accounts.models import Membership
 from apps.contracts.models import Contract
+from apps.work.models_attachment import TaskAttachment
 
 
 def _current_tenant_id(request):
@@ -45,7 +46,7 @@ def _current_tenant_id(request):
 def work_page(request):
     tenant_id = _current_tenant_id(request)
     if not tenant_id:
-      raise Http404("Không xác định được tenant hiện tại")
+        raise Http404("Không xác định được tenant hiện tại")
 
     return render(
         request,
@@ -210,5 +211,42 @@ def content_work_sync_page(request):
         {
             "current_tenant_id": _current_tenant_id(request),
             "contract_id": request.GET.get("contract_id") or "",
+        },
+    )
+
+
+@login_required
+def file_viewer_page(request, attachment_id: int):
+    tenant_id = _current_tenant_id(request)
+    if not tenant_id:
+        raise Http404("Không xác định được tenant hiện tại")
+
+    obj = (
+        TaskAttachment.objects.filter(
+            id=int(attachment_id),
+            tenant_id=int(tenant_id),
+            is_deleted=False,
+        )
+        .select_related("task")
+        .first()
+    )
+
+    if not obj:
+        raise Http404("File không tồn tại trong tenant hiện tại")
+
+    preview_url = f"/api/v1/os/work/{obj.task_id}/attachments/{obj.id}/preview/"
+    download_url = f"/api/v1/os/work/{obj.task_id}/attachments/{obj.id}/download/"
+
+    return render(
+        request,
+        "os_file_viewer.html",
+        {
+            "current_tenant_id": tenant_id,
+            "attachment_id": int(obj.id),
+            "task_id": int(obj.task_id),
+            "file_name": obj.original_name or obj.file_name or f"file-{obj.id}",
+            "content_type": obj.content_type or "",
+            "preview_url": preview_url,
+            "download_url": download_url,
         },
     )

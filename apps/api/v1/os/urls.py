@@ -19,7 +19,12 @@ from .os_work import (
 from .os_work_assign_by import OSWorkAssignByApi
 from apps.products.api_import import ProductCSVImportApi
 from apps.products.api_stats import ProductDailyStatUpsertApi
-
+from apps.api.v1.os.views_work_attachment import (
+    WorkAttachmentDownloadApi,
+    WorkAttachmentListApi,
+    WorkAttachmentPreviewApi,
+    WorkAttachmentUploadApi,
+)
 app_name = "api_v1_os"
 
 urlpatterns = [
@@ -47,4 +52,9 @@ urlpatterns = [
     path("work/<int:task_id>/comments/", OSWorkCommentsApi.as_view(), name="os_work_comments"),
     path("products/import-csv/", ProductCSVImportApi.as_view(), name="products-import-csv"),
     path("products/daily-stats/upsert/", ProductDailyStatUpsertApi.as_view(), name="products-daily-stats-upsert"),
+
+    path("work/<int:task_id>/attachments/", WorkAttachmentListApi.as_view(), name="os_work_attachment_list"),
+    path("work/<int:task_id>/attachments/upload/", WorkAttachmentUploadApi.as_view(), name="os_work_attachment_upload"),
+    path("work/<int:task_id>/attachments/<int:attachment_id>/download/", WorkAttachmentDownloadApi.as_view(), name="os_work_attachment_download"),
+    path("work/<int:task_id>/attachments/<int:attachment_id>/preview/", WorkAttachmentPreviewApi.as_view(), name="os_work_attachment_preview"),
 ]

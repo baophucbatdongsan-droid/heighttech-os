@@ -9,13 +9,14 @@
 </head>
 <body data-page="work-os">
   <script>
-    window.HT_TENANT_ID = "{{ request.tenant.id|default:'' }}";
+    window.HT_TENANT_ID = "{{ current_tenant_id|default:'' }}";
     window.HT_OS_WORK = {
       inbox: "/api/v1/os/work/inbox/",
       create: "/api/v1/os/work/create/",
       assignBase: "/api/v1/os/work/",
       updateBase: "/api/v1/os/work/",
-      commentsBase: "/api/v1/os/work/"
+      commentsBase: "/api/v1/os/work/",
+      attachmentsBase: "/api/v1/os/work/"
     };
   </script>
 
@@ -185,9 +186,21 @@
           </div>
           <div id="taskCommentsList"></div>
         </div>
+
+        <div class="drawer-section">
+          <div class="drawer-section-title">File đính kèm</div>
+
+          <div class="comment-box">
+            <input id="taskAttachmentInput" class="input" type="file" />
+            <button class="btn mini" id="btnUploadTaskAttachment" type="button">Upload file</button>
+          </div>
+
+          <div id="taskAttachmentsList"></div>
+        </div>
       </div>
     </div>
   </aside>
+
 
   <div class="modal" id="createTaskModal" aria-hidden="true">
     <div class="modal-backdrop" id="createTaskBackdrop"></div>
@@ -308,6 +321,6 @@
     window.HT_TENANT_ID = "{{ current_tenant_id|default:'' }}";
     </script>
 
-    <script src="{% static 'os/work.js' %}?v=2"></script>
+    <script src="{% static 'os/work.js' %}?v=3"></script>
 </body>
 </html>

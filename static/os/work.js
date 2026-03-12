@@ -33,8 +33,8 @@
   async function http(url, opts = {}) {
     const headers = Object.assign({}, opts.headers || {});
     const tenantId =
-        String(window.HT_TENANT_ID || "").trim() ||
-        String(localStorage.getItem("ht_tenant_id") || "").trim();
+      String(window.HT_TENANT_ID || "").trim() ||
+      String(localStorage.getItem("ht_tenant_id") || "").trim();
 
     if (tenantId) headers["X-Tenant-Id"] = tenantId;
 
@@ -44,30 +44,30 @@
 
     let res;
     try {
-        res = await fetch(url, {
+      res = await fetch(url, {
         credentials: "include",
         cache: "no-store",
         ...opts,
         headers,
-        });
+      });
     } catch (err) {
-        throw new Error(`Fetch fail: ${url} :: ${err.message}`);
+      throw new Error(`Fetch fail: ${url} :: ${err.message}`);
     }
 
     const ct = res.headers.get("content-type") || "";
     const data = ct.includes("application/json")
-        ? await res.json()
-        : await res.text();
+      ? await res.json()
+      : await res.text();
 
     if (!res.ok) {
-        const msg =
+      const msg =
         (data && (data.message || data.detail || data.error)) ||
         (typeof data === "string" ? data : JSON.stringify(data));
-        throw new Error(`${res.status} ${res.statusText} :: ${msg || "HTTP error"}`);
+      throw new Error(`${res.status} ${res.statusText} :: ${msg || "HTTP error"}`);
     }
 
     return data;
-    }
+  }
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -125,74 +125,73 @@
 
   function getCurrentShopId() {
     return (
-        String(window.HT_CURRENT_SHOP_ID || "").trim() ||
-        String(localStorage.getItem("ht_shop_id") || "").trim() ||
-        ""
+      String(window.HT_CURRENT_SHOP_ID || "").trim() ||
+      String(localStorage.getItem("ht_shop_id") || "").trim() ||
+      ""
     );
-    }
+  }
 
-    function getCurrentProjectId() {
+  function getCurrentProjectId() {
     return (
-        String(window.HT_CURRENT_PROJECT_ID || "").trim() ||
-        String(localStorage.getItem("ht_project_id") || "").trim() ||
-        ""
+      String(window.HT_CURRENT_PROJECT_ID || "").trim() ||
+      String(localStorage.getItem("ht_project_id") || "").trim() ||
+      ""
     );
-    }
+  }
 
-    function getKnownShops() {
+  function getKnownShops() {
     const map = new Map();
 
     (STATE.items || []).forEach((x) => {
-        const id = String(x.shop_id || "").trim();
-        if (!id) return;
+      const id = String(x.shop_id || "").trim();
+      if (!id) return;
 
-        map.set(id, {
+      map.set(id, {
         id,
         name: String(x.shop_name || `Shop #${id}`),
-        });
+      });
     });
 
     const currentShopId = getCurrentShopId();
     if (currentShopId && !map.has(currentShopId)) {
-        map.set(currentShopId, {
+      map.set(currentShopId, {
         id: currentShopId,
         name: `Shop #${currentShopId}`,
-        });
+      });
     }
 
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
-    }
+  }
 
-    function getKnownProjectsByShop(shopId = "") {
+  function getKnownProjectsByShop(shopId = "") {
     const sid = String(shopId || "").trim();
     const map = new Map();
 
     (STATE.items || []).forEach((x) => {
-        const pid = String(x.project_id || "").trim();
-        if (!pid) return;
+      const pid = String(x.project_id || "").trim();
+      if (!pid) return;
+      if (sid && String(x.shop_id || "").trim() !== sid) return;
 
-        if (sid && String(x.shop_id || "").trim() !== sid) return;
-
-        map.set(pid, {
+      map.set(pid, {
         id: pid,
         name: String(x.project_name || `Dự án #${pid}`),
         shop_id: String(x.shop_id || "").trim(),
-        });
+      });
     });
 
     const currentProjectId = getCurrentProjectId();
     if (currentProjectId && !map.has(currentProjectId)) {
-        map.set(currentProjectId, {
+      map.set(currentProjectId, {
         id: currentProjectId,
         name: `Dự án #${currentProjectId}`,
         shop_id: sid,
-        });
+      });
     }
 
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
-    }
+  }
 
-    function renderCreateTaskShopOptions() {
+  function renderCreateTaskShopOptions() {
     const el = $("createTaskShopId");
     if (!el) return;
 
@@ -200,69 +199,84 @@
     const currentShopId = getCurrentShopId();
 
     if (el.tagName === "SELECT") {
-        let html = `<option value="">-- Chọn shop --</option>`;
-        shops.forEach((shop) => {
+      let html = `<option value="">-- Chọn shop --</option>`;
+      shops.forEach((shop) => {
         const selected = String(shop.id) === String(currentShopId) ? "selected" : "";
         html += `<option value="${escapeHtml(shop.id)}" ${selected}>${escapeHtml(shop.name)}</option>`;
-        });
-        el.innerHTML = html;
-        if (currentShopId) el.value = currentShopId;
-    } else {
-        el.value = currentShopId;
-    }
-    }
+      });
+      el.innerHTML = html;
 
-    function renderCreateTaskProjectOptions() {
-    const el = $("createTaskProjectId");
-    if (!el) return;
+      if (currentShopId) {
+        el.value = currentShopId;
+      } else if (shops.length === 1) {
+        el.value = String(shops[0].id);
+      }
+    } else {
+      el.value = currentShopId;
+    }
+  }
+
+  function renderCreateTaskProjectOptions() {
+    const selectEl = $("createTaskProjectSelect");
+    const inputEl = $("createTaskProjectId");
+
+    if (!selectEl) {
+      if (inputEl) inputEl.value = getCurrentProjectId();
+      return;
+    }
 
     const shopId =
-        String($("createTaskShopId")?.value || "").trim() ||
-        getCurrentShopId();
+      String($("createTaskShopId")?.value || "").trim() ||
+      getCurrentShopId();
 
     const projects = getKnownProjectsByShop(shopId);
-    const currentProjectId = getCurrentProjectId();
+    const currentProjectId =
+      String(inputEl?.value || "").trim() ||
+      getCurrentProjectId();
 
-    if (el.tagName === "SELECT") {
-        let html = `<option value="">-- Chọn dự án --</option>`;
-        projects.forEach((p) => {
-        const selected = String(p.id) === String(currentProjectId) ? "selected" : "";
-        html += `<option value="${escapeHtml(p.id)}" ${selected}>${escapeHtml(p.name)}</option>`;
-        });
-        el.innerHTML = html;
+    let html = `<option value="">-- Chọn dự án --</option>`;
+    projects.forEach((p) => {
+      const selected = String(p.id) === String(currentProjectId) ? "selected" : "";
+      html += `<option value="${escapeHtml(p.id)}" ${selected}>${escapeHtml(p.name)}</option>`;
+    });
 
-        if (currentProjectId) {
-        el.value = currentProjectId;
-        } else if (projects.length === 1) {
-        el.value = String(projects[0].id);
-        }
+    selectEl.innerHTML = html;
+
+    if (currentProjectId && projects.find((x) => String(x.id) === String(currentProjectId))) {
+      selectEl.value = currentProjectId;
+    } else if (!currentProjectId && projects.length === 1) {
+      selectEl.value = String(projects[0].id);
     } else {
-        el.value = currentProjectId;
-    }
+      selectEl.value = "";
     }
 
-    function hydrateCreateTaskContext() {
+    if (inputEl) {
+      inputEl.value = String(selectEl.value || "").trim();
+    }
+  }
+
+  function hydrateCreateTaskContext() {
     renderCreateTaskShopOptions();
     renderCreateTaskProjectOptions();
 
     const shopId =
-        String($("createTaskShopId")?.value || "").trim() ||
-        getCurrentShopId();
+      String($("createTaskShopId")?.value || "").trim() ||
+      getCurrentShopId();
 
     const projectId =
-        String($("createTaskProjectId")?.value || "").trim() ||
-        getCurrentProjectId();
+      String($("createTaskProjectId")?.value || "").trim() ||
+      getCurrentProjectId();
 
     const hint = $("createTaskContextLine");
     if (hint) {
-        const parts = [];
-        if (shopId) parts.push(`Shop #${shopId}`);
-        if (projectId) parts.push(`Project #${projectId}`);
-        hint.textContent = parts.length
+      const parts = [];
+      if (shopId) parts.push(`Shop #${shopId}`);
+      if (projectId) parts.push(`Project #${projectId}`);
+      hint.textContent = parts.length
         ? `Ngữ cảnh hiện tại: ${parts.join(" • ")}`
         : "Tạo task theo ngữ cảnh hiện tại.";
     }
-    }
+  }
 
   function taskMetaText(t) {
     const assigneeText =
@@ -578,35 +592,6 @@
     renderTaskComments(data?.items || []);
   }
 
-  function renderTaskComments(items) {
-    const box = $("taskCommentsList");
-    if (!box) return;
-
-    const arr = Array.isArray(items) ? items : [];
-    if (!arr.length) {
-      box.innerHTML = `<div class="work-empty">Chưa có comment</div>`;
-      return;
-    }
-
-    box.innerHTML = arr.map((c) => {
-      const actor =
-        c.actor_name ||
-        c.actor_email ||
-        c.user_name ||
-        c.user_email ||
-        "User";
-
-      const body = c.body || c.content || "";
-
-      return `
-        <div class="task-comment-item">
-          <div class="t">${escapeHtml(actor)}</div>
-          <div class="time">${escapeHtml(fmtTime(c.created_at))}</div>
-          <div class="d">${escapeHtml(body)}</div>
-        </div>
-      `;
-    }).join("");
-  }
 
   function openTaskDrawer(task) {
     if (!task) return;
@@ -633,6 +618,7 @@
     }
 
     refreshTaskComments(task.id).catch(console.warn);
+    refreshTaskAttachments(task.id).catch(console.warn);
   }
 
   function closeTaskDrawer() {
@@ -748,14 +734,15 @@
 
     if ($("createTaskPriority")) $("createTaskPriority").value = "2";
     if ($("createTaskError")) $("createTaskError").textContent = "";
+    if ($("createTaskOk")) $("createTaskOk").textContent = "";
 
     m.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
 
     setTimeout(() => {
-        $("createTaskTitle")?.focus();
+      $("createTaskTitle")?.focus();
     }, 60);
-    }
+  }
 
   function closeCreateTaskModal() {
     const m = $("createTaskModal");
@@ -770,71 +757,105 @@
     if ($("createTaskPriority")) $("createTaskPriority").value = "2";
     if ($("createTaskDueAt")) $("createTaskDueAt").value = "";
     if ($("createTaskAssigneeId")) $("createTaskAssigneeId").value = "";
+    if ($("createTaskDepartment")) $("createTaskDepartment").value = "";
+    if ($("createTaskBrandName")) $("createTaskBrandName").value = "";
+    if ($("createTaskTargetType")) $("createTaskTargetType").value = "";
+    if ($("createTaskTargetId")) $("createTaskTargetId").value = "";
     if ($("createTaskError")) $("createTaskError").textContent = "";
+    if ($("createTaskOk")) $("createTaskOk").textContent = "";
 
     hydrateCreateTaskContext();
-    }
+  }
 
   async function submitCreateTaskModal() {
     const shopId =
-        String($("createTaskShopId")?.value || "").trim() ||
-        getCurrentShopId();
+      String($("createTaskShopId")?.value || "").trim() ||
+      getCurrentShopId();
 
     const projectId =
-        String($("createTaskProjectId")?.value || "").trim() ||
-        getCurrentProjectId();
+      String($("createTaskProjectId")?.value || "").trim() ||
+      getCurrentProjectId();
 
     const payload = {
-        title: ($("createTaskTitle")?.value || "").trim(),
-        description: ($("createTaskDescription")?.value || "").trim(),
-        shop_id: shopId,
-        project_id: projectId,
-        priority: Number(($("createTaskPriority")?.value || "2").trim() || 2),
-        due_at: ($("createTaskDueAt")?.value || "").trim() || null,
-        assignee_id: ($("createTaskAssigneeId")?.value || "").trim() || null,
+      title: ($("createTaskTitle")?.value || "").trim(),
+      description: ($("createTaskDescription")?.value || "").trim(),
+      shop_id: shopId,
+      project_id: projectId,
+      priority: Number(($("createTaskPriority")?.value || "2").trim() || 2),
+      due_at: ($("createTaskDueAt")?.value || "").trim() || null,
+      assignee_id: ($("createTaskAssigneeId")?.value || "").trim() || null,
+      department: ($("createTaskDepartment")?.value || "").trim(),
+      brand_name: ($("createTaskBrandName")?.value || "").trim(),
+      target_type: ($("createTaskTargetType")?.value || "").trim(),
+      target_id: ($("createTaskTargetId")?.value || "").trim(),
     };
 
     if ($("createTaskError")) $("createTaskError").textContent = "";
+    if ($("createTaskOk")) $("createTaskOk").textContent = "";
 
     if (!payload.title) {
-        if ($("createTaskError")) $("createTaskError").textContent = "Anh nhập tiêu đề task trước nha.";
-        $("createTaskTitle")?.focus();
-        return;
+      if ($("createTaskError")) $("createTaskError").textContent = "Anh nhập tiêu đề task trước nha.";
+      $("createTaskTitle")?.focus();
+      return;
     }
 
     if (!payload.shop_id) {
-        if ($("createTaskError")) $("createTaskError").textContent = "Chưa có shop hiện tại để tạo task.";
-        $("createTaskShopId")?.focus();
-        return;
+      if ($("createTaskError")) $("createTaskError").textContent = "Chưa có shop hiện tại để tạo task.";
+      $("createTaskShopId")?.focus();
+      return;
     }
 
     if (!payload.description) delete payload.description;
     if (!payload.project_id) delete payload.project_id;
     if (!payload.assignee_id) delete payload.assignee_id;
     if (!payload.due_at) delete payload.due_at;
+    if (!payload.department) delete payload.department;
+    if (!payload.brand_name) delete payload.brand_name;
+    if (!payload.target_type) delete payload.target_type;
+    if (!payload.target_id) delete payload.target_id;
 
     const btn = $("submitCreateTaskBtn");
     if (btn) {
-        btn.disabled = true;
-        btn.textContent = "Đang tạo...";
+      btn.disabled = true;
+      btn.textContent = "Đang tạo...";
     }
 
     try {
-        await createTask(payload);
-        closeCreateTaskModal();
-        resetCreateTaskModal();
-        await refreshWorkData();
+      await createTask(payload);
+      if ($("createTaskOk")) $("createTaskOk").textContent = "Đã tạo task thành công.";
+      closeCreateTaskModal();
+      resetCreateTaskModal();
+      await refreshWorkData();
     } catch (e) {
-        if ($("createTaskError")) $("createTaskError").textContent = "Tạo task lỗi: " + e.message;
+      if ($("createTaskError")) $("createTaskError").textContent = "Tạo task lỗi: " + e.message;
     } finally {
-        if (btn) {
+      if (btn) {
         btn.disabled = false;
         btn.textContent = "Tạo task";
-        }
+      }
     }
-    }
+  }
 
   function bindEvents() {
+
+    $("btnUploadTaskAttachment")?.addEventListener("click", async () => {
+      const btn = $("btnUploadTaskAttachment");
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Đang upload...";
+      }
+
+      try {
+        await uploadTaskAttachment();
+      } catch (e) {
+        alert("Upload file lỗi: " + e.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Upload file";
+        }
+      }
+    });
     $("btnRefreshWork")?.addEventListener("click", refreshWorkData);
 
     $("btnApplyFilter")?.addEventListener("click", () => {
@@ -861,24 +882,25 @@
 
       renderAll();
     });
+
     $("createTaskShopId")?.addEventListener("change", (e) => {
-        const shopId = String(e.target.value || "").trim();
+      const shopId = String(e.target.value || "").trim();
 
-        if ($("createTaskProjectId")) $("createTaskProjectId").value = "";
-        if ($("createTaskProjectSelect")) $("createTaskProjectSelect").innerHTML = `<option value="">-- Chọn dự án --</option>`;
+      if ($("createTaskProjectId")) $("createTaskProjectId").value = "";
+      renderCreateTaskProjectOptions();
 
-        hydrateCreateTaskContextRich();
-
-        // giữ nguyên shop vừa chọn
-        if ($("createTaskShopId")) $("createTaskShopId").value = shopId;
-        });
-
-        $("createTaskProjectSelect")?.addEventListener("change", (e) => {
-        const projectId = String(e.target.value || "").trim();
-        if ($("createTaskProjectId")) {
-            $("createTaskProjectId").value = projectId;
-        }
+      if ($("createTaskShopId")) $("createTaskShopId").value = shopId;
+      hydrateCreateTaskContext();
     });
+
+    $("createTaskProjectSelect")?.addEventListener("change", (e) => {
+      const projectId = String(e.target.value || "").trim();
+      if ($("createTaskProjectId")) {
+        $("createTaskProjectId").value = projectId;
+      }
+      hydrateCreateTaskContext();
+    });
+
     $("btnOpenCreateTask")?.addEventListener("click", openCreateTaskModal);
     $("closeCreateTaskBtn")?.addEventListener("click", closeCreateTaskModal);
     $("createTaskBackdrop")?.addEventListener("click", closeCreateTaskModal);
@@ -949,7 +971,7 @@
             status,
             shop_id: getCurrentShopId() || undefined,
             project_id: getCurrentProjectId() || undefined,
-        });
+          });
           if (input) input.value = "";
           await refreshWorkData();
         } catch (err) {
@@ -978,7 +1000,7 @@
             status,
             shop_id: getCurrentShopId() || undefined,
             project_id: getCurrentProjectId() || undefined,
-        });
+          });
           e.target.value = "";
           await refreshWorkData();
         } catch (err) {
@@ -993,16 +1015,96 @@
     if (tenantId) localStorage.setItem("ht_tenant_id", tenantId);
 
     if (window.HT_CURRENT_SHOP_ID) {
-        localStorage.setItem("ht_shop_id", String(window.HT_CURRENT_SHOP_ID).trim());
+      localStorage.setItem("ht_shop_id", String(window.HT_CURRENT_SHOP_ID).trim());
     }
 
     if (window.HT_CURRENT_PROJECT_ID) {
-        localStorage.setItem("ht_project_id", String(window.HT_CURRENT_PROJECT_ID).trim());
+      localStorage.setItem("ht_project_id", String(window.HT_CURRENT_PROJECT_ID).trim());
     }
 
     bindEvents();
     await refreshWorkData();
+  }
+  async function refreshTaskAttachments(taskId) {
+    if (!taskId) return;
+    const data = await http(`${CFG.commentsBase}${taskId}/attachments/`);
+    renderTaskAttachments(data?.items || []);
+  }
+
+  function renderTaskAttachments(items) {
+    const box = $("taskAttachmentsList");
+    if (!box) return;
+
+    const arr = Array.isArray(items) ? items : [];
+
+    if (!arr.length) {
+      box.innerHTML = `<div class="work-empty">Chưa có file</div>`;
+      return;
     }
+
+    box.innerHTML = arr.map((x) => {
+      const fileName = x.original_name || x.file_name || `File #${x.id}`;
+      const contentType = x.content_type || "-";
+      const size = Number(x.file_size || 0).toLocaleString("vi-VN");
+
+      return `
+        <div class="task-comment-item">
+          <div class="t">${escapeHtml(fileName)}</div>
+          <div class="time">${escapeHtml(contentType)} • ${escapeHtml(size)} bytes</div>
+          <div class="work-card-actions" style="margin-top:8px;">
+            <a class="btn mini" href="${escapeHtml(x.viewer_url)}" target="_blank" rel="noopener">Xem trong OS</a>
+            <a class="btn mini" href="${escapeHtml(x.preview_url)}" target="_blank" rel="noopener">Preview</a>
+            <a class="btn mini" href="${escapeHtml(x.download_url)}" target="_blank" rel="noopener">Tải file</a>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  async function uploadTaskAttachment() {
+    const taskId = STATE.selectedTaskId;
+    if (!taskId) throw new Error("Chưa chọn task");
+
+    const input = $("taskAttachmentInput");
+    const file = input?.files?.[0];
+
+    if (!file) {
+      alert("Anh chọn file trước nha");
+      return;
+    }
+
+    const tenantId =
+      String(window.HT_TENANT_ID || "").trim() ||
+      String(localStorage.getItem("ht_tenant_id") || "").trim();
+
+    const csrf = getCookie("csrftoken");
+    const form = new FormData();
+    form.append("file", file);
+
+    const headers = {};
+    if (tenantId) headers["X-Tenant-Id"] = tenantId;
+    if (csrf) headers["X-CSRFToken"] = csrf;
+
+    const res = await fetch(`${CFG.commentsBase}${taskId}/attachments/upload/`, {
+      method: "POST",
+      credentials: "include",
+      headers,
+      body: form,
+    });
+
+    const ct = res.headers.get("content-type") || "";
+    const data = ct.includes("application/json") ? await res.json() : await res.text();
+
+    if (!res.ok) {
+      const msg =
+        (data && (data.message || data.detail || data.error)) ||
+        (typeof data === "string" ? data : JSON.stringify(data));
+      throw new Error(msg || "Upload file lỗi");
+    }
+
+    if (input) input.value = "";
+    await refreshTaskAttachments(taskId);
+  }
 
   window.htWorkRefresh = refreshWorkData;
   window.htWorkOpenTask = (id) => {

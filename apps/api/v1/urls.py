@@ -135,9 +135,10 @@ urlpatterns = [
     path("work-items/<int:workitem_id>/sync-content/", ContentSyncFromWorkItemApi.as_view(), name="api_v1_workitem_sync_content"),
     path("founder/content-recompute/", FounderContentRecomputeApi.as_view(), name="api_v1_founder_content_recompute"),
     path("founder/assignment-preview/", FounderAssignmentPreviewApi.as_view(), name="api_v1_founder_assignment_preview"),
-    path("shops/", include(("apps.api.v1.shops.urls", "api_v1_shops"), namespace="api_v1_shops")),
     path("accounts/", include("apps.api.v1.accounts.urls")),
 
     # KEEP THIS LAST
     path("", include("apps.api.v1.urls_projects")),
 ]
+
+

@@ -629,3 +629,4 @@ class WorkItemTransitionLog(models.Model):
     def __str__(self) -> str:
         return f"TransitionLog#{self.pk} wi={self.workitem_id} {self.from_status}->{self.to_status}"
     
+from .models_attachment import TaskAttachment

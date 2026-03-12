@@ -3,6 +3,7 @@ from __future__ import annotations
 from django.contrib import admin
 
 from apps.work.models import WorkItem, WorkItemTransitionLog
+from apps.work.models_attachment import TaskAttachment
 from apps.work.models_comment import WorkComment
 
 
@@ -38,7 +39,53 @@ class WorkCommentAdmin(admin.ModelAdmin):
 
 @admin.register(WorkItemTransitionLog)
 class WorkItemTransitionLogAdmin(admin.ModelAdmin):
-    list_display = ("id", "tenant", "workitem", "from_status", "to_status", "workflow_version", "actor", "created_at")
+    list_display = (
+        "id",
+        "tenant",
+        "workitem",
+        "from_status",
+        "to_status",
+        "workflow_version",
+        "actor",
+        "created_at",
+    )
     list_filter = ("tenant", "workflow_version")
     readonly_fields = ("created_at",)
     autocomplete_fields = ("workitem", "actor", "company", "project")
+
+
+@admin.register(TaskAttachment)
+class TaskAttachmentAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "tenant_id",
+        "task",
+        "original_name",
+        "content_type",
+        "file_size",
+        "shop_id",
+        "project_id",
+        "uploaded_by",
+        "created_at",
+        "is_deleted",
+    )
+    list_filter = (
+        "tenant_id",
+        "content_type",
+        "is_deleted",
+        "created_at",
+    )
+    search_fields = (
+        "original_name",
+        "file_name",
+        "task__title",
+    )
+    readonly_fields = (
+        "file_size",
+        "created_at",
+        "updated_at",
+    )
+    autocomplete_fields = (
+        "task",
+        "uploaded_by",
+    )

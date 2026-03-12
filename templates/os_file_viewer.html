@@ -1,0 +1,133 @@
+{% load static %}
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>{{ file_name }} • HeightTech OS</title>
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=100" />
+  <style>
+    .page-wrap{
+      max-width:1280px;
+      margin:0 auto;
+      padding:24px;
+    }
+
+    .viewer-card{
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:20px;
+      background:rgba(255,255,255,.03);
+      overflow:hidden;
+    }
+
+    .viewer-head{
+      padding:18px 20px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+
+    .viewer-title{
+      font-size:24px;
+      font-weight:900;
+      line-height:1.25;
+    }
+
+    .viewer-sub{
+      color:var(--muted);
+      margin-top:6px;
+      line-height:1.5;
+    }
+
+    .viewer-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .viewer-body{
+      padding:18px;
+      min-height:70vh;
+    }
+
+    .viewer-frame{
+      width:100%;
+      height:74vh;
+      border:0;
+      border-radius:14px;
+      background:#fff;
+    }
+
+    .viewer-image{
+      width:100%;
+      max-height:74vh;
+      object-fit:contain;
+      border-radius:14px;
+      background:#fff;
+      display:block;
+    }
+
+    .viewer-empty{
+      border:1px dashed rgba(255,255,255,.10);
+      border-radius:16px;
+      padding:20px;
+      color:var(--muted);
+      line-height:1.7;
+    }
+
+    @media (max-width: 768px){
+      .page-wrap{padding:12px;}
+      .viewer-title{font-size:20px;}
+      .viewer-frame{height:68vh;}
+      .viewer-image{max-height:68vh;}
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="viewer-card">
+      <div class="viewer-head">
+        <div>
+          <div class="viewer-title">{{ file_name }}</div>
+          <div class="viewer-sub">
+            Attachment #{{ attachment_id }} • Task #{{ task_id }} • {{ content_type|default:"unknown" }}
+          </div>
+        </div>
+
+        <div class="viewer-actions">
+          <a href="/work/" class="btn">Về Work OS</a>
+          <a href="/os/" class="btn">Về OS</a>
+          <a href="{{ preview_url }}" class="btn">Mở preview</a>
+          <a href="{{ download_url }}" class="btn primary">Tải file</a>
+        </div>
+      </div>
+
+      <div class="viewer-body">
+        {% if "pdf" in content_type %}
+          <embed
+            class="viewer-frame"
+            src="{{ preview_url }}"
+            type="application/pdf"
+          />
+        {% elif "image" in content_type %}
+          <img
+            class="viewer-image"
+            src="{{ preview_url }}"
+            alt="{{ file_name }}"
+          />
+        {% elif "text" in content_type %}
+          <iframe class="viewer-frame" src="{{ preview_url }}"></iframe>
+        {% else %}
+          <div class="viewer-empty">
+            File này hiện chưa preview trực tiếp trong OS.<br />
+            Anh bấm <b>Tải file</b> để mở file, hoặc sau mình nâng tiếp docx/xlsx preview nội bộ.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</body>
+</html>

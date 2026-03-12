@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from django.urls import path
 from django.views.generic import RedirectView, TemplateView
-
+from apps.os.views import file_viewer_page
 from apps.os.views import (
     client_work_page,
     content_work_sync_page,
@@ -19,7 +19,21 @@ from apps.os.views import (
 )
 from apps.os.views_company import company_workspace_page
 from apps.os.views_partners import PartnerCreateView, PartnerListView
-
+from apps.os.views import (
+    content_work_sync_page,
+    contract_channel_content_page,
+    contract_client_progress_page,
+    contract_detail_page,
+    contracts_page,
+    file_viewer_page,
+    founder_content_ai_dashboard_page,
+    founder_content_priority_dashboard_page,
+    os_team_page,
+    shops_page,
+    sku_page,
+    work_page,
+    client_work_page,
+)
 
 urlpatterns = [
     # home
@@ -78,4 +92,5 @@ urlpatterns = [
         company_workspace_page,
         name="os_company_workspace",
     ),
+    path("os/files/<int:attachment_id>/", file_viewer_page, name="os_file_viewer"),
 ]
