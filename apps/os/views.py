@@ -6,7 +6,7 @@ from django.shortcuts import render
 
 from apps.accounts.models import Membership
 from apps.contracts.models import Contract
-from apps.work.models_attachment import TaskAttachment
+from apps.os.models_attachment import OSAttachment
 
 
 def _current_tenant_id(request):
@@ -205,12 +205,33 @@ def founder_content_priority_dashboard_page(request):
 
 @login_required
 def content_work_sync_page(request):
+    tenant_id = _current_tenant_id(request)
+
+    contract_id = request.GET.get("contract_id") or ""
+    content_id = request.GET.get("content_id") or ""
+
+    if not contract_id and content_id:
+        try:
+            from apps.contracts.models import ChannelContent
+
+            obj = (
+                ChannelContent.objects.filter(
+                    id=int(content_id),
+                    tenant_id=int(tenant_id) if tenant_id else None,
+                )
+                .first()
+            )
+            if obj and getattr(obj, "contract_id", None):
+                contract_id = str(obj.contract_id)
+        except Exception:
+            pass
+
     return render(
         request,
         "os_content_work_sync.html",
         {
-            "current_tenant_id": _current_tenant_id(request),
-            "contract_id": request.GET.get("contract_id") or "",
+            "current_tenant_id": tenant_id,
+            "contract_id": contract_id,
         },
     )
 
@@ -222,20 +243,19 @@ def file_viewer_page(request, attachment_id: int):
         raise Http404("Không xác định được tenant hiện tại")
 
     obj = (
-        TaskAttachment.objects.filter(
+        OSAttachment.objects.filter(
             id=int(attachment_id),
             tenant_id=int(tenant_id),
             is_deleted=False,
         )
-        .select_related("task")
         .first()
     )
 
     if not obj:
         raise Http404("File không tồn tại trong tenant hiện tại")
 
-    preview_url = f"/api/v1/os/work/{obj.task_id}/attachments/{obj.id}/preview/"
-    download_url = f"/api/v1/os/work/{obj.task_id}/attachments/{obj.id}/download/"
+    preview_url = f"/api/v1/os/attachments/{obj.id}/preview/"
+    download_url = f"/api/v1/os/attachments/{obj.id}/download/"
 
     return render(
         request,
@@ -243,7 +263,7 @@ def file_viewer_page(request, attachment_id: int):
         {
             "current_tenant_id": tenant_id,
             "attachment_id": int(obj.id),
-            "task_id": int(obj.task_id),
+            "task_id": int(obj.target_id),
             "file_name": obj.original_name or obj.file_name or f"file-{obj.id}",
             "content_type": obj.content_type or "",
             "preview_url": preview_url,

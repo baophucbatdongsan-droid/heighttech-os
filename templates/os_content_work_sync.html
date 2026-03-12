@@ -5,7 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Content ↔ Work Sync</title>
-  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=25" />
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=28" />
   <style>
     .page-wrap{max-width:980px;margin:0 auto;padding:24px;}
     .page-title{font-size:28px;font-weight:900;}
@@ -39,8 +39,12 @@
       <div class="muted" style="margin-bottom:8px;">WorkItem ID</div>
       <input id="workitemId" class="input" placeholder="VD: 3 hoặc #3" />
 
-      <div style="margin-top:12px;">
+      <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn primary" type="button" onclick="syncContent()">Sync content từ task</button>
+
+        {% if contract_id %}
+          <a class="btn" href="/os/contracts/{{ contract_id }}/content/">Về Content Studio</a>
+        {% endif %}
       </div>
 
       <div id="syncStatus" class="status-line"></div>
@@ -49,6 +53,8 @@
 
   <script>
     const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
+    const CONTRACT_ID = "{{ contract_id|default:''|escapejs }}".trim();
+    const PRESET_CONTENT_ID = "{{ request.GET.content_id|default:''|escapejs }}".trim();
 
     function getCookie(name) {
       const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
@@ -84,8 +90,36 @@
     }
 
     function normalizeWorkItemId(raw) {
-      const cleaned = String(raw || "").trim().replace(/\D/g, "");
-      return cleaned;
+      return String(raw || "").trim().replace(/\D/g, "");
+    }
+
+    function resolveContentId(data) {
+      return String(
+        data?.content_id ||
+        data?.content?.id ||
+        data?.item?.content_id ||
+        data?.item?.id ||
+        PRESET_CONTENT_ID ||
+        ""
+      ).trim();
+    }
+
+    function resolveContractId(data) {
+      return String(
+        CONTRACT_ID ||
+        data?.contract_id ||
+        data?.content?.contract_id ||
+        data?.item?.contract_id ||
+        ""
+      ).trim();
+    }
+
+    function nextStudioUrl(contractId, contentId) {
+      if (!contractId) return "";
+      const p = new URLSearchParams();
+      if (contentId) p.set("content_id", contentId);
+      const qs = p.toString();
+      return `/os/contracts/${encodeURIComponent(contractId)}/content/${qs ? `?${qs}` : ""}`;
     }
 
     async function syncContent() {
@@ -118,9 +152,30 @@
           return;
         }
 
+        const contentId = resolveContentId(data);
+        const contractId = resolveContractId(data);
+        const studioUrl = nextStudioUrl(contractId, contentId);
+
+        console.log("SYNC RESULT", {
+          contractId,
+          contentId,
+          studioUrl,
+          data
+        });
+
         setStatus(
-          `Đã sync thành công. Content #${data.content_id} → status = ${data.content_status}`,
+          `Đã sync thành công. Content #${contentId || "?"} → status = ${data.content_status || "-"}. Đang chuyển sang Content Studio...`,
           "ok"
+        );
+
+        if (studioUrl) {
+          window.location.href = studioUrl;
+          return;
+        }
+
+        setStatus(
+          `Đã sync thành công nhưng chưa xác định được trang đích. contract_id=${contractId || "-"} • content_id=${contentId || "-"}`,
+          "err"
         );
       } catch (err) {
         setStatus("Lỗi sync: " + (err.message || err), "err");

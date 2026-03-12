@@ -25,6 +25,13 @@ from apps.api.v1.os.views_work_attachment import (
     WorkAttachmentPreviewApi,
     WorkAttachmentUploadApi,
 )
+
+from apps.api.v1.os.views_entity_attachment import (
+    OSEntityAttachmentDownloadApi,
+    OSEntityAttachmentListApi,
+    OSEntityAttachmentPreviewApi,
+    OSEntityAttachmentUploadApi,
+)
 app_name = "api_v1_os"
 
 urlpatterns = [
@@ -57,4 +64,9 @@ urlpatterns = [
     path("work/<int:task_id>/attachments/upload/", WorkAttachmentUploadApi.as_view(), name="os_work_attachment_upload"),
     path("work/<int:task_id>/attachments/<int:attachment_id>/download/", WorkAttachmentDownloadApi.as_view(), name="os_work_attachment_download"),
     path("work/<int:task_id>/attachments/<int:attachment_id>/preview/", WorkAttachmentPreviewApi.as_view(), name="os_work_attachment_preview"),
+
+    path("attachments/<str:target_type>/<int:target_id>/", OSEntityAttachmentListApi.as_view(), name="os_entity_attachment_list"),
+    path("attachments/<str:target_type>/<int:target_id>/upload/", OSEntityAttachmentUploadApi.as_view(), name="os_entity_attachment_upload"),
+    path("attachments/<int:attachment_id>/download/", OSEntityAttachmentDownloadApi.as_view(), name="os_entity_attachment_download"),
+    path("attachments/<int:attachment_id>/preview/", OSEntityAttachmentPreviewApi.as_view(), name="os_entity_attachment_preview"),
 ]

@@ -80,6 +80,46 @@ button{
   margin-top:10px;
   color:var(--muted);
 }
+.attach-box{
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px dashed rgba(255,255,255,.10);
+}
+.attach-title{
+  font-size:14px;
+  font-weight:800;
+  margin-bottom:10px;
+}
+.attach-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:10px;
+}
+.attach-item{
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;
+  padding:10px 12px;
+  background:rgba(255,255,255,.02);
+}
+.attach-name{
+  font-weight:700;
+}
+.attach-meta{
+  color:var(--muted);
+  font-size:12px;
+  margin-top:4px;
+}
+.attach-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:8px;
+}
+.attach-empty{
+  color:var(--muted);
+  font-size:13px;
+}
 </style>
 </head>
 
@@ -135,6 +175,14 @@ function authHeaders(extra = {}) {
   if (CURRENT_TENANT_ID) headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
   const csrf = getCookie("csrftoken");
   if (csrf) headers["X-CSRFToken"] = csrf;
+  return headers;
+}
+
+function entityHeaders(extra = {}) {
+  const headers = Object.assign({}, extra || {});
+  const csrf = getCookie("csrftoken");
+  if (csrf) headers["X-CSRFToken"] = csrf;
+  if (CURRENT_TENANT_ID) headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
   return headers;
 }
 
@@ -221,6 +269,77 @@ function aiBadge(ai){
   `;
 }
 
+function renderAttachmentList(boxId, items){
+  const box = document.getElementById(boxId);
+  if (!box) return;
+
+  if (!items.length) {
+    box.innerHTML = `<div class="attach-empty">Chưa có file</div>`;
+    return;
+  }
+
+  box.innerHTML = items.map(x => `
+    <div class="attach-item">
+      <div class="attach-name">${escapeHtml(x.original_name || x.file_name || ("File #" + x.id))}</div>
+      <div class="attach-meta">${escapeHtml(x.content_type || "-")} • ${Number(x.file_size || 0).toLocaleString("vi-VN")} bytes</div>
+      <div class="attach-actions">
+        <a class="btn" href="${x.viewer_url}" target="_blank" rel="noopener">Mở trong OS</a>
+        <a class="btn" href="${x.preview_url}" target="_blank" rel="noopener">Preview</a>
+        <a class="btn" href="${x.download_url}" target="_blank" rel="noopener">Tải file</a>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function loadEntityAttachments(targetType, targetId, boxId) {
+  const res = await fetch(`/api/v1/os/attachments/${targetType}/${targetId}/`, {
+    credentials: "include",
+    headers: entityHeaders(),
+    cache: "no-store",
+  });
+
+  const data = await readJsonSafe(res);
+  const box = document.getElementById(boxId);
+  if (!box) return;
+
+  if (!res.ok || !data.ok) {
+    box.innerHTML = `<div class="attach-empty">Không tải được file</div>`;
+    return;
+  }
+
+  renderAttachmentList(boxId, data.items || []);
+}
+
+async function uploadEntityAttachment(targetType, targetId, inputId, boxId) {
+  const input = document.getElementById(inputId);
+  const file = input?.files?.[0];
+  if (!file) {
+    alert("Chọn file trước đã anh");
+    return;
+  }
+
+  const form = new FormData();
+  form.append("file", file);
+
+  const res = await fetch(`/api/v1/os/attachments/${targetType}/${targetId}/upload/`, {
+    method: "POST",
+    credentials: "include",
+    headers: entityHeaders(),
+    body: form,
+  });
+
+  const ct = res.headers.get("content-type") || "";
+  const data = ct.includes("application/json") ? await res.json() : await res.text();
+
+  if (!res.ok || !data.ok) {
+    alert(data.message || "Upload file lỗi");
+    return;
+  }
+
+  input.value = "";
+  await loadEntityAttachments(targetType, targetId, boxId);
+}
+
 async function loadContent(){
   const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/channel-content/`, {
     credentials:"include",
@@ -240,6 +359,8 @@ async function loadContent(){
   for (const x of data.items){
     const ai = await fetchAiScore(x.id);
     const createTaskUrl = buildCreateTaskUrlForContent(x);
+    const attachInputId = `contentAttachmentInput_${x.id}`;
+    const attachListId = `contentAttachmentList_${x.id}`;
 
     htmlParts.push(`
       <div class="item">
@@ -268,11 +389,26 @@ async function loadContent(){
           <a class="btn" href="${createTaskUrl}">Tạo task content</a>
           <a class="btn" href="/os/content-work-sync/?contract_id=${CONTRACT_ID}&content_id=${x.id}">Viết tiếp</a>
         </div>
+
+        <div class="attach-box">
+          <div class="attach-title">File của content này</div>
+          <div class="actions-row">
+            <input id="${attachInputId}" class="input" type="file" />
+            <button onclick="uploadEntityAttachment('channel_content', ${x.id}, '${attachInputId}', '${attachListId}')">
+              Upload file
+            </button>
+          </div>
+          <div id="${attachListId}" class="attach-list"></div>
+        </div>
       </div>
     `);
   }
 
   box.innerHTML = htmlParts.join("");
+
+  for (const x of data.items) {
+    await loadEntityAttachments("channel_content", x.id, `contentAttachmentList_${x.id}`);
+  }
 }
 
 async function createContent(){

@@ -130,6 +130,47 @@
       font-size:13px;
     }
 
+    .attach-box{
+      margin-top:14px;
+      padding-top:14px;
+      border-top:1px dashed rgba(255,255,255,.10);
+    }
+    .attach-title{
+      font-size:14px;
+      font-weight:800;
+      margin-bottom:10px;
+    }
+    .attach-list{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top:10px;
+    }
+    .attach-item{
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:12px;
+      padding:10px 12px;
+      background:rgba(255,255,255,.02);
+    }
+    .attach-name{
+      font-weight:700;
+    }
+    .attach-meta{
+      color:var(--muted);
+      font-size:12px;
+      margin-top:4px;
+    }
+    .attach-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:8px;
+    }
+    .attach-empty{
+      color:var(--muted);
+      font-size:13px;
+    }
+
     @media (max-width: 1100px){
       .kpi-row{grid-template-columns:repeat(2,minmax(0,1fr));}
       .main-grid{grid-template-columns:1fr;}
@@ -169,7 +210,20 @@
               <div class="brand-sub">Thông tin core của hợp đồng</div>
             </div>
           </div>
-          <div class="section-body" id="contractOverview"></div>
+          <div class="section-body">
+            <div id="contractOverview"></div>
+
+            <div class="attach-box">
+              <div class="attach-title">File hợp đồng / phụ lục / báo giá</div>
+              <div class="actions-row" style="justify-content:flex-start;">
+                <input id="contractAttachmentInput" class="input" type="file" />
+                <button class="btn primary" type="button" onclick="uploadEntityAttachment('contract', CONTRACT_ID, 'contractAttachmentInput', 'contractAttachmentList')">
+                  Upload file
+                </button>
+              </div>
+              <div id="contractAttachmentList" class="attach-list"></div>
+            </div>
+          </div>
         </div>
 
         <div class="section-card">
@@ -288,6 +342,14 @@
       return headers;
     }
 
+    function entityHeaders(extra = {}) {
+      const headers = Object.assign({}, extra || {});
+      const csrf = getCookie("csrftoken");
+      if (csrf) headers["X-CSRFToken"] = csrf;
+      if (CURRENT_TENANT_ID) headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
+      return headers;
+    }
+
     function setBox(id, msg, type="info"){
       const el = document.getElementById(id);
       if (!el) return;
@@ -320,6 +382,77 @@
       }
       const txt = await res.text();
       throw new Error(txt || `HTTP ${res.status}`);
+    }
+
+    function renderAttachmentList(boxId, items){
+      const box = document.getElementById(boxId);
+      if (!box) return;
+
+      if (!items.length) {
+        box.innerHTML = `<div class="attach-empty">Chưa có file</div>`;
+        return;
+      }
+
+      box.innerHTML = items.map(x => `
+        <div class="attach-item">
+          <div class="attach-name">${escapeHtml(x.original_name || x.file_name || ("File #" + x.id))}</div>
+          <div class="attach-meta">${escapeHtml(x.content_type || "-")} • ${Number(x.file_size || 0).toLocaleString("vi-VN")} bytes</div>
+          <div class="attach-actions">
+            <a class="btn" href="${x.viewer_url}" target="_blank" rel="noopener">Mở trong OS</a>
+            <a class="btn" href="${x.preview_url}" target="_blank" rel="noopener">Preview</a>
+            <a class="btn" href="${x.download_url}" target="_blank" rel="noopener">Tải file</a>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    async function loadEntityAttachments(targetType, targetId, boxId) {
+      const res = await fetch(`/api/v1/os/attachments/${targetType}/${targetId}/`, {
+        credentials: "include",
+        headers: entityHeaders(),
+        cache: "no-store",
+      });
+
+      const data = await readJsonSafe(res);
+      const box = document.getElementById(boxId);
+      if (!box) return;
+
+      if (!res.ok || !data.ok) {
+        box.innerHTML = `<div class="attach-empty">Không tải được file</div>`;
+        return;
+      }
+
+      renderAttachmentList(boxId, data.items || []);
+    }
+
+    async function uploadEntityAttachment(targetType, targetId, inputId, boxId) {
+      const input = document.getElementById(inputId);
+      const file = input?.files?.[0];
+      if (!file) {
+        alert("Chọn file trước đã anh");
+        return;
+      }
+
+      const form = new FormData();
+      form.append("file", file);
+
+      const res = await fetch(`/api/v1/os/attachments/${targetType}/${targetId}/upload/`, {
+        method: "POST",
+        credentials: "include",
+        headers: entityHeaders(),
+        body: form,
+      });
+
+      const ct = res.headers.get("content-type") || "";
+      const data = ct.includes("application/json") ? await res.json() : await res.text();
+
+      if (!res.ok || !data.ok) {
+        alert(data.message || "Upload file lỗi");
+        return;
+      }
+
+      input.value = "";
+      await loadEntityAttachments(targetType, targetId, boxId);
     }
 
     function renderHeadline(h){
@@ -480,6 +613,8 @@
         renderMilestones(Array.isArray(data.milestones) ? data.milestones : []);
         renderPayments(Array.isArray(data.payments) ? data.payments : []);
         renderBookings(Array.isArray(data.bookings) ? data.bookings : []);
+
+        await loadEntityAttachments("contract", CONTRACT_ID, "contractAttachmentList");
       } catch (err) {
         alert("Lỗi tải dữ liệu: " + err.message);
       }
