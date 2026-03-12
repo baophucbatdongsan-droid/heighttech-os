@@ -5,8 +5,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>HeightTech • Work OS</title>
-  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=1" />
-  <link rel="stylesheet" href="{% static 'os/work.css' %}?v=1" />
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=2" />
+  <link rel="stylesheet" href="{% static 'os/work.css' %}?v=2" />
 </head>
 <body data-page="work-os">
   <script>
@@ -192,72 +192,123 @@
 
   <div class="modal" id="createTaskModal" aria-hidden="true">
     <div class="modal-backdrop" id="createTaskBackdrop"></div>
+
     <div class="modal-card">
-      <div class="modal-head">
+        <div class="modal-head">
         <div>
-          <div class="modal-title">Tạo công việc mới</div>
-          <div class="modal-sub">Tạo task cho workflow vận hành</div>
+            <div class="modal-title">Tạo công việc mới</div>
+            <div class="modal-sub">Tạo việc theo shop và dự án vận hành hiện tại.</div>
         </div>
         <button class="btn mini" id="closeCreateTaskBtn" type="button">Đóng</button>
-      </div>
+        </div>
 
-      <div class="modal-body">
+        <div class="modal-body">
+        <div id="createTaskContextLine" class="muted" style="margin-bottom:12px;">
+            Tạo việc theo shop và dự án vận hành hiện tại.
+        </div>
+
         <div class="task-form-grid">
-          <div class="task-form-block full">
-            <label>Tiêu đề</label>
-            <input id="createTaskTitle" class="input" />
-          </div>
+            <div class="task-form-block full">
+            <label>Tiêu đề *</label>
+            <input
+                id="createTaskTitle"
+                class="input"
+                placeholder="VD: Viết content hook cho shop..."
+            />
+            </div>
 
-          <div class="task-form-block full">
+            <div class="task-form-block full">
             <label>Mô tả</label>
-            <textarea id="createTaskDescription" class="input" rows="4"></textarea>
-          </div>
+            <textarea
+                id="createTaskDescription"
+                class="input"
+                rows="4"
+                placeholder="Mô tả ngắn task..."
+            ></textarea>
+            </div>
 
-          <div class="task-form-block">
-            <label>Shop ID</label>
-            <input id="createTaskShopId" class="input" />
-          </div>
+            <div class="task-form-block">
+            <label>Shop *</label>
+            <select id="createTaskShopId" class="input">
+                <option value="">-- Chọn shop --</option>
+            </select>
+            </div>
 
-          <div class="task-form-block">
-            <label>Project ID</label>
-            <input id="createTaskProjectId" class="input" />
-          </div>
+            <div class="task-form-block">
+            <label>Dự án chiến dịch</label>
+            <select id="createTaskProjectSelect" class="input">
+                <option value="">-- Chọn dự án --</option>
+            </select>
+            <input id="createTaskProjectId" type="hidden" />
+            </div>
 
-          <div class="task-form-block">
+            <div class="task-form-block">
+            <label>Phòng ban</label>
+            <select id="createTaskDepartment" class="input">
+                <option value="">-- Chọn phòng ban --</option>
+                <option value="san_xuat">Sản xuất</option>
+                <option value="content">Content</option>
+                <option value="design">Design</option>
+                <option value="ads">Ads</option>
+                <option value="van_hanh">Vận hành</option>
+                <option value="booking">Booking</option>
+            </select>
+            </div>
+
+            <div class="task-form-block">
+            <label>Brand / Nhãn hàng</label>
+            <input
+                id="createTaskBrandName"
+                class="input"
+                placeholder="VD: 70mai, AHC..."
+            />
+            </div>
+
+            <div class="task-form-block">
             <label>Ưu tiên</label>
             <select id="createTaskPriority" class="input">
-              <option value="2">Vừa</option>
-              <option value="1">Thấp</option>
-              <option value="3">Cao</option>
-              <option value="4">Gấp</option>
+                <option value="2">Vừa</option>
+                <option value="1">Thấp</option>
+                <option value="3">Cao</option>
+                <option value="4">Gấp</option>
             </select>
-          </div>
+            </div>
 
-          <div class="task-form-block">
+            <div class="task-form-block">
+            <label>Người phụ trách</label>
+            <input
+                id="createTaskAssigneeId"
+                class="input"
+                placeholder="Không bắt buộc"
+            />
+            </div>
+
+            <div class="task-form-block full">
             <label>Deadline</label>
             <input id="createTaskDueAt" class="input" type="datetime-local" />
-          </div>
+            </div>
 
-          <div class="task-form-block">
-            <label>Assignee ID</label>
-            <input id="createTaskAssigneeId" class="input" />
-          </div>
+            <input id="createTaskCompanyId" type="hidden" />
+            <input id="createTaskCompanyText" type="hidden" />
+            <input id="createTaskTargetType" type="hidden" />
+            <input id="createTaskTargetId" type="hidden" />
         </div>
 
         <div id="createTaskError" class="form-error"></div>
+        <div id="createTaskOk" class="form-ok"></div>
 
         <div class="drawer-actions">
-          <button class="btn mini" id="resetCreateTaskBtn" type="button">Reset</button>
-          <button class="btn" id="submitCreateTaskBtn" type="button">Tạo task</button>
+            <button class="btn mini" id="resetCreateTaskBtn" type="button">Reset</button>
+            <button class="btn" id="submitCreateTaskBtn" type="button">Tạo task</button>
         </div>
-      </div>
+        </div>
     </div>
-  </div>
+    </div>
 
   <script>
     window.HT_TENANT_ID = "{{ current_tenant_id|default:'' }}";
     </script>
 
-    <script src="{% static 'os/work.js' %}?v=1"></script>
+    <script src="{% static 'os/work.js' %}?v=2"></script>
 </body>
 </html>

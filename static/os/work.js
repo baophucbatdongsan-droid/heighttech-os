@@ -116,6 +116,147 @@
     };
   }
 
+  function getCurrentShopId() {
+    return (
+        String(window.HT_CURRENT_SHOP_ID || "").trim() ||
+        String(localStorage.getItem("ht_shop_id") || "").trim() ||
+        ""
+    );
+    }
+
+    function getCurrentProjectId() {
+    return (
+        String(window.HT_CURRENT_PROJECT_ID || "").trim() ||
+        String(localStorage.getItem("ht_project_id") || "").trim() ||
+        ""
+    );
+    }
+
+    function getKnownShops() {
+    const map = new Map();
+
+    (STATE.items || []).forEach((x) => {
+        const id = String(x.shop_id || "").trim();
+        if (!id) return;
+
+        map.set(id, {
+        id,
+        name: String(x.shop_name || `Shop #${id}`),
+        });
+    });
+
+    const currentShopId = getCurrentShopId();
+    if (currentShopId && !map.has(currentShopId)) {
+        map.set(currentShopId, {
+        id: currentShopId,
+        name: `Shop #${currentShopId}`,
+        });
+    }
+
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    function getKnownProjectsByShop(shopId = "") {
+    const sid = String(shopId || "").trim();
+    const map = new Map();
+
+    (STATE.items || []).forEach((x) => {
+        const pid = String(x.project_id || "").trim();
+        if (!pid) return;
+
+        if (sid && String(x.shop_id || "").trim() !== sid) return;
+
+        map.set(pid, {
+        id: pid,
+        name: String(x.project_name || `Dự án #${pid}`),
+        shop_id: String(x.shop_id || "").trim(),
+        });
+    });
+
+    const currentProjectId = getCurrentProjectId();
+    if (currentProjectId && !map.has(currentProjectId)) {
+        map.set(currentProjectId, {
+        id: currentProjectId,
+        name: `Dự án #${currentProjectId}`,
+        shop_id: sid,
+        });
+    }
+
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    function renderCreateTaskShopOptions() {
+    const el = $("createTaskShopId");
+    if (!el) return;
+
+    const shops = getKnownShops();
+    const currentShopId = getCurrentShopId();
+
+    if (el.tagName === "SELECT") {
+        let html = `<option value="">-- Chọn shop --</option>`;
+        shops.forEach((shop) => {
+        const selected = String(shop.id) === String(currentShopId) ? "selected" : "";
+        html += `<option value="${escapeHtml(shop.id)}" ${selected}>${escapeHtml(shop.name)}</option>`;
+        });
+        el.innerHTML = html;
+        if (currentShopId) el.value = currentShopId;
+    } else {
+        el.value = currentShopId;
+    }
+    }
+
+    function renderCreateTaskProjectOptions() {
+    const el = $("createTaskProjectId");
+    if (!el) return;
+
+    const shopId =
+        String($("createTaskShopId")?.value || "").trim() ||
+        getCurrentShopId();
+
+    const projects = getKnownProjectsByShop(shopId);
+    const currentProjectId = getCurrentProjectId();
+
+    if (el.tagName === "SELECT") {
+        let html = `<option value="">-- Chọn dự án --</option>`;
+        projects.forEach((p) => {
+        const selected = String(p.id) === String(currentProjectId) ? "selected" : "";
+        html += `<option value="${escapeHtml(p.id)}" ${selected}>${escapeHtml(p.name)}</option>`;
+        });
+        el.innerHTML = html;
+
+        if (currentProjectId) {
+        el.value = currentProjectId;
+        } else if (projects.length === 1) {
+        el.value = String(projects[0].id);
+        }
+    } else {
+        el.value = currentProjectId;
+    }
+    }
+
+    function hydrateCreateTaskContext() {
+    renderCreateTaskShopOptions();
+    renderCreateTaskProjectOptions();
+
+    const shopId =
+        String($("createTaskShopId")?.value || "").trim() ||
+        getCurrentShopId();
+
+    const projectId =
+        String($("createTaskProjectId")?.value || "").trim() ||
+        getCurrentProjectId();
+
+    const hint = $("createTaskContextLine");
+    if (hint) {
+        const parts = [];
+        if (shopId) parts.push(`Shop #${shopId}`);
+        if (projectId) parts.push(`Project #${projectId}`);
+        hint.textContent = parts.length
+        ? `Ngữ cảnh hiện tại: ${parts.join(" • ")}`
+        : "Tạo task theo ngữ cảnh hiện tại.";
+    }
+    }
+
   function taskMetaText(t) {
     const assigneeText =
       t.assignee_name
@@ -595,9 +736,19 @@
   function openCreateTaskModal() {
     const m = $("createTaskModal");
     if (!m) return;
+
+    hydrateCreateTaskContext();
+
+    if ($("createTaskPriority")) $("createTaskPriority").value = "2";
+    if ($("createTaskError")) $("createTaskError").textContent = "";
+
     m.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
-  }
+
+    setTimeout(() => {
+        $("createTaskTitle")?.focus();
+    }, 60);
+    }
 
   function closeCreateTaskModal() {
     const m = $("createTaskModal");
@@ -609,35 +760,45 @@
   function resetCreateTaskModal() {
     if ($("createTaskTitle")) $("createTaskTitle").value = "";
     if ($("createTaskDescription")) $("createTaskDescription").value = "";
-    if ($("createTaskShopId")) $("createTaskShopId").value = "";
-    if ($("createTaskProjectId")) $("createTaskProjectId").value = "";
     if ($("createTaskPriority")) $("createTaskPriority").value = "2";
     if ($("createTaskDueAt")) $("createTaskDueAt").value = "";
     if ($("createTaskAssigneeId")) $("createTaskAssigneeId").value = "";
     if ($("createTaskError")) $("createTaskError").textContent = "";
-  }
+
+    hydrateCreateTaskContext();
+    }
 
   async function submitCreateTaskModal() {
+    const shopId =
+        String($("createTaskShopId")?.value || "").trim() ||
+        getCurrentShopId();
+
+    const projectId =
+        String($("createTaskProjectId")?.value || "").trim() ||
+        getCurrentProjectId();
+
     const payload = {
-      title: ($("createTaskTitle")?.value || "").trim(),
-      description: ($("createTaskDescription")?.value || "").trim(),
-      shop_id: ($("createTaskShopId")?.value || "").trim(),
-      project_id: ($("createTaskProjectId")?.value || "").trim(),
-      priority: Number(($("createTaskPriority")?.value || "2").trim() || 2),
-      due_at: ($("createTaskDueAt")?.value || "").trim() || null,
-      assignee_id: ($("createTaskAssigneeId")?.value || "").trim() || null,
+        title: ($("createTaskTitle")?.value || "").trim(),
+        description: ($("createTaskDescription")?.value || "").trim(),
+        shop_id: shopId,
+        project_id: projectId,
+        priority: Number(($("createTaskPriority")?.value || "2").trim() || 2),
+        due_at: ($("createTaskDueAt")?.value || "").trim() || null,
+        assignee_id: ($("createTaskAssigneeId")?.value || "").trim() || null,
     };
 
     if ($("createTaskError")) $("createTaskError").textContent = "";
 
     if (!payload.title) {
-      if ($("createTaskError")) $("createTaskError").textContent = "Anh nhập tiêu đề task trước nha.";
-      return;
+        if ($("createTaskError")) $("createTaskError").textContent = "Anh nhập tiêu đề task trước nha.";
+        $("createTaskTitle")?.focus();
+        return;
     }
 
     if (!payload.shop_id) {
-      if ($("createTaskError")) $("createTaskError").textContent = "Anh nhập shop_id trước nha.";
-      return;
+        if ($("createTaskError")) $("createTaskError").textContent = "Chưa có shop hiện tại để tạo task.";
+        $("createTaskShopId")?.focus();
+        return;
     }
 
     if (!payload.description) delete payload.description;
@@ -647,24 +808,24 @@
 
     const btn = $("submitCreateTaskBtn");
     if (btn) {
-      btn.disabled = true;
-      btn.textContent = "Đang tạo...";
+        btn.disabled = true;
+        btn.textContent = "Đang tạo...";
     }
 
     try {
-      await createTask(payload);
-      closeCreateTaskModal();
-      resetCreateTaskModal();
-      await refreshWorkData();
+        await createTask(payload);
+        closeCreateTaskModal();
+        resetCreateTaskModal();
+        await refreshWorkData();
     } catch (e) {
-      if ($("createTaskError")) $("createTaskError").textContent = "Tạo task lỗi: " + e.message;
+        if ($("createTaskError")) $("createTaskError").textContent = "Tạo task lỗi: " + e.message;
     } finally {
-      if (btn) {
+        if (btn) {
         btn.disabled = false;
         btn.textContent = "Tạo task";
-      }
+        }
     }
-  }
+    }
 
   function bindEvents() {
     $("btnRefreshWork")?.addEventListener("click", refreshWorkData);
@@ -693,7 +854,24 @@
 
       renderAll();
     });
+    $("createTaskShopId")?.addEventListener("change", (e) => {
+        const shopId = String(e.target.value || "").trim();
 
+        if ($("createTaskProjectId")) $("createTaskProjectId").value = "";
+        if ($("createTaskProjectSelect")) $("createTaskProjectSelect").innerHTML = `<option value="">-- Chọn dự án --</option>`;
+
+        hydrateCreateTaskContextRich();
+
+        // giữ nguyên shop vừa chọn
+        if ($("createTaskShopId")) $("createTaskShopId").value = shopId;
+        });
+
+        $("createTaskProjectSelect")?.addEventListener("change", (e) => {
+        const projectId = String(e.target.value || "").trim();
+        if ($("createTaskProjectId")) {
+            $("createTaskProjectId").value = projectId;
+        }
+    });
     $("btnOpenCreateTask")?.addEventListener("click", openCreateTaskModal);
     $("closeCreateTaskBtn")?.addEventListener("click", closeCreateTaskModal);
     $("createTaskBackdrop")?.addEventListener("click", closeCreateTaskModal);
@@ -759,7 +937,12 @@
         }
 
         try {
-          await createTask({ title, status });
+          await createTask({
+            title,
+            status,
+            shop_id: getCurrentShopId() || undefined,
+            project_id: getCurrentProjectId() || undefined,
+        });
           if (input) input.value = "";
           await refreshWorkData();
         } catch (err) {
@@ -783,7 +966,12 @@
         if (!title) return;
 
         try {
-          await createTask({ title, status });
+          await createTask({
+            title,
+            status,
+            shop_id: getCurrentShopId() || undefined,
+            project_id: getCurrentProjectId() || undefined,
+        });
           e.target.value = "";
           await refreshWorkData();
         } catch (err) {
@@ -797,9 +985,17 @@
     const tenantId = String(window.HT_TENANT_ID || "").trim();
     if (tenantId) localStorage.setItem("ht_tenant_id", tenantId);
 
+    if (window.HT_CURRENT_SHOP_ID) {
+        localStorage.setItem("ht_shop_id", String(window.HT_CURRENT_SHOP_ID).trim());
+    }
+
+    if (window.HT_CURRENT_PROJECT_ID) {
+        localStorage.setItem("ht_project_id", String(window.HT_CURRENT_PROJECT_ID).trim());
+    }
+
     bindEvents();
     await refreshWorkData();
-  }
+    }
 
   window.htWorkRefresh = refreshWorkData;
   window.htWorkOpenTask = (id) => {

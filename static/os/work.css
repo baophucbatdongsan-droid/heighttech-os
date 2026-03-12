@@ -503,3 +503,26 @@ body[data-page="work-os"]{
     margin:18px auto;
   }
 }
+
+.modal,
+.modal-card,
+.modal-body,
+.task-form-grid,
+.task-form-block {
+  overflow: visible !important;
+}
+
+#createTaskModal .input,
+#createTaskModal select,
+#createTaskModal option {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 2;
+}
+
+#createTaskProjectSelect,
+#createTaskShopId,
+#createTaskDepartment {
+  -webkit-appearance: menulist;
+  appearance: auto;
+}
