@@ -462,11 +462,6 @@ body[data-page="work-os"]{
   font-size:13px;
 }
 
-@media (max-width: 1200px){
-  .work-kpis{
-    grid-template-columns:repeat(3, minmax(0,1fr));
-  }
-}
 
 @media (max-width: 768px){
   .work-shell{
@@ -525,4 +520,43 @@ body[data-page="work-os"]{
 #createTaskDepartment {
   -webkit-appearance: menulist;
   appearance: auto;
+}
+
+body[data-page="work-os"] .work-board-wrap .card-b{
+  overflow-x:auto !important;
+  overflow-y:hidden !important;
+  padding-bottom:8px !important;
+}
+
+body[data-page="work-os"] .work-board{
+  display:grid !important;
+  grid-template-columns:repeat(4, minmax(280px, 1fr)) !important;
+  gap:14px !important;
+  align-items:start !important;
+  min-width:1200px !important;
+}
+
+body[data-page="work-os"] .work-col{
+  min-width:280px !important;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:16px;
+  background:rgba(255,255,255,.03);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+
+@media (max-width: 768px){
+  body[data-page="work-os"] .work-board{
+    grid-template-columns:1fr !important;
+    min-width:100% !important;
+  }
+
+  body[data-page="work-os"] .work-board-wrap .card-b{
+    overflow-x:hidden !important;
+  }
+
+  body[data-page="work-os"] .work-col{
+    min-width:100% !important;
+  }
 }

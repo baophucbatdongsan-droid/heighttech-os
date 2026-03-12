@@ -33,8 +33,8 @@
   async function http(url, opts = {}) {
     const headers = Object.assign({}, opts.headers || {});
     const tenantId =
-      String(window.HT_TENANT_ID || "").trim() ||
-      String(localStorage.getItem("ht_tenant_id") || "").trim();
+        String(window.HT_TENANT_ID || "").trim() ||
+        String(localStorage.getItem("ht_tenant_id") || "").trim();
 
     if (tenantId) headers["X-Tenant-Id"] = tenantId;
 
@@ -42,25 +42,32 @@
     const csrf = getCookie("csrftoken");
     if (csrf && method !== "GET") headers["X-CSRFToken"] = csrf;
 
-    const res = await fetch(url, {
-      credentials: "include",
-      cache: "no-store",
-      ...opts,
-      headers,
-    });
+    let res;
+    try {
+        res = await fetch(url, {
+        credentials: "include",
+        cache: "no-store",
+        ...opts,
+        headers,
+        });
+    } catch (err) {
+        throw new Error(`Fetch fail: ${url} :: ${err.message}`);
+    }
 
     const ct = res.headers.get("content-type") || "";
-    const data = ct.includes("application/json") ? await res.json() : await res.text();
+    const data = ct.includes("application/json")
+        ? await res.json()
+        : await res.text();
 
     if (!res.ok) {
-      const msg =
+        const msg =
         (data && (data.message || data.detail || data.error)) ||
         (typeof data === "string" ? data : JSON.stringify(data));
-      throw new Error(msg || ("HTTP " + res.status));
+        throw new Error(`${res.status} ${res.statusText} :: ${msg || "HTTP error"}`);
     }
 
     return data;
-  }
+    }
 
   function escapeHtml(value) {
     return String(value ?? "")
