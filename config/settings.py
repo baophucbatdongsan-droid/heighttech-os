@@ -4,7 +4,7 @@ Django settings for config project.
 """
 
 from __future__ import annotations
-
+import os
 from pathlib import Path
 
 from decouple import Csv, config as env
