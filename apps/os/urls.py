@@ -34,6 +34,10 @@ from apps.os.views import (
     work_page,
     client_work_page,
 )
+from apps.os.views_sheets import sheets_page, sheet_detail_page
+from apps.docs.views import docs_page, doc_detail_page
+
+app_name = "os"
 
 urlpatterns = [
     # home
@@ -93,4 +97,9 @@ urlpatterns = [
         name="os_company_workspace",
     ),
     path("os/files/<int:attachment_id>/", file_viewer_page, name="os_file_viewer"),
+
+    path("os/sheets/", sheets_page, name="sheets-page"),
+    path("os/sheets/<int:sheet_id>/", sheet_detail_page, name="sheet-detail-page"),
+    path("os/docs/", docs_page, name="docs-page"),
+    path("os/docs/<int:doc_id>/", doc_detail_page, name="doc-detail-page"),
 ]

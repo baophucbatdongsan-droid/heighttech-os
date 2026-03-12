@@ -24,6 +24,65 @@
       shop: "",
     },
   };
+    const RESOURCE_STATE = {
+      docs: [],
+      sheets: [],
+    };
+
+    function getSelectedTaskId() {
+      return STATE.selectedTaskId ? String(STATE.selectedTaskId) : "";
+    }
+
+    function renderTaskDocs(items) {
+      const box = $("taskDocsList");
+      if (!box) return;
+
+      const arr = Array.isArray(items) ? items : [];
+      RESOURCE_STATE.docs = arr;
+
+      if (!arr.length) {
+        box.innerHTML = `<div class="resource-empty">Chưa có document</div>`;
+        return;
+      }
+
+      box.innerHTML = arr.map((x) => `
+        <div class="resource-item">
+          <div class="resource-item-title">${escapeHtml(x.title || ("Doc #" + x.id))}</div>
+          <div class="resource-item-meta">
+            Type: ${escapeHtml(x.doc_type || "-")}
+          </div>
+          <div class="resource-item-actions">
+            <a class="btn mini" href="/os/docs/${escapeHtml(x.id)}" target="_blank" rel="noopener">Mở doc</a>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function renderTaskSheets(items) {
+      const box = $("taskSheetsList");
+      if (!box) return;
+
+      const arr = Array.isArray(items) ? items : [];
+      RESOURCE_STATE.sheets = arr;
+
+      if (!arr.length) {
+        box.innerHTML = `<div class="resource-empty">Chưa có sheet</div>`;
+        return;
+      }
+
+      box.innerHTML = arr.map((x) => `
+        <div class="resource-item">
+          <div class="resource-item-title">${escapeHtml(x.name || ("Sheet #" + x.id))}</div>
+          <div class="resource-item-meta">
+            Module: ${escapeHtml(x.module_code || "-")}
+          </div>
+          <div class="resource-item-actions">
+            <a class="btn mini" href="/os/sheets/${escapeHtml(x.id)}" target="_blank" rel="noopener">Mở sheet</a>
+            <a class="btn mini" href="/api/v1/sheets/${escapeHtml(x.id)}/export.xlsx" target="_blank" rel="noopener">Export Excel</a>
+          </div>
+        </div>
+      `).join("");
+    }
 
   function getCookie(name) {
     const m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
@@ -323,6 +382,28 @@
     }
   }
 
+  function sortStateItems() {
+    const orderMap = {
+      todo: 1,
+      doing: 2,
+      blocked: 3,
+      done: 4,
+      cancelled: 5,
+    };
+
+    STATE.items = [...STATE.items].sort((a, b) => {
+      const sa = orderMap[String(a.status || "todo")] || 99;
+      const sb = orderMap[String(b.status || "todo")] || 99;
+      if (sa !== sb) return sa - sb;
+
+      const ra = String(a.rank || "");
+      const rb = String(b.rank || "");
+      if (ra && rb && ra !== rb) return ra.localeCompare(rb);
+
+      return Number(a.id || 0) - Number(b.id || 0);
+    });
+  }
+
   function calcDropPosition(col, draggedId) {
     const cards = qsa(".work-card", col).filter((x) => String(x.dataset.id) !== String(draggedId));
     if (!cards.length) return 1;
@@ -489,6 +570,7 @@
   }
 
   function renderAll() {
+    sortStateItems();
     renderKPIs();
     renderBoard();
   }
@@ -524,7 +606,7 @@
     const oldTask = findTaskById(id);
     if (!oldTask) throw new Error("Không tìm thấy task");
 
-    patchTaskLocal(id, { status });
+    patchTaskLocal(id, { status, updated_at: new Date().toISOString() });
     renderAll();
 
     try {
@@ -592,7 +674,84 @@
     renderTaskComments(data?.items || []);
   }
 
+    async function refreshTaskDocs(taskId) {
+      if (!taskId) return;
+      const data = await http(`/api/v1/docs/?linked_target_type=work&linked_target_id=${taskId}`);
+      renderTaskDocs(data?.items || []);
+    }
 
+    async function refreshTaskSheets(taskId) {
+      if (!taskId) return;
+      const data = await http(`/api/v1/sheets/?linked_target_type=work&linked_target_id=${taskId}`);
+      renderTaskSheets(data?.items || []);
+    }
+
+    async function createTaskDocQuick() {
+      const taskId = getSelectedTaskId();
+      if (!taskId) throw new Error("Chưa chọn task");
+
+      const task = findTaskById(taskId);
+
+      const payload = {
+        title: task?.title
+          ? `Doc • ${task.title}`
+          : `Document task #${taskId}`,
+        doc_type: "doc",
+        linked_target_type: "work",
+        linked_target_id: taskId,
+        content_html: `
+          <h1>${escapeHtml(task?.title || `Task #${taskId}`)}</h1>
+          <p>Tài liệu gắn với task #${taskId}.</p>
+          <div class="doc-box"><b>Ghi chú:</b> Có thể dùng cho proposal / note / hướng dẫn triển khai.</div>
+        `
+      };
+
+      const data = await http(`/api/v1/docs/create/`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      await refreshTaskDocs(taskId);
+
+      if (data?.item?.id) {
+        window.open(`/os/docs/${data.item.id}/`, "_blank", "noopener");
+      }
+    }
+
+    async function createTaskSheetQuick() {
+      const taskId = getSelectedTaskId();
+      if (!taskId) throw new Error("Chưa chọn task");
+
+      const task = findTaskById(taskId);
+
+      const payload = {
+        name: task?.title
+          ? `Sheet • ${task.title}`
+          : `Sheet task #${taskId}`,
+        module_code: "work",
+        linked_target_type: "work",
+        linked_target_id: taskId,
+        columns: [
+          { name: "Hạng mục", data_type: "text" },
+          { name: "Trạng thái", data_type: "select" },
+          { name: "Người phụ trách", data_type: "text" },
+          { name: "Ghi chú", data_type: "text" }
+        ]
+      };
+
+      const data = await http(`/api/v1/sheets/create/`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      await refreshTaskSheets(taskId);
+
+      if (data?.item?.id) {
+        window.open(`/os/sheets/${data.item.id}/`, "_blank", "noopener");
+      }
+    }
   function openTaskDrawer(task) {
     if (!task) return;
 
@@ -617,8 +776,13 @@
       document.body.style.overflow = "hidden";
     }
 
+    renderTaskDocs([]);
+    renderTaskSheets([]);
+
     refreshTaskComments(task.id).catch(console.warn);
     refreshTaskAttachments(task.id).catch(console.warn);
+    refreshTaskDocs(task.id).catch(console.warn);
+    refreshTaskSheets(task.id).catch(console.warn);
   }
 
   function closeTaskDrawer() {
@@ -626,6 +790,9 @@
     if (!drawer) return;
     drawer.setAttribute("aria-hidden", "true");
     document.body.style.overflow = "";
+    STATE.selectedTaskId = null;
+    renderTaskDocs([]);
+    renderTaskSheets([]);
   }
 
   async function saveTaskDrawer() {
@@ -856,6 +1023,61 @@
         }
       }
     });
+
+    $("btnCreateTaskDoc")?.addEventListener("click", async () => {
+      const btn = $("btnCreateTaskDoc");
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Đang tạo...";
+      }
+
+      try {
+        await createTaskDocQuick();
+      } catch (e) {
+        alert("Tạo doc lỗi: " + e.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "+ Tạo doc";
+        }
+      }
+    });
+
+    $("btnRefreshTaskDocs")?.addEventListener("click", async () => {
+      try {
+        await refreshTaskDocs(getSelectedTaskId());
+      } catch (e) {
+        alert("Load docs lỗi: " + e.message);
+      }
+    });
+
+    $("btnCreateTaskSheet")?.addEventListener("click", async () => {
+      const btn = $("btnCreateTaskSheet");
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Đang tạo...";
+      }
+
+      try {
+        await createTaskSheetQuick();
+      } catch (e) {
+        alert("Tạo sheet lỗi: " + e.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "+ Tạo sheet";
+        }
+      }
+    });
+
+    $("btnRefreshTaskSheets")?.addEventListener("click", async () => {
+      try {
+        await refreshTaskSheets(getSelectedTaskId());
+      } catch (e) {
+        alert("Load sheets lỗi: " + e.message);
+      }
+    });
+
     $("btnRefreshWork")?.addEventListener("click", refreshWorkData);
 
     $("btnApplyFilter")?.addEventListener("click", () => {
@@ -1111,7 +1333,10 @@
     const task = findTaskById(id);
     if (task) openTaskDrawer(task);
   };
-
+  window.htWorkRefreshTaskDocs = refreshTaskDocs;
+  window.htWorkRefreshTaskSheets = refreshTaskSheets;
+  window.htWorkCreateTaskDocQuick = createTaskDocQuick;
+  window.htWorkCreateTaskSheetQuick = createTaskSheetQuick;
   boot().catch((e) => {
     console.error(e);
     alert("Work OS load lỗi: " + e.message);

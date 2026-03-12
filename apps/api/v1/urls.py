@@ -55,6 +55,7 @@ from apps.api.v1.founder_content_auto_tasks import FounderContentAutoTasksGenera
 from apps.api.v1.content_work_sync import ContentSyncFromWorkItemApi
 from apps.api.v1.founder_content_recompute import FounderContentRecomputeApi
 from apps.api.v1.founder_assignment_preview import FounderAssignmentPreviewApi
+from apps.api.v1.sheets.views import SheetImageUploadApi
 
 urlpatterns = [
     path("", ApiV1Root.as_view(), name="api_v1_root"),
@@ -139,6 +140,9 @@ urlpatterns = [
 
     # KEEP THIS LAST
     path("", include("apps.api.v1.urls_projects")),
+    path("sheets/", include(("apps.api.v1.sheets.urls", "api_v1_sheets"), namespace="api_v1_sheets")),
+    path("upload-image/", SheetImageUploadApi.as_view()),
+    path("docs/", include(("apps.api.v1.docs.urls", "api_v1_docs"), namespace="api_v1_docs")),
 ]
 
 

@@ -5,7 +5,142 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>HeightTech • Work OS</title>
-  <link rel="stylesheet" href="{% static 'os/work.css' %}?v=99" />
+  <link rel="stylesheet" href="{% static 'os/work.css' %}?v=100" />
+  <style>
+    .os-home-btn{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 14px;
+      border-radius:12px;
+      text-decoration:none;
+      border:1px solid rgba(255,255,255,.08);
+      background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      color:#fff;
+      font-weight:700;
+      transition:.18s ease;
+      box-shadow:0 6px 20px rgba(0,0,0,.12);
+    }
+    .os-home-btn:hover{
+      transform:translateY(-1px);
+      background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+      box-shadow:0 10px 28px rgba(0,0,0,.16);
+    }
+    .os-home-btn .dot{
+      width:10px;height:10px;border-radius:999px;
+      background:#7ee787;
+      box-shadow:0 0 14px rgba(126,231,135,.55);
+      flex:0 0 10px;
+    }
+
+    .drawer-section-grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:14px;
+    }
+
+    .resource-box{
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      padding:12px;
+      background:rgba(255,255,255,.02);
+    }
+
+    .resource-box-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+
+    .resource-box-title{
+      font-size:14px;
+      font-weight:800;
+    }
+
+    .resource-box-sub{
+      color:var(--muted);
+      font-size:12px;
+      margin-top:4px;
+      line-height:1.5;
+    }
+
+    .resource-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:8px;
+    }
+
+    .resource-list{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top:12px;
+    }
+
+    .resource-item{
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:12px;
+      padding:10px 12px;
+      background:rgba(255,255,255,.02);
+    }
+
+    .resource-item-title{
+      font-weight:700;
+      line-height:1.5;
+    }
+
+    .resource-item-meta{
+      color:var(--muted);
+      font-size:12px;
+      margin-top:4px;
+      line-height:1.5;
+    }
+
+    .resource-item-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:8px;
+    }
+
+    .resource-empty{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.6;
+      border:1px dashed rgba(255,255,255,.10);
+      border-radius:12px;
+      padding:12px;
+    }
+
+    .task-drawer-body{
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+    }
+
+    .task-drawer-head{
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:var(--panel, #111);
+    }
+
+    .drawer-block{
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:16px;
+      padding:14px;
+      background:rgba(255,255,255,.02);
+    }
+
+    .drawer-block-title{
+      font-weight:800;
+      margin-bottom:12px;
+    }
+  </style>
 </head>
 <body data-page="work-os">
   <script>
@@ -26,7 +161,7 @@
         <div class="work-logo">HT</div>
         <div>
           <div class="work-title">HeightTech • Work OS</div>
-          <div class="work-sub">Kanban • Workflow • Logs</div>
+          <div class="work-sub">Kanban • Workflow • Logs • Daily Workspace</div>
         </div>
       </div>
 
@@ -36,7 +171,10 @@
           <span class="scope-id" id="workScopeText">Tenant {{ request.tenant.id|default:"-" }}</span>
         </div>
         <button class="btn mini" id="btnOpenCreateTask" type="button">+ Việc mới</button>
-        <a class="btn mini" href="/os">OS</a>
+        <a class="os-home-btn" href="/os/">
+          <span class="dot"></span>
+          <span>Về OS</span>
+        </a>
       </div>
     </header>
 
@@ -99,7 +237,7 @@
       <div class="card-h">
         <div>
           <div class="card-t">OS Board</div>
-          <div class="muted">Kéo thả công việc giữa các cột</div>
+          <div class="muted">Kéo thả công việc giữa các cột • quản lý công việc mỗi ngày</div>
         </div>
       </div>
       <div class="card-b">
@@ -120,66 +258,112 @@
       </div>
 
       <div class="task-drawer-body">
-        <div class="task-form-grid">
-          <div class="task-form-block full">
-            <label>Tiêu đề</label>
-            <input id="taskEditTitle" class="input" />
+        <div class="drawer-block">
+          <div class="drawer-block-title">Thông tin task</div>
+
+          <div class="task-form-grid">
+            <div class="task-form-block full">
+              <label>Tiêu đề</label>
+              <input id="taskEditTitle" class="input" />
+            </div>
+
+            <div class="task-form-block full">
+              <label>Mô tả</label>
+              <textarea id="taskEditDescription" class="input" rows="4"></textarea>
+            </div>
+
+            <div class="task-form-block">
+              <label>Trạng thái</label>
+              <select id="taskEditStatus" class="input">
+                <option value="todo">todo</option>
+                <option value="doing">doing</option>
+                <option value="blocked">blocked</option>
+                <option value="done">done</option>
+                <option value="cancelled">cancelled</option>
+              </select>
+            </div>
+
+            <div class="task-form-block">
+              <label>Ưu tiên</label>
+              <select id="taskEditPriority" class="input">
+                <option value="1">Thấp</option>
+                <option value="2">Vừa</option>
+                <option value="3">Cao</option>
+                <option value="4">Gấp</option>
+              </select>
+            </div>
+
+            <div class="task-form-block">
+              <label>Deadline</label>
+              <input id="taskEditDueAt" class="input" type="datetime-local" />
+            </div>
+
+            <div class="task-form-block">
+              <label>Assignee ID</label>
+              <input id="taskEditAssigneeId" class="input" />
+            </div>
+
+            <div class="task-form-block">
+              <label>Shop ID</label>
+              <input id="taskEditShopId" class="input" />
+            </div>
+
+            <div class="task-form-block">
+              <label>Project ID</label>
+              <input id="taskEditProjectId" class="input" />
+            </div>
           </div>
 
-          <div class="task-form-block full">
-            <label>Mô tả</label>
-            <textarea id="taskEditDescription" class="input" rows="4"></textarea>
-          </div>
-
-          <div class="task-form-block">
-            <label>Trạng thái</label>
-            <select id="taskEditStatus" class="input">
-              <option value="todo">todo</option>
-              <option value="doing">doing</option>
-              <option value="blocked">blocked</option>
-              <option value="done">done</option>
-              <option value="cancelled">cancelled</option>
-            </select>
-          </div>
-
-          <div class="task-form-block">
-            <label>Ưu tiên</label>
-            <select id="taskEditPriority" class="input">
-              <option value="1">Thấp</option>
-              <option value="2">Vừa</option>
-              <option value="3">Cao</option>
-              <option value="4">Gấp</option>
-            </select>
-          </div>
-
-          <div class="task-form-block">
-            <label>Deadline</label>
-            <input id="taskEditDueAt" class="input" type="datetime-local" />
-          </div>
-
-          <div class="task-form-block">
-            <label>Assignee ID</label>
-            <input id="taskEditAssigneeId" class="input" />
-          </div>
-
-          <div class="task-form-block">
-            <label>Shop ID</label>
-            <input id="taskEditShopId" class="input" />
-          </div>
-
-          <div class="task-form-block">
-            <label>Project ID</label>
-            <input id="taskEditProjectId" class="input" />
+          <div class="drawer-actions">
+            <button class="btn" id="btnSaveTaskDrawer" type="button">Lưu thay đổi</button>
+            <button class="btn mini" id="btnMoveNextTaskDrawer" type="button">Đẩy sang bước tiếp</button>
           </div>
         </div>
 
-        <div class="drawer-actions">
-          <button class="btn" id="btnSaveTaskDrawer" type="button">Lưu thay đổi</button>
-          <button class="btn mini" id="btnMoveNextTaskDrawer" type="button">Đẩy sang bước tiếp</button>
+        <div class="drawer-block">
+          <div class="drawer-block-title">Docs / Sheets liên quan</div>
+
+          <div class="drawer-section-grid">
+            <div class="resource-box">
+              <div class="resource-box-head">
+                <div>
+                  <div class="resource-box-title">Documents</div>
+                  <div class="resource-box-sub">Proposal, báo giá, ghi chú online, hướng dẫn triển khai cho task này.</div>
+                </div>
+              </div>
+
+              <div class="resource-actions">
+                <button class="btn mini" type="button" id="btnCreateTaskDoc">+ Tạo doc</button>
+                <button class="btn mini" type="button" id="btnRefreshTaskDocs">Làm mới docs</button>
+              </div>
+
+              <div id="taskDocsList" class="resource-list">
+                <div class="resource-empty">Chưa có document</div>
+              </div>
+            </div>
+
+            <div class="resource-box">
+              <div class="resource-box-head">
+                <div>
+                  <div class="resource-box-title">Sheets</div>
+                  <div class="resource-box-sub">KPI, checklist, pricing, planning sheet cho task này.</div>
+                </div>
+              </div>
+
+              <div class="resource-actions">
+                <button class="btn mini" type="button" id="btnCreateTaskSheet">+ Tạo sheet</button>
+                <button class="btn mini" type="button" id="btnRefreshTaskSheets">Làm mới sheets</button>
+              </div>
+
+              <div id="taskSheetsList" class="resource-list">
+                <div class="resource-empty">Chưa có sheet</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="drawer-section">
-          <div class="drawer-section-title">Comment</div>
+        <div class="drawer-block">
+          <div class="drawer-block-title">Comment</div>
           <div class="comment-box">
             <textarea id="taskCommentInput" class="input" rows="3" placeholder="Viết comment..."></textarea>
             <button class="btn mini" id="btnSubmitTaskComment" type="button">Gửi comment</button>
@@ -187,8 +371,8 @@
           <div id="taskCommentsList"></div>
         </div>
 
-        <div class="drawer-section">
-          <div class="drawer-section-title">File đính kèm</div>
+        <div class="drawer-block">
+          <div class="drawer-block-title">File đính kèm</div>
 
           <div class="comment-box">
             <input id="taskAttachmentInput" class="input" type="file" />
@@ -201,126 +385,125 @@
     </div>
   </aside>
 
-
   <div class="modal" id="createTaskModal" aria-hidden="true">
     <div class="modal-backdrop" id="createTaskBackdrop"></div>
 
     <div class="modal-card">
-        <div class="modal-head">
+      <div class="modal-head">
         <div>
-            <div class="modal-title">Tạo công việc mới</div>
-            <div class="modal-sub">Tạo việc theo shop và dự án vận hành hiện tại.</div>
+          <div class="modal-title">Tạo công việc mới</div>
+          <div class="modal-sub">Tạo việc theo shop và dự án vận hành hiện tại.</div>
         </div>
         <button class="btn mini" id="closeCreateTaskBtn" type="button">Đóng</button>
-        </div>
+      </div>
 
-        <div class="modal-body">
+      <div class="modal-body">
         <div id="createTaskContextLine" class="muted" style="margin-bottom:12px;">
-            Tạo việc theo shop và dự án vận hành hiện tại.
+          Tạo việc theo shop và dự án vận hành hiện tại.
         </div>
 
         <div class="task-form-grid">
-            <div class="task-form-block full">
+          <div class="task-form-block full">
             <label>Tiêu đề *</label>
             <input
-                id="createTaskTitle"
-                class="input"
-                placeholder="VD: Viết content hook cho shop..."
+              id="createTaskTitle"
+              class="input"
+              placeholder="VD: Viết content hook cho shop..."
             />
-            </div>
+          </div>
 
-            <div class="task-form-block full">
+          <div class="task-form-block full">
             <label>Mô tả</label>
             <textarea
-                id="createTaskDescription"
-                class="input"
-                rows="4"
-                placeholder="Mô tả ngắn task..."
+              id="createTaskDescription"
+              class="input"
+              rows="4"
+              placeholder="Mô tả ngắn task..."
             ></textarea>
-            </div>
+          </div>
 
-            <div class="task-form-block">
+          <div class="task-form-block">
             <label>Shop *</label>
             <select id="createTaskShopId" class="input">
-                <option value="">-- Chọn shop --</option>
+              <option value="">-- Chọn shop --</option>
             </select>
-            </div>
+          </div>
 
-            <div class="task-form-block">
+          <div class="task-form-block">
             <label>Dự án chiến dịch</label>
             <select id="createTaskProjectSelect" class="input">
-                <option value="">-- Chọn dự án --</option>
+              <option value="">-- Chọn dự án --</option>
             </select>
             <input id="createTaskProjectId" type="hidden" />
-            </div>
+          </div>
 
-            <div class="task-form-block">
+          <div class="task-form-block">
             <label>Phòng ban</label>
             <select id="createTaskDepartment" class="input">
-                <option value="">-- Chọn phòng ban --</option>
-                <option value="san_xuat">Sản xuất</option>
-                <option value="content">Content</option>
-                <option value="design">Design</option>
-                <option value="ads">Ads</option>
-                <option value="van_hanh">Vận hành</option>
-                <option value="booking">Booking</option>
+              <option value="">-- Chọn phòng ban --</option>
+              <option value="san_xuat">Sản xuất</option>
+              <option value="content">Content</option>
+              <option value="design">Design</option>
+              <option value="ads">Ads</option>
+              <option value="van_hanh">Vận hành</option>
+              <option value="booking">Booking</option>
             </select>
-            </div>
+          </div>
 
-            <div class="task-form-block">
+          <div class="task-form-block">
             <label>Brand / Nhãn hàng</label>
             <input
-                id="createTaskBrandName"
-                class="input"
-                placeholder="VD: 70mai, AHC..."
+              id="createTaskBrandName"
+              class="input"
+              placeholder="VD: 70mai, AHC..."
             />
-            </div>
+          </div>
 
-            <div class="task-form-block">
+          <div class="task-form-block">
             <label>Ưu tiên</label>
             <select id="createTaskPriority" class="input">
-                <option value="2">Vừa</option>
-                <option value="1">Thấp</option>
-                <option value="3">Cao</option>
-                <option value="4">Gấp</option>
+              <option value="2">Vừa</option>
+              <option value="1">Thấp</option>
+              <option value="3">Cao</option>
+              <option value="4">Gấp</option>
             </select>
-            </div>
+          </div>
 
-            <div class="task-form-block">
+          <div class="task-form-block">
             <label>Người phụ trách</label>
             <input
-                id="createTaskAssigneeId"
-                class="input"
-                placeholder="Không bắt buộc"
+              id="createTaskAssigneeId"
+              class="input"
+              placeholder="Không bắt buộc"
             />
-            </div>
+          </div>
 
-            <div class="task-form-block full">
+          <div class="task-form-block full">
             <label>Deadline</label>
             <input id="createTaskDueAt" class="input" type="datetime-local" />
-            </div>
+          </div>
 
-            <input id="createTaskCompanyId" type="hidden" />
-            <input id="createTaskCompanyText" type="hidden" />
-            <input id="createTaskTargetType" type="hidden" />
-            <input id="createTaskTargetId" type="hidden" />
+          <input id="createTaskCompanyId" type="hidden" />
+          <input id="createTaskCompanyText" type="hidden" />
+          <input id="createTaskTargetType" type="hidden" />
+          <input id="createTaskTargetId" type="hidden" />
         </div>
 
         <div id="createTaskError" class="form-error"></div>
         <div id="createTaskOk" class="form-ok"></div>
 
         <div class="drawer-actions">
-            <button class="btn mini" id="resetCreateTaskBtn" type="button">Reset</button>
-            <button class="btn" id="submitCreateTaskBtn" type="button">Tạo task</button>
+          <button class="btn mini" id="resetCreateTaskBtn" type="button">Reset</button>
+          <button class="btn" id="submitCreateTaskBtn" type="button">Tạo task</button>
         </div>
-        </div>
+      </div>
     </div>
-    </div>
+  </div>
 
   <script>
     window.HT_TENANT_ID = "{{ current_tenant_id|default:'' }}";
-    </script>
+  </script>
 
-    <script src="{% static 'os/work.js' %}?v=3"></script>
+  <script src="{% static 'os/work.js' %}?v=3"></script>
 </body>
 </html>

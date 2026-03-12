@@ -105,7 +105,8 @@ INSTALLED_APPS = [
 
     "apps.os.apps.OSConfig",
     "apps.finance_ledger.apps.FinanceLedgerConfig",
-
+    "apps.sheets.apps.SheetsConfig",
+    "apps.docs.apps.DocsConfig",
 
 ]
 

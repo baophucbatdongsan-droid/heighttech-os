@@ -280,7 +280,46 @@
           </div>
         </div>
       </div>
+      <div class="section-card">
+        <div class="section-head">
+          <div>
+            <div class="card-title">Docs / Sheets / Files</div>
+            <div class="brand-sub">Tài nguyên gắn với hợp đồng này</div>
+          </div>
+        </div>
 
+        <div class="section-body">
+          <div class="row" style="margin-top:0;">
+            <a class="btn primary" href="/os/docs/?linked_target_type=contract&linked_target_id={{ contract_id }}">Docs</a>
+            <a class="btn" href="/os/sheets/?linked_target_type=contract&linked_target_id={{ contract_id }}">Sheets</a>
+            <a class="btn" href="/os/files/">Files</a>
+          </div>
+
+          <div style="height:14px;"></div>
+
+          <div class="stack">
+            <div class="item">
+              <div class="item-t">Document liên quan</div>
+              <div class="item-d">Tạo báo giá, proposal, hợp đồng online cho contract này.</div>
+              <div class="state-actions">
+                <button class="soft-btn" type="button" onclick="createQuickDoc()">+ Tạo doc nhanh</button>
+                <button class="soft-btn" type="button" onclick="loadLinkedDocs()">Làm mới docs</button>
+              </div>
+              <div id="linkedDocsBox" class="stack" style="margin-top:12px;"></div>
+            </div>
+
+            <div class="item">
+              <div class="item-t">Sheet liên quan</div>
+              <div class="item-d">Tạo KPI sheet, booking sheet, pricing sheet cho contract này.</div>
+              <div class="state-actions">
+                <button class="soft-btn" type="button" onclick="createQuickSheet()">+ Tạo sheet nhanh</button>
+                <button class="soft-btn" type="button" onclick="loadLinkedSheets()">Làm mới sheets</button>
+              </div>
+              <div id="linkedSheetsBox" class="stack" style="margin-top:12px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="stack">
         <div class="section-card">
           <div class="section-head">
@@ -842,6 +881,175 @@
     }
 
     loadCenter();
+  </script>
+  <script>
+    async function loadLinkedDocs(){
+      const box = document.getElementById("linkedDocsBox");
+      if (!box) return;
+
+      box.innerHTML = `<div class="item-d">Đang tải docs...</div>`;
+
+      try {
+        const res = await fetch(
+          `/api/v1/docs/?linked_target_type=contract&linked_target_id=${CONTRACT_ID}`,
+          {
+            credentials: "include",
+            headers: authHeaders(),
+            cache: "no-store",
+          }
+        );
+
+        const data = await readJsonSafe(res);
+
+        if (!res.ok || !data.ok) {
+          box.innerHTML = `<div class="item-d">Không tải được docs</div>`;
+          return;
+        }
+
+        const items = data.items || [];
+        if (!items.length) {
+          box.innerHTML = `<div class="empty-box">Chưa có document nào</div>`;
+          return;
+        }
+
+        box.innerHTML = items.map(x => `
+          <div class="item">
+            <div class="item-t">${escapeHtml(x.title || ("Doc #" + x.id))}</div>
+            <div class="item-d">
+              Type: ${escapeHtml(x.doc_type || "-")}
+            </div>
+            <div class="state-actions">
+              <a class="soft-btn" href="/os/docs/${x.id}/">Mở doc</a>
+            </div>
+          </div>
+        `).join("");
+      } catch (err) {
+        box.innerHTML = `<div class="item-d">Lỗi tải docs: ${escapeHtml(err.message || err)}</div>`;
+      }
+    }
+
+    async function loadLinkedSheets(){
+      const box = document.getElementById("linkedSheetsBox");
+      if (!box) return;
+
+      box.innerHTML = `<div class="item-d">Đang tải sheets...</div>`;
+
+      try {
+        const res = await fetch(
+          `/api/v1/sheets/?linked_target_type=contract&linked_target_id=${CONTRACT_ID}`,
+          {
+            credentials: "include",
+            headers: authHeaders(),
+            cache: "no-store",
+          }
+        );
+
+        const data = await readJsonSafe(res);
+
+        if (!res.ok || !data.ok) {
+          box.innerHTML = `<div class="item-d">Không tải được sheets</div>`;
+          return;
+        }
+
+        const items = data.items || [];
+        if (!items.length) {
+          box.innerHTML = `<div class="empty-box">Chưa có sheet nào</div>`;
+          return;
+        }
+
+        box.innerHTML = items.map(x => `
+          <div class="item">
+            <div class="item-t">${escapeHtml(x.name || ("Sheet #" + x.id))}</div>
+            <div class="item-d">
+              Module: ${escapeHtml(x.module_code || "-")}
+            </div>
+            <div class="state-actions">
+              <a class="soft-btn" href="/os/sheets/${x.id}/">Mở sheet</a>
+              <a class="soft-btn" href="/api/v1/sheets/${x.id}/export.xlsx">Export Excel</a>
+            </div>
+          </div>
+        `).join("");
+      } catch (err) {
+        box.innerHTML = `<div class="item-d">Lỗi tải sheets: ${escapeHtml(err.message || err)}</div>`;
+      }
+    }
+
+    async function createQuickDoc(){
+      try {
+        const payload = {
+          title: `Document contract #${CONTRACT_ID}`,
+          doc_type: "doc",
+          linked_target_type: "contract",
+          linked_target_id: CONTRACT_ID,
+          content_html: `
+            <h1>Document contract #${CONTRACT_ID}</h1>
+            <p>Nội dung tài liệu online cho hợp đồng này.</p>
+            <div class="doc-box"><b>Ghi chú:</b> Có thể dùng cho báo giá / proposal / phụ lục.</div>
+          `
+        };
+
+        const res = await fetch(`/api/v1/docs/create/`, {
+          method: "POST",
+          credentials: "include",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify(payload)
+        });
+
+        const data = await readJsonSafe(res);
+
+        if (!res.ok || !data.ok) {
+          alert(data.message || "Tạo doc lỗi");
+          return;
+        }
+
+        await loadLinkedDocs();
+        window.location.href = `/os/docs/${data.item.id}/`;
+      } catch (err) {
+        alert("Lỗi tạo doc: " + (err.message || err));
+      }
+    }
+
+    async function createQuickSheet(){
+      try {
+        const payload = {
+          name: `Sheet contract #${CONTRACT_ID}`,
+          module_code: "contract",
+          linked_target_type: "contract",
+          linked_target_id: CONTRACT_ID,
+          columns: [
+            { name: "Hạng mục", data_type: "text" },
+            { name: "Giá trị", data_type: "text" },
+            { name: "Ghi chú", data_type: "text" }
+          ]
+        };
+
+        const res = await fetch(`/api/v1/sheets/create/`, {
+          method: "POST",
+          credentials: "include",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify(payload)
+        });
+
+        const data = await readJsonSafe(res);
+
+        if (!res.ok || !data.ok) {
+          alert(data.message || "Tạo sheet lỗi");
+          return;
+        }
+
+        await loadLinkedSheets();
+        window.location.href = `/os/sheets/${data.item.id}/`;
+      } catch (err) {
+        alert("Lỗi tạo sheet: " + (err.message || err));
+      }
+    }
+
+    const __oldLoadCenter = loadCenter;
+    loadCenter = async function(){
+      await __oldLoadCenter();
+      await loadLinkedDocs();
+      await loadLinkedSheets();
+    };
   </script>
 </body>
 </html>

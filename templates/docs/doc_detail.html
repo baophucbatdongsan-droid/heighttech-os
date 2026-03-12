@@ -1,0 +1,368 @@
+{% load static %}
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>{{ doc_title|default:"HeightTech Document" }}</title>
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=2" />
+  <style>
+    .page-wrap{
+      max-width:1080px;
+      margin:0 auto;
+      padding:24px;
+    }
+
+    .page-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .page-title{
+      font-size:32px;
+      font-weight:900;
+      line-height:1.2;
+    }
+
+    .page-sub{
+      margin-top:8px;
+      color:var(--muted);
+      line-height:1.6;
+      font-size:14px;
+    }
+
+    .toolbar{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:18px;
+    }
+
+    .doc-card{
+      margin-top:22px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:22px;
+      background:rgba(255,255,255,.03);
+      overflow:hidden;
+      box-shadow:0 10px 36px rgba(0,0,0,.16);
+    }
+
+    .doc-card-h{
+      padding:16px 18px;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .doc-card-b{
+      padding:22px;
+    }
+
+    .muted2{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.6;
+    }
+
+    .status-box{
+      min-height:20px;
+      margin-top:10px;
+      font-size:13px;
+    }
+
+    .editor-wrap{
+      display:none;
+      margin-top:18px;
+      border-top:1px dashed rgba(255,255,255,.10);
+      padding-top:18px;
+    }
+
+    .editor-wrap.show{
+      display:block;
+    }
+
+    .doc-editor{
+      min-height:260px;
+    }
+
+    .doc-render{
+      line-height:1.85;
+      font-size:16px;
+      color:#fff;
+      max-width:100%;
+    }
+
+    .doc-render h1,
+    .doc-render h2,
+    .doc-render h3,
+    .doc-render h4{
+      margin:0 0 14px 0;
+      line-height:1.3;
+      font-weight:900;
+    }
+
+    .doc-render h1{font-size:38px;}
+    .doc-render h2{font-size:30px;}
+    .doc-render h3{font-size:24px;}
+    .doc-render h4{font-size:20px;}
+
+    .doc-render p{
+      margin:0 0 14px 0;
+      color:rgba(255,255,255,.96);
+    }
+
+    .doc-render ul,
+    .doc-render ol{
+      margin:0 0 16px 20px;
+      padding:0;
+    }
+
+    .doc-render li{
+      margin-bottom:8px;
+    }
+
+    .doc-render strong{
+      font-weight:900;
+      color:#fff;
+    }
+
+    .doc-render table{
+      width:100%;
+      border-collapse:collapse;
+      margin:20px 0;
+      overflow:hidden;
+      border-radius:14px;
+      background:rgba(255,255,255,.02);
+    }
+
+    .doc-render th,
+    .doc-render td{
+      border:1px solid rgba(255,255,255,.10);
+      padding:12px 14px;
+      vertical-align:top;
+      text-align:left;
+    }
+
+    .doc-render th{
+      background:rgba(255,255,255,.05);
+      font-weight:800;
+    }
+
+    .doc-render blockquote{
+      margin:18px 0;
+      padding:14px 16px;
+      border-left:4px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.04);
+      border-radius:14px;
+    }
+
+    .doc-render .doc-box{
+      border:1px solid rgba(255,214,153,.35);
+      background:rgba(255,214,153,.10);
+      padding:18px;
+      border-radius:18px;
+      margin:18px 0;
+      color:#fff;
+      line-height:1.8;
+    }
+
+    .doc-render img{
+      max-width:100%;
+      height:auto;
+      border-radius:14px;
+      display:block;
+      margin:14px 0;
+    }
+
+    .doc-preview-title{
+      font-size:13px;
+      color:var(--muted);
+      margin-bottom:14px;
+    }
+
+    .doc-paper{
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:20px;
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02));
+      padding:28px;
+    }
+
+    @media (max-width: 900px){
+      .page-wrap{padding:14px;}
+      .page-title{font-size:28px;}
+      .doc-card-b{padding:16px;}
+      .doc-paper{padding:18px;}
+      .doc-render h1{font-size:30px;}
+      .doc-render h2{font-size:24px;}
+      .doc-render h3{font-size:20px;}
+      .doc-render table{display:block;overflow:auto;}
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="page-head">
+      <div>
+        <div class="page-title" id="docTitle">{{ doc_title|default:"Document" }}</div>
+        <div class="page-sub" id="docMeta">Đang tải...</div>
+      </div>
+
+      <div class="toolbar">
+        <a class="btn" href="/os/docs/">← Danh sách docs</a>
+        <button class="btn" type="button" id="btnToggleEditor">Chỉnh sửa</button>
+        <button class="btn primary" type="button" id="btnSaveDoc">Lưu document</button>
+      </div>
+    </div>
+
+    <div class="doc-card">
+      <div class="doc-card-h">
+        <div>
+          <b>Document online</b>
+          <div class="muted2">Bản đọc đẹp để xem nhanh trên web / mobile.</div>
+        </div>
+        <div id="statusBox" class="status-box muted2"></div>
+      </div>
+
+      <div class="doc-card-b">
+        <div class="doc-preview-title">Preview online</div>
+        <div class="doc-paper">
+          <div id="docRender" class="doc-render"></div>
+        </div>
+
+        <div id="editorWrap" class="editor-wrap">
+          <div class="doc-preview-title">Chỉnh sửa HTML tài liệu</div>
+          <textarea
+            id="docEditor"
+            class="input doc-editor"
+            placeholder="Nhập HTML nội dung tài liệu..."
+          ></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
+    const DOC_ID = "{{ doc_id|escapejs }}".trim();
+
+    function getCookie(name) {
+      const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
+      return m ? decodeURIComponent(m[2]) : "";
+    }
+
+    function authHeaders(extra = {}) {
+      const headers = Object.assign({}, extra || {});
+      if (CURRENT_TENANT_ID) headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
+      const csrf = getCookie("csrftoken");
+      if (csrf) headers["X-CSRFToken"] = csrf;
+      return headers;
+    }
+
+    async function readJsonSafe(res) {
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("application/json")) return await res.json();
+      const txt = await res.text();
+      throw new Error(txt || `HTTP ${res.status}`);
+    }
+
+    function setStatus(msg, type="info"){
+      const el = document.getElementById("statusBox");
+      el.textContent = msg || "";
+      el.style.color =
+        type === "err" ? "#ff8f9c" :
+        type === "ok" ? "#8fe3a1" :
+        "#8ab4ff";
+    }
+
+    function renderPreview(html){
+      document.getElementById("docRender").innerHTML = html || `
+        <div class="muted2">Tài liệu chưa có nội dung.</div>
+      `;
+    }
+
+    function toggleEditor(forceShow = null){
+      const wrap = document.getElementById("editorWrap");
+      const btn = document.getElementById("btnToggleEditor");
+      if (!wrap || !btn) return;
+
+      const show = forceShow === null ? !wrap.classList.contains("show") : !!forceShow;
+      wrap.classList.toggle("show", show);
+      btn.textContent = show ? "Ẩn chỉnh sửa" : "Chỉnh sửa";
+    }
+
+    async function loadDoc(){
+      const res = await fetch(`/api/v1/docs/${DOC_ID}/`, {
+        credentials: "include",
+        headers: authHeaders(),
+        cache: "no-store",
+      });
+
+      const data = await readJsonSafe(res);
+      if (!res.ok || !data.ok) {
+        setStatus(data.message || "Không tải được document", "err");
+        return;
+      }
+
+      const item = data.item || {};
+      document.getElementById("docTitle").textContent = item.title || "Document";
+      document.getElementById("docMeta").textContent =
+        `Type: ${item.doc_type || "-"} • Linked: ${item.linked_target_type || "-"} ${item.linked_target_id || ""}`;
+
+      document.getElementById("docEditor").value = item.content_html || "";
+      renderPreview(item.content_html || "");
+      setStatus("Đã tải document", "ok");
+    }
+
+    async function saveDoc(){
+      const payload = {
+        content_html: document.getElementById("docEditor").value
+      };
+
+      setStatus("Đang lưu document...", "info");
+
+      const res = await fetch(`/api/v1/docs/${DOC_ID}/update/`, {
+        method: "POST",
+        credentials: "include",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(payload),
+      });
+
+      const data = await readJsonSafe(res);
+      if (!res.ok || !data.ok) {
+        setStatus(data.message || "Lưu document lỗi", "err");
+        return;
+      }
+
+      renderPreview(document.getElementById("docEditor").value);
+      setStatus("Đã lưu document", "ok");
+      toggleEditor(false);
+    }
+
+    document.getElementById("btnToggleEditor")?.addEventListener("click", function(){
+      toggleEditor();
+    });
+
+    document.getElementById("btnSaveDoc")?.addEventListener("click", function(){
+      saveDoc().catch((e) => {
+        setStatus("Lưu lỗi: " + (e.message || e), "err");
+      });
+    });
+
+    document.getElementById("docEditor")?.addEventListener("input", function(){
+      if (document.getElementById("editorWrap")?.classList.contains("show")) {
+        renderPreview(this.value);
+      }
+    });
+
+    loadDoc().catch((e) => {
+      setStatus("Load document lỗi: " + (e.message || e), "err");
+    });
+  </script>
+</body>
+</html>
