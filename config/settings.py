@@ -274,5 +274,7 @@ LOGGING = {
         "api.audit": {"handlers": ["console"], "level": "INFO", "propagate": False},
     },
 }
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_URL = "/media/"
 
 FOUNDER_ALERT_WEBHOOK = env("FOUNDER_ALERT_WEBHOOK", default="")
