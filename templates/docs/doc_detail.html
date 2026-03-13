@@ -5,10 +5,19 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>{{ doc_title|default:"HeightTech Document" }}</title>
-  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=2" />
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=6" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.29.1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@2.8.1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/paragraph@2.11.3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/list@1.9.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/table@2.2.2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@2.7.6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/image@2.8.1"></script>
+
   <style>
     .page-wrap{
-      max-width:1080px;
+      max-width:1400px;
       margin:0 auto;
       padding:24px;
     }
@@ -17,14 +26,15 @@
       display:flex;
       justify-content:space-between;
       align-items:flex-start;
-      gap:12px;
+      gap:16px;
       flex-wrap:wrap;
     }
 
     .page-title{
-      font-size:32px;
+      font-size:36px;
       font-weight:900;
-      line-height:1.2;
+      line-height:1.12;
+      letter-spacing:-.03em;
     }
 
     .page-sub{
@@ -41,16 +51,29 @@
       margin-top:18px;
     }
 
-    .doc-card{
-      margin-top:22px;
+    .workspace{
+      display:grid;
+      grid-template-columns:340px 1fr;
+      gap:18px;
+      margin-top:20px;
+      align-items:start;
+    }
+
+    .side-card,
+    .main-card{
       border:1px solid rgba(255,255,255,.08);
-      border-radius:22px;
+      border-radius:24px;
       background:rgba(255,255,255,.03);
       overflow:hidden;
       box-shadow:0 10px 36px rgba(0,0,0,.16);
     }
 
-    .doc-card-h{
+    .side-card{
+      position:sticky;
+      top:18px;
+    }
+
+    .card-h{
       padding:16px 18px;
       border-bottom:1px solid rgba(255,255,255,.06);
       display:flex;
@@ -60,8 +83,8 @@
       flex-wrap:wrap;
     }
 
-    .doc-card-b{
-      padding:22px;
+    .card-b{
+      padding:18px;
     }
 
     .muted2{
@@ -72,136 +95,430 @@
 
     .status-box{
       min-height:20px;
-      margin-top:10px;
       font-size:13px;
     }
 
-    .editor-wrap{
-      display:none;
-      margin-top:18px;
+    .tool-section{
+      margin-top:14px;
+      padding-top:14px;
       border-top:1px dashed rgba(255,255,255,.10);
-      padding-top:18px;
     }
 
-    .editor-wrap.show{
-      display:block;
+    .tool-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
     }
 
-    .doc-editor{
-      min-height:260px;
-    }
-
-    .doc-render{
-      line-height:1.85;
-      font-size:16px;
-      color:#fff;
-      max-width:100%;
-    }
-
-    .doc-render h1,
-    .doc-render h2,
-    .doc-render h3,
-    .doc-render h4{
-      margin:0 0 14px 0;
-      line-height:1.3;
-      font-weight:900;
-    }
-
-    .doc-render h1{font-size:38px;}
-    .doc-render h2{font-size:30px;}
-    .doc-render h3{font-size:24px;}
-    .doc-render h4{font-size:20px;}
-
-    .doc-render p{
-      margin:0 0 14px 0;
-      color:rgba(255,255,255,.96);
-    }
-
-    .doc-render ul,
-    .doc-render ol{
-      margin:0 0 16px 20px;
-      padding:0;
-    }
-
-    .doc-render li{
-      margin-bottom:8px;
-    }
-
-    .doc-render strong{
-      font-weight:900;
-      color:#fff;
-    }
-
-    .doc-render table{
-      width:100%;
-      border-collapse:collapse;
-      margin:20px 0;
-      overflow:hidden;
+    .tool-btn{
+      appearance:none;
+      border:none;
+      cursor:pointer;
+      padding:11px 12px;
       border-radius:14px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.04);
+      color:#fff;
+      font-weight:800;
+      text-align:left;
+      transition:.16s ease;
+      line-height:1.35;
+    }
+
+    .tool-btn:hover{
+      background:rgba(255,255,255,.08);
+      transform:translateY(-1px);
+    }
+
+    .mode-row,
+    .zoom-row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }
+
+    .mode-btn,
+    .zoom-btn{
+      appearance:none;
+      border:none;
+      cursor:pointer;
+      padding:9px 14px;
+      border-radius:999px;
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.08);
+      color:#fff;
+      font-weight:700;
+    }
+
+    .mode-btn.active,
+    .zoom-btn.active{
+      background:rgba(138,180,255,.18);
+      border-color:rgba(138,180,255,.40);
+      color:#dbe9ff;
+    }
+
+    .sheet-list{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top:10px;
+      max-height:320px;
+      overflow:auto;
+      padding-right:2px;
+    }
+
+    .sheet-item{
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      padding:10px 12px;
       background:rgba(255,255,255,.02);
     }
 
-    .doc-render th,
-    .doc-render td{
-      border:1px solid rgba(255,255,255,.10);
-      padding:12px 14px;
-      vertical-align:top;
-      text-align:left;
-    }
-
-    .doc-render th{
-      background:rgba(255,255,255,.05);
+    .sheet-item-title{
       font-weight:800;
+      line-height:1.5;
     }
 
-    .doc-render blockquote{
-      margin:18px 0;
-      padding:14px 16px;
-      border-left:4px solid rgba(255,255,255,.18);
+    .sheet-item-meta{
+      color:var(--muted);
+      font-size:12px;
+      margin-top:4px;
+      line-height:1.5;
+    }
+
+    .empty-note{
+      color:var(--muted);
+      font-size:13px;
+      padding:12px;
+      border:1px dashed rgba(255,255,255,.10);
+      border-radius:14px;
+    }
+
+    .studio-topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:14px;
+    }
+
+    .studio-badges{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .studio-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:7px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.08);
       background:rgba(255,255,255,.04);
-      border-radius:14px;
+      font-size:12px;
+      color:var(--muted);
     }
 
-    .doc-render .doc-box{
-      border:1px solid rgba(255,214,153,.35);
-      background:rgba(255,214,153,.10);
+    .paper-wrap{
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:20px;
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02));
       padding:18px;
-      border-radius:18px;
-      margin:18px 0;
-      color:#fff;
-      line-height:1.8;
+      min-height:760px;
     }
 
-    .doc-render img{
-      max-width:100%;
-      height:auto;
-      border-radius:14px;
-      display:block;
-      margin:14px 0;
-    }
-
-    .doc-preview-title{
+    .paper-title{
       font-size:13px;
       color:var(--muted);
       margin-bottom:14px;
     }
 
-    .doc-paper{
-      border:1px solid rgba(255,255,255,.06);
-      border-radius:20px;
-      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02));
-      padding:28px;
+    .paper{
+      width:min(100%, 920px);
+      margin:0 auto;
+      min-height:900px;
+      background:#ffffff;
+      color:#111;
+      border-radius:18px;
+      box-shadow:
+        0 18px 50px rgba(0,0,0,.20),
+        0 2px 0 rgba(255,255,255,.35) inset;
+      padding:52px 62px;
+      position:relative;
+      transition:transform .16s ease;
+      transform-origin: top center;
+    }
+
+    .paper.preview{
+      overflow:hidden;
+    }
+
+    .editor-shell.hide{
+      display:none;
+    }
+
+    .preview-shell{
+      display:none;
+    }
+
+    .preview-shell.show{
+      display:block;
+    }
+
+    .editor-holder{
+      min-height:700px;
+    }
+
+    .preview-holder{
+      line-height:1.85;
+      font-size:16px;
+      color:#111;
+    }
+
+    .preview-holder h1,
+    .preview-holder h2,
+    .preview-holder h3,
+    .preview-holder h4{
+      color:#111;
+      margin:0 0 14px 0;
+      line-height:1.3;
+      font-weight:900;
+    }
+
+    .preview-holder h1{font-size:36px;}
+    .preview-holder h2{font-size:29px;}
+    .preview-holder h3{font-size:23px;}
+    .preview-holder h4{font-size:18px;}
+
+    .preview-holder p{
+      margin:0 0 14px 0;
+      color:#222;
+    }
+
+    .preview-holder ul,
+    .preview-holder ol{
+      margin:0 0 16px 24px;
+      padding:0;
+    }
+
+    .preview-holder li{
+      margin-bottom:8px;
+    }
+
+    .preview-holder blockquote{
+      margin:18px 0;
+      padding:14px 16px;
+      border-left:4px solid rgba(0,0,0,.18);
+      background:rgba(0,0,0,.04);
+      border-radius:12px;
+    }
+
+    .preview-holder table{
+      width:100%;
+      border-collapse:collapse;
+      margin:18px 0;
+    }
+
+    .preview-holder th,
+    .preview-holder td{
+      border:1px solid rgba(0,0,0,.12);
+      padding:10px 12px;
+      text-align:left;
+      vertical-align:top;
+    }
+
+    .preview-holder th{
+      background:rgba(0,0,0,.05);
+      font-weight:800;
+    }
+
+    .preview-holder img{
+      max-width:100%;
+      height:auto;
+      display:block;
+      margin:16px auto;
+      border-radius:12px;
+    }
+
+    .preview-callout{
+      border:1px solid rgba(255,214,153,.55);
+      background:#fff7ea;
+      color:#222;
+      border-radius:14px;
+      padding:16px 18px;
+      margin:18px 0;
+      line-height:1.8;
+    }
+
+    .preview-brand{
+      display:grid;
+      grid-template-columns:92px 1fr;
+      gap:16px;
+      align-items:center;
+      padding:0 0 22px 0;
+      margin-bottom:24px;
+      border-bottom:2px solid rgba(0,0,0,.08);
+    }
+
+    .preview-brand-logo{
+      width:92px;
+      height:92px;
+      border-radius:16px;
+      overflow:hidden;
+      border:1px solid rgba(0,0,0,.08);
+      background:#f6f6f6;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .preview-brand-logo img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      margin:0;
+      border-radius:0;
+    }
+
+    .preview-brand-title{
+      font-size:22px;
+      font-weight:900;
+      line-height:1.35;
+    }
+
+    .preview-brand-sub{
+      font-size:14px;
+      color:#555;
+      margin-top:6px;
+      line-height:1.6;
+    }
+
+    .preview-divider{
+      border:none;
+      border-top:2px solid rgba(0,0,0,.10);
+      margin:26px 0;
+    }
+
+    .preview-signature{
+      margin-top:42px;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:30px;
+    }
+
+    .preview-sign-box{
+      min-height:140px;
+      border-top:1px solid rgba(0,0,0,.14);
+      padding-top:12px;
+      text-align:center;
+    }
+
+    .preview-sign-name{
+      font-weight:800;
+      margin-top:60px;
+    }
+
+    .preview-sheet-card{
+      margin:20px 0;
+      border:1px solid rgba(0,0,0,.10);
+      border-radius:14px;
+      overflow:hidden;
+    }
+
+    .preview-sheet-head{
+      padding:12px 14px;
+      background:#f7f7f7;
+      border-bottom:1px solid rgba(0,0,0,.08);
+      font-weight:800;
+    }
+
+    .ce-block__content,
+    .ce-toolbar__content{
+      max-width:100%;
+    }
+
+    .codex-editor__redactor{
+      padding-bottom:180px !important;
+    }
+
+    .paper .ce-paragraph,
+    .paper .ce-header{
+      color:#111;
+    }
+
+    .paper .cdx-list{
+      color:#111;
+    }
+
+    .paper .ce-toolbar__plus,
+    .paper .ce-toolbar__settings-btn{
+      color:#111;
+    }
+
+    .paper .tc-wrap,
+    .paper .tc-editor{
+      --color-background: transparent;
+      --color-text-primary: #111;
+      --color-border: rgba(0,0,0,.12);
+      --color-border-focus: rgba(0,0,0,.22);
+      --color-placeholder: rgba(0,0,0,.32);
+    }
+
+    .paper .ce-inline-toolbar,
+    .paper .ce-conversion-toolbar,
+    .paper .ce-popover,
+    .paper .tc-popover{
+      color:#111;
+    }
+
+    @media (max-width: 1180px){
+      .workspace{
+        grid-template-columns:1fr;
+      }
+
+      .side-card{
+        position:static;
+      }
     }
 
     @media (max-width: 900px){
-      .page-wrap{padding:14px;}
-      .page-title{font-size:28px;}
-      .doc-card-b{padding:16px;}
-      .doc-paper{padding:18px;}
-      .doc-render h1{font-size:30px;}
-      .doc-render h2{font-size:24px;}
-      .doc-render h3{font-size:20px;}
-      .doc-render table{display:block;overflow:auto;}
+      .page-wrap{
+        padding:14px;
+      }
+
+      .page-title{
+        font-size:28px;
+      }
+
+      .tool-grid{
+        grid-template-columns:1fr;
+      }
+
+      .paper-wrap{
+        padding:10px;
+        min-height:auto;
+      }
+
+      .paper{
+        padding:24px 16px;
+        min-height:620px;
+      }
+
+      .preview-holder table{
+        display:block;
+        overflow:auto;
+      }
+
+      .preview-brand{
+        grid-template-columns:1fr;
+      }
+
+      .preview-signature{
+        grid-template-columns:1fr;
+      }
     }
   </style>
 </head>
@@ -215,33 +532,91 @@
 
       <div class="toolbar">
         <a class="btn" href="/os/docs/">← Danh sách docs</a>
-        <button class="btn" type="button" id="btnToggleEditor">Chỉnh sửa</button>
+        <button class="btn" type="button" id="btnTogglePreview">Preview</button>
         <button class="btn primary" type="button" id="btnSaveDoc">Lưu document</button>
       </div>
     </div>
 
-    <div class="doc-card">
-      <div class="doc-card-h">
-        <div>
-          <b>Document online</b>
-          <div class="muted2">Bản đọc đẹp để xem nhanh trên web / mobile.</div>
+    <div class="workspace">
+      <div class="side-card">
+        <div class="card-h">
+          <div>
+            <b>Document Tools</b>
+            <div class="muted2">Studio soạn tài liệu chuyên nghiệp hơn: thương hiệu, bảng, sheet, chữ ký.</div>
+          </div>
+          <div id="statusBox" class="status-box muted2"></div>
         </div>
-        <div id="statusBox" class="status-box muted2"></div>
+
+        <div class="card-b">
+          <div class="tool-grid">
+            <button class="tool-btn" type="button" id="btnAddBrandHeader">+ Header thương hiệu</button>
+            <button class="tool-btn" type="button" id="btnAddH1">+ Heading lớn</button>
+
+            <button class="tool-btn" type="button" id="btnAddH2">+ Heading vừa</button>
+            <button class="tool-btn" type="button" id="btnAddParagraph">+ Đoạn văn</button>
+
+            <button class="tool-btn" type="button" id="btnAddList">+ Danh sách</button>
+            <button class="tool-btn" type="button" id="btnAddQuote">+ Quote / Ghi chú</button>
+
+            <button class="tool-btn" type="button" id="btnAddTable">+ Bảng thường</button>
+            <button class="tool-btn" type="button" id="btnAddImageUrl">+ Ảnh từ URL</button>
+
+            <button class="tool-btn" type="button" id="btnAddDivider">+ Divider</button>
+            <button class="tool-btn" type="button" id="btnAddSignature">+ Chữ ký</button>
+
+            <button class="tool-btn" type="button" id="btnAddSheet">+ Chèn Sheet</button>
+          </div>
+
+          <div class="tool-section">
+            <div style="font-weight:800;">Mode hiển thị</div>
+            <div class="mode-row">
+              <button class="mode-btn active" type="button" id="btnModeEdit">Soạn thảo</button>
+              <button class="mode-btn" type="button" id="btnModePreview">Xem tài liệu</button>
+            </div>
+          </div>
+
+          <div class="tool-section">
+            <div style="font-weight:800;">Zoom giấy</div>
+            <div class="zoom-row">
+              <button class="zoom-btn" data-zoom="0.9" type="button">90%</button>
+              <button class="zoom-btn active" data-zoom="1" type="button">100%</button>
+              <button class="zoom-btn" data-zoom="1.1" type="button">110%</button>
+            </div>
+          </div>
+
+          <div class="tool-section">
+            <div style="font-weight:800;">Sheets đang liên kết</div>
+            <div class="muted2">Chọn nhanh sheet để chèn vào giữa doc.</div>
+            <div id="linkedSheetsBox" class="sheet-list"></div>
+          </div>
+        </div>
       </div>
 
-      <div class="doc-card-b">
-        <div class="doc-preview-title">Preview online</div>
-        <div class="doc-paper">
-          <div id="docRender" class="doc-render"></div>
+      <div class="main-card">
+        <div class="card-h">
+          <div>
+            <b>HeightTech Document Studio</b>
+            <div class="muted2">Ảnh thương hiệu → văn bản → bảng → sheet nhúng → điều khoản → chữ ký.</div>
+          </div>
         </div>
 
-        <div id="editorWrap" class="editor-wrap">
-          <div class="doc-preview-title">Chỉnh sửa HTML tài liệu</div>
-          <textarea
-            id="docEditor"
-            class="input doc-editor"
-            placeholder="Nhập HTML nội dung tài liệu..."
-          ></textarea>
+        <div class="card-b">
+          <div class="studio-topbar">
+            <div class="studio-badges">
+              <span class="studio-badge">Document Studio</span>
+              <span class="studio-badge" id="paperModeText">Đang ở chế độ soạn thảo</span>
+            </div>
+          </div>
+
+          <div class="paper-wrap">
+            <div class="paper editor-shell" id="editorPaper">
+              <div id="docEditor" class="editor-holder"></div>
+            </div>
+
+            <div class="paper preview-shell" id="previewPaper">
+              <div id="docPreview" class="preview-holder"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -250,6 +625,12 @@
   <script>
     const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
     const DOC_ID = "{{ doc_id|escapejs }}".trim();
+
+    let editor = null;
+    let DOC = null;
+    let LINKED_SHEETS = [];
+    let PREVIEW_MODE = false;
+    let PAPER_ZOOM = 1;
 
     function getCookie(name) {
       const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
@@ -271,7 +652,16 @@
       throw new Error(txt || `HTTP ${res.status}`);
     }
 
-    function setStatus(msg, type="info"){
+    function esc(v) {
+      return String(v ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function setStatus(msg, type = "info") {
       const el = document.getElementById("statusBox");
       el.textContent = msg || "";
       el.style.color =
@@ -280,23 +670,107 @@
         "#8ab4ff";
     }
 
-    function renderPreview(html){
-      document.getElementById("docRender").innerHTML = html || `
-        <div class="muted2">Tài liệu chưa có nội dung.</div>
-      `;
+    function applyZoom() {
+      document.querySelectorAll(".paper").forEach((el) => {
+        el.style.transform = `scale(${PAPER_ZOOM})`;
+        el.style.transformOrigin = "top center";
+      });
+
+      document.querySelectorAll(".zoom-btn").forEach((btn) => {
+        btn.classList.toggle("active", String(btn.dataset.zoom) === String(PAPER_ZOOM));
+      });
     }
 
-    function toggleEditor(forceShow = null){
-      const wrap = document.getElementById("editorWrap");
-      const btn = document.getElementById("btnToggleEditor");
-      if (!wrap || !btn) return;
+    async function uploadImage(file) {
+      const form = new FormData();
+      form.append("file", file);
 
-      const show = forceShow === null ? !wrap.classList.contains("show") : !!forceShow;
-      wrap.classList.toggle("show", show);
-      btn.textContent = show ? "Ẩn chỉnh sửa" : "Chỉnh sửa";
+      const res = await fetch("/api/v1/docs/upload-image/", {
+        method: "POST",
+        credentials: "include",
+        headers: authHeaders(),
+        body: form,
+      });
+
+      const data = await readJsonSafe(res);
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Upload ảnh lỗi");
+      }
+
+      return data;
     }
 
-    async function loadDoc(){
+    async function initEditor(data) {
+      if (editor && typeof editor.destroy === "function") {
+        editor.destroy();
+      }
+
+      editor = new window.EditorJS({
+        holder: "docEditor",
+        autofocus: true,
+        data: data || {
+          blocks: [
+            {
+              type: "header",
+              data: {
+                text: "Tiêu đề tài liệu",
+                level: 2
+              }
+            },
+            {
+              type: "paragraph",
+              data: {
+                text: "Bắt đầu soạn thảo nội dung..."
+              }
+            }
+          ]
+        },
+        tools: {
+          header: {
+            class: window.Header,
+            inlineToolbar: true,
+            config: {
+              levels: [1, 2, 3, 4],
+              defaultLevel: 2
+            }
+          },
+          paragraph: {
+            class: window.Paragraph,
+            inlineToolbar: true
+          },
+          list: {
+            class: window.EditorjsList || window.List,
+            inlineToolbar: true
+          },
+          quote: {
+            class: window.Quote,
+            inlineToolbar: true
+          },
+          table: {
+            class: window.Table,
+            inlineToolbar: true,
+            config: {
+              rows: 2,
+              cols: 3
+            }
+          },
+          image: {
+            class: window.ImageTool,
+            config: {
+              uploader: {
+                async uploadByFile(file) {
+                  return await uploadImage(file);
+                }
+              }
+            }
+          }
+        }
+      });
+
+      await editor.isReady;
+    }
+
+    async function loadDoc() {
       const res = await fetch(`/api/v1/docs/${DOC_ID}/`, {
         credentials: "include",
         headers: authHeaders(),
@@ -309,28 +783,87 @@
         return;
       }
 
-      const item = data.item || {};
-      document.getElementById("docTitle").textContent = item.title || "Document";
-      document.getElementById("docMeta").textContent =
-        `Type: ${item.doc_type || "-"} • Linked: ${item.linked_target_type || "-"} ${item.linked_target_id || ""}`;
+      DOC = data.item || {};
 
-      document.getElementById("docEditor").value = item.content_html || "";
-      renderPreview(item.content_html || "");
+      document.getElementById("docTitle").textContent = DOC.title || "Document";
+      document.getElementById("docMeta").textContent =
+        `Type: ${DOC.doc_type || "-"} • Linked: ${DOC.linked_target_type || "-"} ${DOC.linked_target_id || ""}`;
+
+      const blocks = Array.isArray(DOC.content_blocks) && DOC.content_blocks.length
+        ? { blocks: DOC.content_blocks }
+        : null;
+
+      await initEditor(blocks);
+      await loadLinkedSheets();
+      applyZoom();
       setStatus("Đã tải document", "ok");
     }
 
-    async function saveDoc(){
-      const payload = {
-        content_html: document.getElementById("docEditor").value
-      };
+    async function loadLinkedSheets() {
+      const box = document.getElementById("linkedSheetsBox");
+      if (!box) return;
+
+      if (!DOC?.linked_target_type || !DOC?.linked_target_id) {
+        box.innerHTML = `<div class="empty-note">Document này chưa gắn target để lấy sheets liên quan.</div>`;
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `/api/v1/sheets/?linked_target_type=${encodeURIComponent(DOC.linked_target_type)}&linked_target_id=${encodeURIComponent(DOC.linked_target_id)}`,
+          {
+            credentials: "include",
+            headers: authHeaders(),
+            cache: "no-store",
+          }
+        );
+
+        const data = await readJsonSafe(res);
+        if (!res.ok || !data.ok) {
+          box.innerHTML = `<div class="empty-note">Không tải được danh sách sheet.</div>`;
+          return;
+        }
+
+        LINKED_SHEETS = data.items || [];
+
+        if (!LINKED_SHEETS.length) {
+          box.innerHTML = `<div class="empty-note">Chưa có sheet nào liên kết với target này.</div>`;
+          return;
+        }
+
+        box.innerHTML = LINKED_SHEETS.map((x) => `
+          <div class="sheet-item">
+            <div class="sheet-item-title">${esc(x.name || ("Sheet #" + x.id))}</div>
+            <div class="sheet-item-meta">Module: ${esc(x.module_code || "-")}</div>
+            <div style="margin-top:8px;">
+              <button class="btn mini" type="button" onclick="insertSheetById(${Number(x.id)})">Chèn sheet này</button>
+            </div>
+          </div>
+        `).join("");
+      } catch (err) {
+        box.innerHTML = `<div class="empty-note">Lỗi tải sheet: ${esc(err.message || err)}</div>`;
+      }
+    }
+
+    async function saveDoc() {
+      if (!editor) {
+        setStatus("Editor chưa sẵn sàng", "err");
+        return;
+      }
 
       setStatus("Đang lưu document...", "info");
+
+      const output = await editor.save();
 
       const res = await fetch(`/api/v1/docs/${DOC_ID}/update/`, {
         method: "POST",
         credentials: "include",
-        headers: authHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify(payload),
+        headers: authHeaders({
+          "Content-Type": "application/json"
+        }),
+        body: JSON.stringify({
+          content_blocks: output.blocks
+        })
       });
 
       const data = await readJsonSafe(res);
@@ -339,26 +872,351 @@
         return;
       }
 
-      renderPreview(document.getElementById("docEditor").value);
       setStatus("Đã lưu document", "ok");
-      toggleEditor(false);
+      if (PREVIEW_MODE) {
+        await renderPreview();
+      }
     }
 
-    document.getElementById("btnToggleEditor")?.addEventListener("click", function(){
-      toggleEditor();
-    });
+    async function setMode(preview) {
+      PREVIEW_MODE = !!preview;
 
-    document.getElementById("btnSaveDoc")?.addEventListener("click", function(){
+      const editorPaper = document.getElementById("editorPaper");
+      const previewPaper = document.getElementById("previewPaper");
+      const btnModeEdit = document.getElementById("btnModeEdit");
+      const btnModePreview = document.getElementById("btnModePreview");
+      const paperModeText = document.getElementById("paperModeText");
+      const btnTogglePreview = document.getElementById("btnTogglePreview");
+
+      if (PREVIEW_MODE) {
+        editorPaper.classList.add("hide");
+        previewPaper.classList.add("show");
+        btnModeEdit.classList.remove("active");
+        btnModePreview.classList.add("active");
+        paperModeText.textContent = "Đang ở chế độ xem tài liệu";
+        btnTogglePreview.textContent = "Soạn thảo";
+        await renderPreview();
+      } else {
+        editorPaper.classList.remove("hide");
+        previewPaper.classList.remove("show");
+        btnModeEdit.classList.add("active");
+        btnModePreview.classList.remove("active");
+        paperModeText.textContent = "Đang ở chế độ soạn thảo";
+        btnTogglePreview.textContent = "Preview";
+      }
+    }
+
+    function insertHeader(level, text) {
+      if (!editor) return;
+      editor.blocks.insert("header", {
+        text: text || "Tiêu đề mới",
+        level: level || 2
+      });
+    }
+
+    function insertParagraph(text) {
+      if (!editor) return;
+      editor.blocks.insert("paragraph", {
+        text: text || "Nội dung đoạn văn..."
+      });
+    }
+
+    function insertList(items) {
+      if (!editor) return;
+      editor.blocks.insert("list", {
+        style: "unordered",
+        items: items || ["Ý 1", "Ý 2", "Ý 3"]
+      });
+    }
+
+    function insertQuote(text, caption) {
+      if (!editor) return;
+      editor.blocks.insert("quote", {
+        text: text || "Ghi chú / điểm nhấn / quote quan trọng...",
+        caption: caption || "",
+        alignment: "left"
+      });
+    }
+
+    function insertTable(rows) {
+      if (!editor) return;
+      editor.blocks.insert("table", {
+        withHeadings: true,
+        content: rows || [
+          ["STT", "Hạng mục", "Ghi chú"],
+          ["1", "", ""],
+          ["2", "", ""]
+        ]
+      });
+    }
+
+    function insertImageByUrl(url, caption) {
+      if (!editor || !url) return;
+      editor.blocks.insert("image", {
+        file: { url: url },
+        caption: caption || "",
+        withBorder: false,
+        stretched: false,
+        withBackground: false
+      });
+    }
+
+    function insertBrandHeader() {
+      const company = window.prompt("Tên thương hiệu / công ty:", "HEIGHT MEDIA") || "HEIGHT MEDIA";
+      const subtitle = window.prompt("Subtitle / mô tả:", "Giải pháp vận hành và tăng trưởng TMĐT") || "";
+      const logoUrl = window.prompt("URL logo / ảnh thương hiệu:", "") || "";
+
+      if (logoUrl) {
+        insertImageByUrl(logoUrl, company);
+      }
+
+      insertHeader(1, company);
+      if (subtitle) {
+        insertParagraph(subtitle);
+      }
+      insertDivider();
+    }
+
+    function insertDivider() {
+      insertParagraph("---");
+    }
+
+    function insertSignature() {
+      insertParagraph("ĐẠI DIỆN CÁC BÊN");
+      insertTable([
+        ["BÊN A", "BÊN B"],
+        ["(Ký, ghi rõ họ tên)", "(Ký, ghi rõ họ tên)"],
+        ["", ""],
+        ["", ""]
+      ]);
+    }
+
+    async function insertSheetById(sheetId) {
+      if (!editor || !sheetId) return;
+
+      try {
+        setStatus("Đang tải sheet để chèn...", "info");
+
+        const res = await fetch(`/api/v1/sheets/${sheetId}/`, {
+          credentials: "include",
+          headers: authHeaders(),
+          cache: "no-store",
+        });
+
+        const data = await readJsonSafe(res);
+        if (!res.ok || !data.ok) {
+          setStatus(data.message || "Không tải được sheet", "err");
+          return;
+        }
+
+        const sheet = data.sheet || {};
+        const columns = data.columns || [];
+        const rows = data.rows || [];
+
+        const tableRows = [];
+        tableRows.push(columns.map(c => c.name || ""));
+
+        rows.forEach(r => {
+          tableRows.push(
+            columns.map(c => {
+              const cells = r.cells || {};
+              return cells[String(c.id)] || "";
+            })
+          );
+        });
+
+        insertHeader(3, sheet.name || ("Sheet #" + sheetId));
+        editor.blocks.insert("table", {
+          withHeadings: true,
+          content: tableRows
+        });
+
+        setStatus("Đã chèn sheet vào document", "ok");
+      } catch (err) {
+        setStatus("Lỗi chèn sheet: " + (err.message || err), "err");
+      }
+    }
+
+    function normalizeDivider(text) {
+      const raw = String(text || "").trim();
+      return raw === "---" || raw === "—" || raw === "***";
+    }
+
+    async function renderPreview() {
+      if (!editor) return;
+
+      const output = await editor.save();
+      const box = document.getElementById("docPreview");
+
+      if (!output.blocks || !output.blocks.length) {
+        box.innerHTML = `<div class="muted2">Document chưa có nội dung.</div>`;
+        return;
+      }
+
+      const html = [];
+      let brandMode = false;
+
+      output.blocks.forEach((block, index) => {
+        const type = String(block.type || "");
+        const data = block.data || {};
+
+        if (type === "header") {
+          const level = Number(data.level || 2);
+          const tag = level === 1 ? "h1" : level === 2 ? "h2" : level === 3 ? "h3" : "h4";
+
+          html.push(`<${tag}>${esc(data.text || "")}</${tag}>`);
+        }
+
+        else if (type === "paragraph") {
+          const text = String(data.text || "");
+          const safe = esc(text).replaceAll("\n", "<br>");
+
+          if (normalizeDivider(text)) {
+            html.push(`<hr class="preview-divider">`);
+          } else {
+            html.push(`<p>${safe}</p>`);
+          }
+        }
+
+        else if (type === "list") {
+          const items = Array.isArray(data.items) ? data.items : [];
+          const tag = String(data.style || "") === "ordered" ? "ol" : "ul";
+          html.push(`<${tag}>${items.map(x => `<li>${esc(x)}</li>`).join("")}</${tag}>`);
+        }
+
+        else if (type === "quote") {
+          html.push(`
+            <div class="preview-callout">
+              ${String(esc(data.text || "")).replaceAll("\n", "<br>")}
+            </div>
+          `);
+        }
+
+        else if (type === "table") {
+          const content = Array.isArray(data.content) ? data.content : [];
+          if (!content.length) return;
+
+          const firstRow = content[0] || [];
+          const bodyRows = content.slice(1);
+
+          html.push(`
+            <div class="preview-sheet-card">
+              <div class="preview-sheet-head">Bảng dữ liệu</div>
+              <table>
+                <thead>
+                  <tr>${firstRow.map(x => `<th>${esc(x)}</th>`).join("")}</tr>
+                </thead>
+                <tbody>
+                  ${bodyRows.map(r => `<tr>${(r || []).map(x => `<td>${esc(x)}</td>`).join("")}</tr>`).join("")}
+                </tbody>
+              </table>
+            </div>
+          `);
+        }
+
+        else if (type === "image") {
+          const imageUrl = data?.file?.url || "";
+          if (imageUrl) {
+            html.push(`
+              <div>
+                <img src="${esc(imageUrl)}" alt="">
+                ${data.caption ? `<p style="text-align:center;color:#666;font-size:13px;">${esc(data.caption)}</p>` : ``}
+              </div>
+            `);
+          }
+        }
+      });
+
+      box.innerHTML = html.join("");
+    }
+
+    document.getElementById("btnSaveDoc")?.addEventListener("click", () => {
       saveDoc().catch((e) => {
         setStatus("Lưu lỗi: " + (e.message || e), "err");
       });
     });
 
-    document.getElementById("docEditor")?.addEventListener("input", function(){
-      if (document.getElementById("editorWrap")?.classList.contains("show")) {
-        renderPreview(this.value);
-      }
+    document.getElementById("btnTogglePreview")?.addEventListener("click", async () => {
+      await setMode(!PREVIEW_MODE);
     });
+
+    document.getElementById("btnModeEdit")?.addEventListener("click", async () => {
+      await setMode(false);
+    });
+
+    document.getElementById("btnModePreview")?.addEventListener("click", async () => {
+      await setMode(true);
+    });
+
+    document.querySelectorAll(".zoom-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        PAPER_ZOOM = Number(btn.dataset.zoom || 1);
+        applyZoom();
+      });
+    });
+
+    document.getElementById("btnAddBrandHeader")?.addEventListener("click", () => {
+      insertBrandHeader();
+    });
+
+    document.getElementById("btnAddH1")?.addEventListener("click", () => {
+      insertHeader(1, "Tiêu đề lớn");
+    });
+
+    document.getElementById("btnAddH2")?.addEventListener("click", () => {
+      insertHeader(2, "Tiêu đề section");
+    });
+
+    document.getElementById("btnAddParagraph")?.addEventListener("click", () => {
+      insertParagraph("Nội dung đoạn văn...");
+    });
+
+    document.getElementById("btnAddList")?.addEventListener("click", () => {
+      insertList(["Ý thứ nhất", "Ý thứ hai", "Ý thứ ba"]);
+    });
+
+    document.getElementById("btnAddQuote")?.addEventListener("click", () => {
+      insertQuote("Ghi chú / điểm nhấn / quote quan trọng...");
+    });
+
+    document.getElementById("btnAddTable")?.addEventListener("click", () => {
+      insertTable([
+        ["STT", "Hạng mục", "Ghi chú"],
+        ["1", "", ""],
+        ["2", "", ""]
+      ]);
+    });
+
+    document.getElementById("btnAddImageUrl")?.addEventListener("click", () => {
+      const url = window.prompt("Nhập URL ảnh:");
+      if (!url) return;
+      const caption = window.prompt("Caption ảnh:", "") || "";
+      insertImageByUrl(url, caption);
+    });
+
+    document.getElementById("btnAddDivider")?.addEventListener("click", () => {
+      insertDivider();
+    });
+
+    document.getElementById("btnAddSignature")?.addEventListener("click", () => {
+      insertSignature();
+    });
+
+    document.getElementById("btnAddSheet")?.addEventListener("click", () => {
+      if (!LINKED_SHEETS.length) {
+        alert("Chưa có sheet liên kết để chèn.");
+        return;
+      }
+
+      const text = LINKED_SHEETS.map((x, idx) => `${idx + 1}. ${x.name || ("Sheet #" + x.id)}`).join("\n");
+      const pick = window.prompt(`Chọn sheet cần chèn:\n${text}\n\nNhập số thứ tự:`);
+      const n = Number(pick || 0);
+
+      if (!Number.isFinite(n) || n < 1 || n > LINKED_SHEETS.length) return;
+      insertSheetById(LINKED_SHEETS[n - 1].id);
+    });
+
+    window.insertSheetById = insertSheetById;
 
     loadDoc().catch((e) => {
       setStatus("Load document lỗi: " + (e.message || e), "err");

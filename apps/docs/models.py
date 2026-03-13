@@ -37,6 +37,8 @@ class Document(models.Model):
     linked_target_id = models.BigIntegerField(null=True, blank=True, db_index=True)
 
     content_html = models.TextField(blank=True, default="")
+    content_blocks = models.JSONField(default=list, blank=True)
+
     public_token = models.CharField(max_length=120, blank=True, default="", db_index=True)
 
     created_by = models.ForeignKey(
