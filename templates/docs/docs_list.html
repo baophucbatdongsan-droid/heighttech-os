@@ -5,7 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>HeightTech Docs</title>
-  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=1" />
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=2" />
   <style>
     .page-wrap{max-width:1180px;margin:0 auto;padding:24px;}
     .page-title{font-size:28px;font-weight:900;}
@@ -45,7 +45,7 @@
           <input id="docLinkedType" class="input" placeholder="linked_target_type, ví dụ: contract" />
           <input id="docLinkedId" class="input" placeholder="linked_target_id, ví dụ: 4" />
 
-          <textarea id="docHtml" class="input" style="min-height:180px;grid-column:1/-1;" placeholder="Dán HTML nội dung tài liệu vào đây..."></textarea>
+          <textarea id="docIntro" class="input" style="min-height:180px;grid-column:1/-1;" placeholder="Mô tả ngắn hoặc phần mở đầu tài liệu..."></textarea>
         </div>
 
         <div class="row">
@@ -71,27 +71,27 @@
     const LINKED_TARGET_ID = new URLSearchParams(window.location.search).get("linked_target_id") || "";
 
     function getCookie(name) {
-        const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
-        return m ? decodeURIComponent(m[2]) : "";
+      const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
+      return m ? decodeURIComponent(m[2]) : "";
     }
 
     function authHeaders(extra = {}) {
-        const headers = Object.assign({}, extra || {});
-        if (CURRENT_TENANT_ID) headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
-        const csrf = getCookie("csrftoken");
-        if (csrf) headers["X-CSRFToken"] = csrf;
-        return headers;
+      const headers = Object.assign({}, extra || {});
+      if (CURRENT_TENANT_ID) headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
+      const csrf = getCookie("csrftoken");
+      if (csrf) headers["X-CSRFToken"] = csrf;
+      return headers;
     }
 
     async function readJsonSafe(res) {
-        const ct = res.headers.get("content-type") || "";
-        if (ct.includes("application/json")) return await res.json();
-        const txt = await res.text();
-        throw new Error(txt || `HTTP ${res.status}`);
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("application/json")) return await res.json();
+      const txt = await res.text();
+      throw new Error(txt || `HTTP ${res.status}`);
     }
 
     function esc(v){
-        return String(v ?? "")
+      return String(v ?? "")
         .replaceAll("&","&amp;")
         .replaceAll("<","&lt;")
         .replaceAll(">","&gt;")
@@ -100,91 +100,141 @@
     }
 
     function setCreateStatus(msg, type="info"){
-        const el = document.getElementById("createStatus");
-        el.textContent = msg || "";
-        el.style.color = type === "err" ? "#ff8f9c" : type === "ok" ? "#8fe3a1" : "#8ab4ff";
+      const el = document.getElementById("createStatus");
+      el.textContent = msg || "";
+      el.style.color = type === "err" ? "#ff8f9c" : type === "ok" ? "#8fe3a1" : "#8ab4ff";
+    }
+
+    function buildDefaultBlocks(title, introText, docType) {
+      const blocks = [
+        {
+          type: "header",
+          data: {
+            text: title || "Tài liệu mới",
+            level: 2
+          }
+        }
+      ];
+
+      if (introText) {
+        blocks.push({
+          type: "paragraph",
+          data: {
+            text: introText
+          }
+        });
+      } else {
+        blocks.push({
+          type: "paragraph",
+          data: {
+            text: "Bắt đầu soạn thảo nội dung..."
+          }
+        });
+      }
+
+      if (docType === "quotation") {
+        blocks.push({
+          type: "table",
+          data: {
+            withHeadings: true,
+            content: [
+              ["STT", "Hạng mục", "Ghi chú"],
+              ["1", "", ""],
+              ["2", "", ""]
+            ]
+          }
+        });
+      }
+
+      return blocks;
     }
 
     async function loadDocs(){
-        const box = document.getElementById("docList");
-        const p = new URLSearchParams();
-        if (LINKED_TARGET_TYPE) p.set("linked_target_type", LINKED_TARGET_TYPE);
-        if (LINKED_TARGET_ID) p.set("linked_target_id", LINKED_TARGET_ID);
+      const box = document.getElementById("docList");
+      const p = new URLSearchParams();
+      if (LINKED_TARGET_TYPE) p.set("linked_target_type", LINKED_TARGET_TYPE);
+      if (LINKED_TARGET_ID) p.set("linked_target_id", LINKED_TARGET_ID);
 
-        const res = await fetch(`/api/v1/docs/?${p.toString()}`, {
+      const res = await fetch(`/api/v1/docs/?${p.toString()}`, {
         credentials: "include",
         headers: authHeaders(),
         cache: "no-store",
-        });
+      });
 
-        const data = await readJsonSafe(res);
+      const data = await readJsonSafe(res);
 
-        if (!res.ok || !data.ok) {
+      if (!res.ok || !data.ok) {
         box.innerHTML = `<div class="item">Không tải được document</div>`;
         return;
-        }
+      }
 
-        const items = data.items || [];
-        if (!items.length) {
+      const items = data.items || [];
+      if (!items.length) {
         box.innerHTML = `<div class="item">Chưa có document</div>`;
         return;
-        }
+      }
 
-        box.innerHTML = items.map(x => `
+      box.innerHTML = items.map(x => `
         <div class="item">
-            <div><b>${esc(x.title)}</b></div>
-            <div class="muted2" style="margin-top:6px;">
+          <div><b>${esc(x.title)}</b></div>
+          <div class="muted2" style="margin-top:6px;">
             Type: ${esc(x.doc_type || "-")}
             • Linked: ${esc(x.linked_target_type || "-")} ${esc(x.linked_target_id || "")}
-            </div>
-            <div class="row">
+          </div>
+          <div class="row">
             <a class="btn primary" href="/os/docs/${x.id}/">Mở document</a>
-            </div>
+          </div>
         </div>
-        `).join("");
+      `).join("");
     }
 
     async function createDoc(){
-        const payload = {
-        title: document.getElementById("docTitle").value.trim(),
-        doc_type: document.getElementById("docType").value,
-        linked_target_type: document.getElementById("docLinkedType").value.trim() || LINKED_TARGET_TYPE,
-        linked_target_id: document.getElementById("docLinkedId").value.trim() || LINKED_TARGET_ID || null,
-        content_html: document.getElementById("docHtml").value
-        };
+      const title = document.getElementById("docTitle").value.trim();
+      const docType = document.getElementById("docType").value;
+      const linkedType = document.getElementById("docLinkedType").value.trim() || LINKED_TARGET_TYPE;
+      const linkedId = document.getElementById("docLinkedId").value.trim() || LINKED_TARGET_ID || null;
+      const introText = document.getElementById("docIntro").value.trim();
 
-        if (!payload.title) {
+      if (!title) {
         setCreateStatus("Thiếu title", "err");
         return;
-        }
+      }
 
-        setCreateStatus("Đang tạo document...", "info");
+      const payload = {
+        title: title,
+        doc_type: docType,
+        linked_target_type: linkedType,
+        linked_target_id: linkedId,
+        content_blocks: buildDefaultBlocks(title, introText, docType)
+      };
 
-        const res = await fetch("/api/v1/docs/create/", {
+      setCreateStatus("Đang tạo document...", "info");
+
+      const res = await fetch("/api/v1/docs/create/", {
         method: "POST",
         credentials: "include",
         headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(payload),
-        });
+      });
 
-        const data = await readJsonSafe(res);
-        if (!res.ok || !data.ok) {
+      const data = await readJsonSafe(res);
+      if (!res.ok || !data.ok) {
         setCreateStatus(data.message || "Tạo document lỗi", "err");
         return;
-        }
+      }
 
-        setCreateStatus("Đã tạo document", "ok");
-        window.location.href = `/os/docs/${data.item.id}/`;
+      setCreateStatus("Đã tạo document", "ok");
+      window.location.href = `/os/docs/${data.item.id}/`;
     }
 
     if (LINKED_TARGET_TYPE && !document.getElementById("docLinkedType").value) {
-        document.getElementById("docLinkedType").value = LINKED_TARGET_TYPE;
+      document.getElementById("docLinkedType").value = LINKED_TARGET_TYPE;
     }
     if (LINKED_TARGET_ID && !document.getElementById("docLinkedId").value) {
-        document.getElementById("docLinkedId").value = LINKED_TARGET_ID;
+      document.getElementById("docLinkedId").value = LINKED_TARGET_ID;
     }
 
     loadDocs().catch(console.error);
-    </script>
+  </script>
 </body>
 </html>

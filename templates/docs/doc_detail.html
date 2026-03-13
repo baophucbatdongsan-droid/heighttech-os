@@ -5,7 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>{{ doc_title|default:"HeightTech Document" }}</title>
-  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=6" />
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=7" />
 
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.29.1"></script>
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@2.8.1"></script>
@@ -16,40 +16,11 @@
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/image@2.8.1"></script>
 
   <style>
-    .page-wrap{
-      max-width:1400px;
-      margin:0 auto;
-      padding:24px;
-    }
-
-    .page-head{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:16px;
-      flex-wrap:wrap;
-    }
-
-    .page-title{
-      font-size:36px;
-      font-weight:900;
-      line-height:1.12;
-      letter-spacing:-.03em;
-    }
-
-    .page-sub{
-      margin-top:8px;
-      color:var(--muted);
-      line-height:1.6;
-      font-size:14px;
-    }
-
-    .toolbar{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-top:18px;
-    }
+    .page-wrap{max-width:1400px;margin:0 auto;padding:24px;}
+    .page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+    .page-title{font-size:36px;font-weight:900;line-height:1.12;letter-spacing:-.03em;}
+    .page-sub{margin-top:8px;color:var(--muted);line-height:1.6;font-size:14px;}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
 
     .workspace{
       display:grid;
@@ -59,8 +30,7 @@
       align-items:start;
     }
 
-    .side-card,
-    .main-card{
+    .side-card,.main-card{
       border:1px solid rgba(255,255,255,.08);
       border-radius:24px;
       background:rgba(255,255,255,.03);
@@ -68,11 +38,7 @@
       box-shadow:0 10px 36px rgba(0,0,0,.16);
     }
 
-    .side-card{
-      position:sticky;
-      top:18px;
-    }
-
+    .side-card{position:sticky;top:18px;}
     .card-h{
       padding:16px 18px;
       border-bottom:1px solid rgba(255,255,255,.06);
@@ -83,20 +49,9 @@
       flex-wrap:wrap;
     }
 
-    .card-b{
-      padding:18px;
-    }
-
-    .muted2{
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.6;
-    }
-
-    .status-box{
-      min-height:20px;
-      font-size:13px;
-    }
+    .card-b{padding:18px;}
+    .muted2{color:var(--muted);font-size:13px;line-height:1.6;}
+    .status-box{min-height:20px;font-size:13px;}
 
     .tool-section{
       margin-top:14px;
@@ -130,16 +85,14 @@
       transform:translateY(-1px);
     }
 
-    .mode-row,
-    .zoom-row{
+    .mode-row,.zoom-row{
       display:flex;
       gap:10px;
       flex-wrap:wrap;
       margin-top:12px;
     }
 
-    .mode-btn,
-    .zoom-btn{
+    .mode-btn,.zoom-btn{
       appearance:none;
       border:none;
       cursor:pointer;
@@ -151,8 +104,7 @@
       font-weight:700;
     }
 
-    .mode-btn.active,
-    .zoom-btn.active{
+    .mode-btn.active,.zoom-btn.active{
       background:rgba(138,180,255,.18);
       border-color:rgba(138,180,255,.40);
       color:#dbe9ff;
@@ -175,18 +127,8 @@
       background:rgba(255,255,255,.02);
     }
 
-    .sheet-item-title{
-      font-weight:800;
-      line-height:1.5;
-    }
-
-    .sheet-item-meta{
-      color:var(--muted);
-      font-size:12px;
-      margin-top:4px;
-      line-height:1.5;
-    }
-
+    .sheet-item-title{font-weight:800;line-height:1.5;}
+    .sheet-item-meta{color:var(--muted);font-size:12px;margin-top:4px;line-height:1.5;}
     .empty-note{
       color:var(--muted);
       font-size:13px;
@@ -204,12 +146,7 @@
       margin-bottom:14px;
     }
 
-    .studio-badges{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-    }
-
+    .studio-badges{display:flex;gap:8px;flex-wrap:wrap;}
     .studio-badge{
       display:inline-flex;
       align-items:center;
@@ -230,12 +167,6 @@
       min-height:760px;
     }
 
-    .paper-title{
-      font-size:13px;
-      color:var(--muted);
-      margin-bottom:14px;
-    }
-
     .paper{
       width:min(100%, 920px);
       margin:0 auto;
@@ -243,282 +174,87 @@
       background:#ffffff;
       color:#111;
       border-radius:18px;
-      box-shadow:
-        0 18px 50px rgba(0,0,0,.20),
-        0 2px 0 rgba(255,255,255,.35) inset;
+      box-shadow:0 18px 50px rgba(0,0,0,.20), 0 2px 0 rgba(255,255,255,.35) inset;
       padding:52px 62px;
       position:relative;
       transition:transform .16s ease;
       transform-origin: top center;
     }
 
-    .paper.preview{
-      overflow:hidden;
-    }
+    .editor-shell.hide{display:none;}
+    .preview-shell{display:none;}
+    .preview-shell.show{display:block;}
+    .editor-holder{min-height:700px;}
+    .preview-holder{line-height:1.85;font-size:16px;color:#111;}
 
-    .editor-shell.hide{
-      display:none;
+    .preview-holder h1,.preview-holder h2,.preview-holder h3,.preview-holder h4{
+      color:#111;margin:0 0 14px 0;line-height:1.3;font-weight:900;
     }
-
-    .preview-shell{
-      display:none;
-    }
-
-    .preview-shell.show{
-      display:block;
-    }
-
-    .editor-holder{
-      min-height:700px;
-    }
-
-    .preview-holder{
-      line-height:1.85;
-      font-size:16px;
-      color:#111;
-    }
-
-    .preview-holder h1,
-    .preview-holder h2,
-    .preview-holder h3,
-    .preview-holder h4{
-      color:#111;
-      margin:0 0 14px 0;
-      line-height:1.3;
-      font-weight:900;
-    }
-
     .preview-holder h1{font-size:36px;}
     .preview-holder h2{font-size:29px;}
     .preview-holder h3{font-size:23px;}
     .preview-holder h4{font-size:18px;}
-
-    .preview-holder p{
-      margin:0 0 14px 0;
-      color:#222;
-    }
-
-    .preview-holder ul,
-    .preview-holder ol{
-      margin:0 0 16px 24px;
-      padding:0;
-    }
-
-    .preview-holder li{
-      margin-bottom:8px;
-    }
-
+    .preview-holder p{margin:0 0 14px 0;color:#222;}
+    .preview-holder ul,.preview-holder ol{margin:0 0 16px 24px;padding:0;}
+    .preview-holder li{margin-bottom:8px;}
     .preview-holder blockquote{
-      margin:18px 0;
-      padding:14px 16px;
-      border-left:4px solid rgba(0,0,0,.18);
-      background:rgba(0,0,0,.04);
-      border-radius:12px;
+      margin:18px 0;padding:14px 16px;border-left:4px solid rgba(0,0,0,.18);
+      background:rgba(0,0,0,.04);border-radius:12px;
     }
-
-    .preview-holder table{
-      width:100%;
-      border-collapse:collapse;
-      margin:18px 0;
+    .preview-holder table{width:100%;border-collapse:collapse;margin:18px 0;}
+    .preview-holder th,.preview-holder td{
+      border:1px solid rgba(0,0,0,.12);padding:10px 12px;text-align:left;vertical-align:top;
     }
-
-    .preview-holder th,
-    .preview-holder td{
-      border:1px solid rgba(0,0,0,.12);
-      padding:10px 12px;
-      text-align:left;
-      vertical-align:top;
-    }
-
-    .preview-holder th{
-      background:rgba(0,0,0,.05);
-      font-weight:800;
-    }
-
+    .preview-holder th{background:rgba(0,0,0,.05);font-weight:800;}
     .preview-holder img{
-      max-width:100%;
-      height:auto;
-      display:block;
-      margin:16px auto;
-      border-radius:12px;
+      max-width:100%;height:auto;display:block;margin:16px auto;border-radius:12px;
     }
-
     .preview-callout{
       border:1px solid rgba(255,214,153,.55);
-      background:#fff7ea;
-      color:#222;
-      border-radius:14px;
-      padding:16px 18px;
-      margin:18px 0;
-      line-height:1.8;
+      background:#fff7ea;color:#222;border-radius:14px;
+      padding:16px 18px;margin:18px 0;line-height:1.8;
     }
-
-    .preview-brand{
-      display:grid;
-      grid-template-columns:92px 1fr;
-      gap:16px;
-      align-items:center;
-      padding:0 0 22px 0;
-      margin-bottom:24px;
-      border-bottom:2px solid rgba(0,0,0,.08);
-    }
-
-    .preview-brand-logo{
-      width:92px;
-      height:92px;
-      border-radius:16px;
-      overflow:hidden;
-      border:1px solid rgba(0,0,0,.08);
-      background:#f6f6f6;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    }
-
-    .preview-brand-logo img{
-      width:100%;
-      height:100%;
-      object-fit:cover;
-      margin:0;
-      border-radius:0;
-    }
-
-    .preview-brand-title{
-      font-size:22px;
-      font-weight:900;
-      line-height:1.35;
-    }
-
-    .preview-brand-sub{
-      font-size:14px;
-      color:#555;
-      margin-top:6px;
-      line-height:1.6;
-    }
-
-    .preview-divider{
-      border:none;
-      border-top:2px solid rgba(0,0,0,.10);
-      margin:26px 0;
-    }
-
-    .preview-signature{
-      margin-top:42px;
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:30px;
-    }
-
-    .preview-sign-box{
-      min-height:140px;
-      border-top:1px solid rgba(0,0,0,.14);
-      padding-top:12px;
-      text-align:center;
-    }
-
-    .preview-sign-name{
-      font-weight:800;
-      margin-top:60px;
-    }
-
+    .preview-divider{border:none;border-top:2px solid rgba(0,0,0,.10);margin:26px 0;}
     .preview-sheet-card{
-      margin:20px 0;
-      border:1px solid rgba(0,0,0,.10);
-      border-radius:14px;
-      overflow:hidden;
+      margin:20px 0;border:1px solid rgba(0,0,0,.10);border-radius:14px;overflow:hidden;
     }
-
     .preview-sheet-head{
-      padding:12px 14px;
-      background:#f7f7f7;
-      border-bottom:1px solid rgba(0,0,0,.08);
-      font-weight:800;
+      padding:12px 14px;background:#f7f7f7;border-bottom:1px solid rgba(0,0,0,.08);font-weight:800;
     }
 
-    .ce-block__content,
-    .ce-toolbar__content{
-      max-width:100%;
+    .upload-line{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-top:12px;
     }
 
-    .codex-editor__redactor{
-      padding-bottom:180px !important;
-    }
-
-    .paper .ce-paragraph,
-    .paper .ce-header{
-      color:#111;
-    }
-
-    .paper .cdx-list{
-      color:#111;
-    }
-
-    .paper .ce-toolbar__plus,
-    .paper .ce-toolbar__settings-btn{
-      color:#111;
-    }
-
-    .paper .tc-wrap,
-    .paper .tc-editor{
+    .ce-block__content,.ce-toolbar__content{max-width:100%;}
+    .codex-editor__redactor{padding-bottom:180px !important;}
+    .paper .ce-paragraph,.paper .ce-header,.paper .cdx-list{color:#111;}
+    .paper .ce-toolbar__plus,.paper .ce-toolbar__settings-btn{color:#111;}
+    .paper .tc-wrap,.paper .tc-editor{
       --color-background: transparent;
       --color-text-primary: #111;
       --color-border: rgba(0,0,0,.12);
       --color-border-focus: rgba(0,0,0,.22);
       --color-placeholder: rgba(0,0,0,.32);
     }
-
-    .paper .ce-inline-toolbar,
-    .paper .ce-conversion-toolbar,
-    .paper .ce-popover,
-    .paper .tc-popover{
-      color:#111;
-    }
+    .paper .ce-inline-toolbar,.paper .ce-conversion-toolbar,.paper .ce-popover,.paper .tc-popover{color:#111;}
 
     @media (max-width: 1180px){
-      .workspace{
-        grid-template-columns:1fr;
-      }
-
-      .side-card{
-        position:static;
-      }
+      .workspace{grid-template-columns:1fr;}
+      .side-card{position:static;}
     }
 
     @media (max-width: 900px){
-      .page-wrap{
-        padding:14px;
-      }
-
-      .page-title{
-        font-size:28px;
-      }
-
-      .tool-grid{
-        grid-template-columns:1fr;
-      }
-
-      .paper-wrap{
-        padding:10px;
-        min-height:auto;
-      }
-
-      .paper{
-        padding:24px 16px;
-        min-height:620px;
-      }
-
-      .preview-holder table{
-        display:block;
-        overflow:auto;
-      }
-
-      .preview-brand{
-        grid-template-columns:1fr;
-      }
-
-      .preview-signature{
-        grid-template-columns:1fr;
-      }
+      .page-wrap{padding:14px;}
+      .page-title{font-size:28px;}
+      .tool-grid{grid-template-columns:1fr;}
+      .paper-wrap{padding:10px;min-height:auto;}
+      .paper{padding:24px 16px;min-height:620px;}
+      .preview-holder table{display:block;overflow:auto;}
     }
   </style>
 </head>
@@ -542,7 +278,7 @@
         <div class="card-h">
           <div>
             <b>Document Tools</b>
-            <div class="muted2">Studio soạn tài liệu chuyên nghiệp hơn: thương hiệu, bảng, sheet, chữ ký.</div>
+            <div class="muted2">Studio soạn tài liệu sạch, chỉ dùng block chuẩn mới.</div>
           </div>
           <div id="statusBox" class="status-box muted2"></div>
         </div>
@@ -565,6 +301,15 @@
             <button class="tool-btn" type="button" id="btnAddSignature">+ Chữ ký</button>
 
             <button class="tool-btn" type="button" id="btnAddSheet">+ Chèn Sheet</button>
+          </div>
+
+          <div class="tool-section">
+            <div style="font-weight:800;">Upload ảnh trực tiếp</div>
+            <div class="muted2">Dùng nút này thay cho block image mặc định nếu trước đó bị quay mãi.</div>
+            <div class="upload-line">
+              <input id="directImageInput" class="input" type="file" accept="image/*" />
+              <button class="btn" type="button" id="btnUploadDirectImage">Upload & chèn</button>
+            </div>
           </div>
 
           <div class="tool-section">
@@ -693,11 +438,34 @@
       });
 
       const data = await readJsonSafe(res);
-      if (!res.ok || !data.success) {
+
+      if (!res.ok || !data.success || !data.file || !data.file.url) {
+        console.error("UPLOAD IMAGE ERROR", { status: res.status, data });
         throw new Error(data.message || "Upload ảnh lỗi");
       }
 
       return data;
+    }
+
+    async function uploadAndInsertDirectImage() {
+      const input = document.getElementById("directImageInput");
+      const file = input?.files?.[0];
+      if (!file) {
+        alert("Anh chọn ảnh trước nha.");
+        return;
+      }
+
+      setStatus("Đang upload ảnh...", "info");
+
+      try {
+        const data = await uploadImage(file);
+        const caption = window.prompt("Caption ảnh:", "") || "";
+        insertImageByUrl(data.file.url, caption);
+        input.value = "";
+        setStatus("Đã upload và chèn ảnh", "ok");
+      } catch (e) {
+        setStatus("Upload ảnh lỗi: " + (e.message || e), "err");
+      }
     }
 
     async function initEditor(data) {
@@ -760,6 +528,12 @@
               uploader: {
                 async uploadByFile(file) {
                   return await uploadImage(file);
+                },
+                async uploadByUrl(url) {
+                  return {
+                    success: 1,
+                    file: { url }
+                  };
                 }
               }
             }
@@ -844,8 +618,7 @@
         box.innerHTML = `<div class="empty-note">Lỗi tải sheet: ${esc(err.message || err)}</div>`;
       }
     }
-
-    async function saveDoc() {
+        async function saveDoc() {
       if (!editor) {
         setStatus("Editor chưa sẵn sàng", "err");
         return;
@@ -1054,16 +827,14 @@
       }
 
       const html = [];
-      let brandMode = false;
 
-      output.blocks.forEach((block, index) => {
+      output.blocks.forEach((block) => {
         const type = String(block.type || "");
         const data = block.data || {};
 
         if (type === "header") {
           const level = Number(data.level || 2);
           const tag = level === 1 ? "h1" : level === 2 ? "h2" : level === 3 ? "h3" : "h4";
-
           html.push(`<${tag}>${esc(data.text || "")}</${tag}>`);
         }
 
@@ -1153,6 +924,10 @@
         PAPER_ZOOM = Number(btn.dataset.zoom || 1);
         applyZoom();
       });
+    });
+
+    document.getElementById("btnUploadDirectImage")?.addEventListener("click", async () => {
+      await uploadAndInsertDirectImage();
     });
 
     document.getElementById("btnAddBrandHeader")?.addEventListener("click", () => {

@@ -699,11 +699,27 @@
         doc_type: "doc",
         linked_target_type: "work",
         linked_target_id: taskId,
-        content_html: `
-          <h1>${escapeHtml(task?.title || `Task #${taskId}`)}</h1>
-          <p>Tài liệu gắn với task #${taskId}.</p>
-          <div class="doc-box"><b>Ghi chú:</b> Có thể dùng cho proposal / note / hướng dẫn triển khai.</div>
-        `
+        content_blocks: [
+          {
+            type: "header",
+            data: {
+              text: task?.title || `Task #${taskId}`,
+              level: 2
+            }
+          },
+          {
+            type: "paragraph",
+            data: {
+              text: `Tài liệu gắn với task #${taskId}.`
+            }
+          },
+          {
+            type: "paragraph",
+            data: {
+              text: "Có thể dùng cho proposal / note / hướng dẫn triển khai."
+            }
+          }
+        ]
       };
 
       const data = await http(`/api/v1/docs/create/`, {

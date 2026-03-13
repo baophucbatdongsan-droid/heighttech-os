@@ -39,19 +39,52 @@ def _tenant_id_from_request(request):
 
 def _int(v):
     try:
-        return int(v)
-    except:
+        if v is None:
+            return None
+        s = str(v).strip().replace(",", "")
+        if s == "":
+            return None
+        return int(float(s))
+    except Exception:
         return None
 
 
 def _dec(v):
     try:
-        return Decimal(str(v))
-    except:
-        return Decimal("0")
+        if v is None:
+            return None
+        s = str(v).strip().replace(",", "")
+        if s == "":
+            return None
+        return Decimal(s)
+    except Exception:
+        return None
 
 
-def _serialize_content(x: ContractChannelContent) -> Dict[str, Any]:
+def _latest_metric_map(tenant_id: int, content_ids: list[int]) -> dict[int, ContractChannelDailyMetric]:
+    if not content_ids:
+        return {}
+
+    qs = (
+        ContractChannelDailyMetric.objects_all
+        .filter(
+            tenant_id=tenant_id,
+            content_id__in=content_ids,
+        )
+        .order_by("content_id", "-metric_date", "-id")
+    )
+
+    out: dict[int, ContractChannelDailyMetric] = {}
+    for x in qs:
+        if x.content_id not in out:
+            out[x.content_id] = x
+    return out
+
+
+def _serialize_content(
+    x: ContractChannelContent,
+    metric: ContractChannelDailyMetric | None = None,
+) -> Dict[str, Any]:
     return {
         "id": x.id,
         "title": x.title,
@@ -64,6 +97,15 @@ def _serialize_content(x: ContractChannelContent) -> Dict[str, Any]:
         "visible_to_client": x.visible_to_client,
         "shop_id": x.shop_id,
         "sort_order": x.sort_order,
+
+        # metric latest snapshot
+        "views": int(getattr(metric, "views", 0) or 0),
+        "likes": int(getattr(metric, "likes", 0) or 0),
+        "comments": int(getattr(metric, "comments", 0) or 0),
+        "shares": int(getattr(metric, "shares", 0) or 0),
+        "orders": int(getattr(metric, "orders", 0) or 0),
+        "revenue": str(getattr(metric, "revenue", Decimal("0")) or Decimal("0")),
+        "metric_date": str(getattr(metric, "metric_date", "") or ""),
     }
 
 
@@ -82,7 +124,16 @@ class ChannelContentListApi(APIView):
             .order_by("sort_order", "id")
         )
 
-        items = [_serialize_content(x) for x in qs]
+        items_raw = list(qs)
+        metric_map = _latest_metric_map(
+            tenant_id=tenant_id,
+            content_ids=[x.id for x in items_raw],
+        )
+
+        items = [
+            _serialize_content(x, metric_map.get(x.id))
+            for x in items_raw
+        ]
 
         return Response({
             "ok": True,
@@ -131,7 +182,7 @@ class ChannelContentCreateApi(APIView):
 
         return Response({
             "ok": True,
-            "item": _serialize_content(item)
+            "item": _serialize_content(item, None)
         })
 
 
@@ -164,9 +215,16 @@ class ChannelContentUpdateApi(APIView):
 
         item.save()
 
+        latest_metric = (
+            ContractChannelDailyMetric.objects_all
+            .filter(tenant_id=tenant_id, content_id=item.id)
+            .order_by("-metric_date", "-id")
+            .first()
+        )
+
         return Response({
             "ok": True,
-            "item": _serialize_content(item)
+            "item": _serialize_content(item, latest_metric)
         })
 
 
@@ -194,15 +252,38 @@ class ChannelContentMetricUpdateApi(APIView):
             metric_date=metric_date
         )
 
-        metric.views = _int(data.get("views")) or metric.views
-        metric.likes = _int(data.get("likes")) or metric.likes
-        metric.comments = _int(data.get("comments")) or metric.comments
-        metric.shares = _int(data.get("shares")) or metric.shares
-        metric.orders = _int(data.get("orders")) or metric.orders
-        metric.revenue = _dec(data.get("revenue")) or metric.revenue
+        views = _int(data.get("views"))
+        likes = _int(data.get("likes"))
+        comments = _int(data.get("comments"))
+        shares = _int(data.get("shares"))
+        orders = _int(data.get("orders"))
+        revenue = _dec(data.get("revenue"))
+
+        if views is not None:
+            metric.views = views
+        if likes is not None:
+            metric.likes = likes
+        if comments is not None:
+            metric.comments = comments
+        if shares is not None:
+            metric.shares = shares
+        if orders is not None:
+            metric.orders = orders
+        if revenue is not None:
+            metric.revenue = revenue
 
         metric.save()
 
         return Response({
-            "ok": True
+            "ok": True,
+            "item": {
+                "content_id": content.id,
+                "metric_date": str(metric.metric_date),
+                "views": int(metric.views or 0),
+                "likes": int(metric.likes or 0),
+                "comments": int(metric.comments or 0),
+                "shares": int(metric.shares or 0),
+                "orders": int(metric.orders or 0),
+                "revenue": str(metric.revenue or Decimal("0")),
+            }
         })

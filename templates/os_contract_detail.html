@@ -981,11 +981,27 @@
           doc_type: "doc",
           linked_target_type: "contract",
           linked_target_id: CONTRACT_ID,
-          content_html: `
-            <h1>Document contract #${CONTRACT_ID}</h1>
-            <p>Nội dung tài liệu online cho hợp đồng này.</p>
-            <div class="doc-box"><b>Ghi chú:</b> Có thể dùng cho báo giá / proposal / phụ lục.</div>
-          `
+          content_blocks: [
+            {
+              type: "header",
+              data: {
+                text: `Document contract #${CONTRACT_ID}`,
+                level: 2
+              }
+            },
+            {
+              type: "paragraph",
+              data: {
+                text: "Nội dung tài liệu online cho hợp đồng này."
+              }
+            },
+            {
+              type: "paragraph",
+              data: {
+                text: "Có thể dùng cho báo giá / proposal / phụ lục."
+              }
+            }
+          ]
         };
 
         const res = await fetch(`/api/v1/docs/create/`, {

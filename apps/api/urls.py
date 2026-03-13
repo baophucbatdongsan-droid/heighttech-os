@@ -10,4 +10,5 @@ urlpatterns = [
     path("", ApiRoot.as_view(), name="api-root"),
     path("health/", health_view, name="api-health"),
     path("v1/", include("apps.api.v1.urls")),
+    path("os/", include("apps.api.v1.os.urls_attachments")),
 ]

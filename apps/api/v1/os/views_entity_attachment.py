@@ -91,7 +91,10 @@ def _channel_content_exists(content_id: int, tenant_id: int):
     for Model in candidates:
         try:
             qs = Model.objects_all.all() if hasattr(Model, "objects_all") else Model.objects.all()
-            obj = qs.filter(id=int(content_id), tenant_id=int(tenant_id)).first()
+            obj = qs.filter(
+                id=int(content_id),
+                tenant_id=int(tenant_id),
+            ).first()
             if obj:
                 return obj
         except Exception:
@@ -159,12 +162,19 @@ class OSEntityAttachmentListApi(APIView):
         if not tenant_id:
             return Response({"ok": False, "message": "Không xác định được tenant"}, status=400)
 
-        _ensure_target_exists(target_type, target_id, tenant_id)
+        target_type = str(target_type).strip()
 
-        items = (
+        allowed_types = {
+            OSAttachment.TARGET_CONTRACT,
+            OSAttachment.TARGET_CHANNEL_CONTENT,
+        }
+        if target_type not in allowed_types:
+            return Response({"ok": False, "message": "target_type không hợp lệ"}, status=400)
+
+        items_qs = (
             OSAttachment.objects.filter(
                 tenant_id=int(tenant_id),
-                target_type=str(target_type).strip(),
+                target_type=target_type,
                 target_id=int(target_id),
                 is_deleted=False,
             )
@@ -172,14 +182,15 @@ class OSEntityAttachmentListApi(APIView):
             .order_by("-id")
         )
 
+        items = list(items_qs)
+
         return Response(
             {
                 "ok": True,
                 "items": [_payload(x) for x in items],
-                "count": items.count(),
+                "count": len(items),
             }
         )
-
 
 class OSEntityAttachmentUploadApi(APIView):
     permission_classes = [IsAuthenticated]

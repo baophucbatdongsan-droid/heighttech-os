@@ -107,7 +107,6 @@ def _serialize_doc(x: Document) -> Dict[str, Any]:
         "doc_type": x.doc_type,
         "linked_target_type": x.linked_target_type or "",
         "linked_target_id": x.linked_target_id,
-        "content_html": x.content_html or "",
         "content_blocks": x.content_blocks or [],
         "public_token": x.public_token or "",
         "created_by_id": x.created_by_id,
@@ -163,7 +162,6 @@ class DocumentCreateApi(APIView):
         doc_type = str(payload.get("doc_type") or Document.TYPE_DOC).strip() or Document.TYPE_DOC
         linked_target_type = str(payload.get("linked_target_type") or "").strip()
         linked_target_id = _parse_int(payload.get("linked_target_id"))
-        content_html = str(payload.get("content_html") or "").strip()
         content_blocks = _normalize_blocks(payload.get("content_blocks"))
 
         obj = Document.objects.create(
@@ -172,8 +170,8 @@ class DocumentCreateApi(APIView):
             doc_type=doc_type,
             linked_target_type=linked_target_type,
             linked_target_id=linked_target_id,
-            content_html=content_html,
             content_blocks=content_blocks,
+            content_html="",
             created_by=request.user if getattr(request, "user", None) and request.user.is_authenticated else None,
         )
 
@@ -239,12 +237,10 @@ class DocumentUpdateApi(APIView):
         if "linked_target_id" in payload:
             obj.linked_target_id = _parse_int(payload.get("linked_target_id"))
 
-        if "content_html" in payload:
-            obj.content_html = str(payload.get("content_html") or "")
-
         if "content_blocks" in payload:
             obj.content_blocks = _normalize_blocks(payload.get("content_blocks"))
 
+        obj.content_html = ""
         obj.save()
 
         return Response({"ok": True, "item": _serialize_doc(obj)})
@@ -271,19 +267,23 @@ class DocumentImageUploadApi(APIView):
         os.makedirs(folder, exist_ok=True)
 
         filename = f"{uuid.uuid4().hex}{ext}"
-        path = os.path.join(folder, filename)
+        full_path = os.path.join(folder, filename)
 
-        with open(path, "wb+") as dest:
-            for chunk in file_obj.chunks():
-                dest.write(chunk)
+        try:
+            with open(full_path, "wb+") as dest:
+                for chunk in file_obj.chunks():
+                    dest.write(chunk)
+        except Exception as e:
+            return Response({"success": 0, "message": f"Lưu file lỗi: {e}"}, status=500)
 
-        url = f"{settings.MEDIA_URL}tenant_{tenant_id}/docs/{filename}"
+        file_url = f"{settings.MEDIA_URL}tenant_{tenant_id}/docs/{filename}"
 
         return Response(
             {
                 "success": 1,
                 "file": {
-                    "url": url
+                    "url": file_url
                 }
-            }
+            },
+            status=200,
         )
