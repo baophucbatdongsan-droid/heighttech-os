@@ -1798,3 +1798,114 @@ border-left:4px solid #ef4444;
     border-radius:20px;
   }
 }
+
+    .work-kpis{
+      display:grid;
+      grid-template-columns:repeat(9,minmax(0,1fr));
+      gap:12px;
+    }
+
+    .wkpi{
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;
+      padding:14px;
+      background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.025));
+      box-shadow:0 8px 24px rgba(0,0,0,.12);
+    }
+
+    .wkpi-label{
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.4;
+    }
+
+    .wkpi-value{
+      margin-top:6px;
+      font-size:24px;
+      font-weight:900;
+      letter-spacing:-.02em;
+    }
+
+    .work-card.task-overdue{
+      box-shadow:inset 0 0 0 1px rgba(255,107,124,.45);
+      background:rgba(255,107,124,.07);
+    }
+
+    .work-card.task-today{
+      box-shadow:inset 0 0 0 1px rgba(246,183,60,.45);
+      background:rgba(246,183,60,.07);
+    }
+
+    .work-card.task-upcoming{
+      box-shadow:inset 0 0 0 1px rgba(138,180,255,.35);
+      background:rgba(138,180,255,.05);
+    }
+
+    .work-card.task-no-deadline{
+      opacity:.92;
+    }
+
+    .work-card-badge-time{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:4px 8px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:800;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.05);
+      width:fit-content;
+      max-width:100%;
+      margin-top:6px;
+    }
+
+    .work-card-badge-time.overdue{
+      color:#ff9fa8;
+      border-color:rgba(255,107,124,.30);
+      background:rgba(255,107,124,.08);
+    }
+
+    .work-card-badge-time.today{
+      color:#ffd98f;
+      border-color:rgba(246,183,60,.30);
+      background:rgba(246,183,60,.08);
+    }
+
+    .work-card-badge-time.upcoming{
+      color:#9fc6ff;
+      border-color:rgba(138,180,255,.30);
+      background:rgba(138,180,255,.08);
+    }
+
+    .work-card-badge-time.no-deadline{
+      color:#c6d3ea;
+      border-color:rgba(198,211,234,.18);
+      background:rgba(198,211,234,.06);
+    }
+
+    .work-card-badge-time.later{
+      color:#d5def0;
+      border-color:rgba(213,222,240,.18);
+      background:rgba(213,222,240,.06);
+    }
+
+    .kanban-col.drag-over,
+    .work-col-list.drag-over{
+      outline:1px dashed rgba(138,180,255,.45);
+      outline-offset:-8px;
+      border-radius:16px;
+      background:rgba(138,180,255,.04);
+    }
+
+    @media (max-width: 1200px){
+      .work-kpis{
+        grid-template-columns:repeat(5,minmax(0,1fr));
+      }
+    }
+
+    @media (max-width: 760px){
+      .work-kpis{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+    }

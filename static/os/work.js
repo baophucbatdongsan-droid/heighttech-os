@@ -22,67 +22,69 @@
       priority: "",
       assignee: "",
       shop: "",
+      time_scope: "",
     },
   };
-    const RESOURCE_STATE = {
-      docs: [],
-      sheets: [],
-    };
 
-    function getSelectedTaskId() {
-      return STATE.selectedTaskId ? String(STATE.selectedTaskId) : "";
+  const RESOURCE_STATE = {
+    docs: [],
+    sheets: [],
+  };
+
+  function getSelectedTaskId() {
+    return STATE.selectedTaskId ? String(STATE.selectedTaskId) : "";
+  }
+
+  function renderTaskDocs(items) {
+    const box = $("taskDocsList");
+    if (!box) return;
+
+    const arr = Array.isArray(items) ? items : [];
+    RESOURCE_STATE.docs = arr;
+
+    if (!arr.length) {
+      box.innerHTML = `<div class="resource-empty">Chưa có document</div>`;
+      return;
     }
 
-    function renderTaskDocs(items) {
-      const box = $("taskDocsList");
-      if (!box) return;
-
-      const arr = Array.isArray(items) ? items : [];
-      RESOURCE_STATE.docs = arr;
-
-      if (!arr.length) {
-        box.innerHTML = `<div class="resource-empty">Chưa có document</div>`;
-        return;
-      }
-
-      box.innerHTML = arr.map((x) => `
-        <div class="resource-item">
-          <div class="resource-item-title">${escapeHtml(x.title || ("Doc #" + x.id))}</div>
-          <div class="resource-item-meta">
-            Type: ${escapeHtml(x.doc_type || "-")}
-          </div>
-          <div class="resource-item-actions">
-            <a class="btn mini" href="/os/docs/${escapeHtml(x.id)}" target="_blank" rel="noopener">Mở doc</a>
-          </div>
+    box.innerHTML = arr.map((x) => `
+      <div class="resource-item">
+        <div class="resource-item-title">${escapeHtml(x.title || ("Doc #" + x.id))}</div>
+        <div class="resource-item-meta">
+          Type: ${escapeHtml(x.doc_type || "-")}
         </div>
-      `).join("");
-    }
-
-    function renderTaskSheets(items) {
-      const box = $("taskSheetsList");
-      if (!box) return;
-
-      const arr = Array.isArray(items) ? items : [];
-      RESOURCE_STATE.sheets = arr;
-
-      if (!arr.length) {
-        box.innerHTML = `<div class="resource-empty">Chưa có sheet</div>`;
-        return;
-      }
-
-      box.innerHTML = arr.map((x) => `
-        <div class="resource-item">
-          <div class="resource-item-title">${escapeHtml(x.name || ("Sheet #" + x.id))}</div>
-          <div class="resource-item-meta">
-            Module: ${escapeHtml(x.module_code || "-")}
-          </div>
-          <div class="resource-item-actions">
-            <a class="btn mini" href="/os/sheets/${escapeHtml(x.id)}" target="_blank" rel="noopener">Mở sheet</a>
-            <a class="btn mini" href="/api/v1/sheets/${escapeHtml(x.id)}/export.xlsx" target="_blank" rel="noopener">Export Excel</a>
-          </div>
+        <div class="resource-item-actions">
+          <a class="btn mini" href="/os/docs/${escapeHtml(x.id)}" target="_blank" rel="noopener">Mở doc</a>
         </div>
-      `).join("");
+      </div>
+    `).join("");
+  }
+
+  function renderTaskSheets(items) {
+    const box = $("taskSheetsList");
+    if (!box) return;
+
+    const arr = Array.isArray(items) ? items : [];
+    RESOURCE_STATE.sheets = arr;
+
+    if (!arr.length) {
+      box.innerHTML = `<div class="resource-empty">Chưa có sheet</div>`;
+      return;
     }
+
+    box.innerHTML = arr.map((x) => `
+      <div class="resource-item">
+        <div class="resource-item-title">${escapeHtml(x.name || ("Sheet #" + x.id))}</div>
+        <div class="resource-item-meta">
+          Module: ${escapeHtml(x.module_code || "-")}
+        </div>
+        <div class="resource-item-actions">
+          <a class="btn mini" href="/os/sheets/${escapeHtml(x.id)}" target="_blank" rel="noopener">Mở sheet</a>
+          <a class="btn mini" href="/api/v1/sheets/${escapeHtml(x.id)}/export.xlsx" target="_blank" rel="noopener">Export Excel</a>
+        </div>
+      </div>
+    `).join("");
+  }
 
   function getCookie(name) {
     const m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
@@ -158,6 +160,55 @@
     }
   }
 
+  function toTime(v) {
+    if (!v) return null;
+    try {
+      const t = new Date(v).getTime();
+      return Number.isFinite(t) ? t : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function startOfToday() {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }
+
+  function endOfToday() {
+    const d = new Date();
+    d.setHours(23, 59, 59, 999);
+    return d.getTime();
+  }
+
+  function plusDays(baseTs, days) {
+    return baseTs + days * 24 * 60 * 60 * 1000;
+  }
+
+  function taskTimeBucket(task) {
+    const due = toTime(task.due_at);
+    const todayStart = startOfToday();
+    const todayEnd = endOfToday();
+    const next3d = plusDays(todayEnd, 3);
+
+    if (due === null) return 4;      // no deadline
+    if (due < todayStart) return 0;  // overdue
+    if (due <= todayEnd) return 1;   // today
+    if (due <= next3d) return 2;     // upcoming 3d
+    return 3;                        // later
+  }
+
+  function taskTimeMeta(task) {
+    const bucket = taskTimeBucket(task);
+
+    if (bucket === 0) return { cls: "overdue", text: "Quá hạn" };
+    if (bucket === 1) return { cls: "today", text: "Hôm nay" };
+    if (bucket === 2) return { cls: "upcoming", text: "3 ngày tới" };
+    if (bucket === 4) return { cls: "no-deadline", text: "Chưa có deadline" };
+    return { cls: "later", text: "Sắp tới" };
+  }
+
   function normalizeTaskItem(raw) {
     const x = raw || {};
     return {
@@ -179,6 +230,7 @@
       due_at: x.due_at || null,
       created_at: x.created_at || null,
       updated_at: x.updated_at || null,
+      rank: x.rank || "",
     };
   }
 
@@ -383,24 +435,47 @@
   }
 
   function sortStateItems() {
-    const orderMap = {
-      todo: 1,
-      doing: 2,
+    const statusWeight = {
+      doing: 1,
+      todo: 2,
       blocked: 3,
       done: 4,
       cancelled: 5,
     };
 
+    const bucketWeight = {
+      1: 1, // today
+      0: 2, // overdue
+      2: 3, // upcoming 3d
+      3: 4, // later
+      4: 5, // no deadline
+    };
+
     STATE.items = [...STATE.items].sort((a, b) => {
-      const sa = orderMap[String(a.status || "todo")] || 99;
-      const sb = orderMap[String(b.status || "todo")] || 99;
+      const ba = bucketWeight[taskTimeBucket(a)] || 99;
+      const bb = bucketWeight[taskTimeBucket(b)] || 99;
+      if (ba !== bb) return ba - bb;
+
+      const sa = statusWeight[String(a.status || "todo")] || 99;
+      const sb = statusWeight[String(b.status || "todo")] || 99;
       if (sa !== sb) return sa - sb;
 
-      const ra = String(a.rank || "");
-      const rb = String(b.rank || "");
-      if (ra && rb && ra !== rb) return ra.localeCompare(rb);
+      const da = toTime(a.due_at);
+      const db = toTime(b.due_at);
 
-      return Number(a.id || 0) - Number(b.id || 0);
+      if (da !== null && db !== null && da !== db) return da - db;
+      if (da !== null && db === null) return -1;
+      if (da === null && db !== null) return 1;
+
+      const pa = Number(a.priority || 0);
+      const pb = Number(b.priority || 0);
+      if (pa !== pb) return pb - pa;
+
+      const ua = toTime(a.updated_at) || toTime(a.created_at) || 0;
+      const ub = toTime(b.updated_at) || toTime(b.created_at) || 0;
+      if (ua !== ub) return ub - ua;
+
+      return Number(b.id || 0) - Number(a.id || 0);
     });
   }
 
@@ -429,6 +504,7 @@
     const priority = STATE.filters.priority.trim();
     const assignee = STATE.filters.assignee.trim().toLowerCase();
     const shop = STATE.filters.shop.trim().toLowerCase();
+    const timeScope = STATE.filters.time_scope.trim().toLowerCase();
 
     const hay = [
       task.title,
@@ -450,6 +526,27 @@
     if (assignee && !assigneeHay.includes(assignee)) return false;
     if (shop && !shopHay.includes(shop)) return false;
 
+    const due = toTime(task.due_at);
+    const todayStart = startOfToday();
+    const todayEnd = endOfToday();
+    const next3d = plusDays(todayEnd, 3);
+
+    if (timeScope === "overdue") {
+      if (!(due !== null && due < todayStart)) return false;
+    }
+
+    if (timeScope === "today") {
+      if (!(due !== null && due >= todayStart && due <= todayEnd)) return false;
+    }
+
+    if (timeScope === "upcoming") {
+      if (!(due !== null && due > todayEnd && due <= next3d)) return false;
+    }
+
+    if (timeScope === "no_deadline") {
+      if (due !== null) return false;
+    }
+
     return true;
   }
 
@@ -465,9 +562,31 @@
     const doing = items.filter((x) => x.status === "doing").length;
     const blocked = items.filter((x) => x.status === "blocked").length;
     const done = items.filter((x) => x.status === "done").length;
+
+    const todayStart = startOfToday();
+    const todayEnd = endOfToday();
+    const next3d = plusDays(todayEnd, 3);
+
     const overdue = items.filter((x) => {
-      return x.due_at &&
-        new Date(x.due_at).getTime() < Date.now() &&
+      const due = toTime(x.due_at);
+      return due !== null && due < todayStart &&
+        !["done", "cancelled"].includes(String(x.status || "").toLowerCase());
+    }).length;
+
+    const dueToday = items.filter((x) => {
+      const due = toTime(x.due_at);
+      return due !== null && due >= todayStart && due <= todayEnd &&
+        !["done", "cancelled"].includes(String(x.status || "").toLowerCase());
+    }).length;
+
+    const upcoming = items.filter((x) => {
+      const due = toTime(x.due_at);
+      return due !== null && due > todayEnd && due <= next3d &&
+        !["done", "cancelled"].includes(String(x.status || "").toLowerCase());
+    }).length;
+
+    const noDeadline = items.filter((x) => {
+      return !toTime(x.due_at) &&
         !["done", "cancelled"].includes(String(x.status || "").toLowerCase());
     }).length;
 
@@ -477,19 +596,34 @@
     if ($("kpiBlocked")) $("kpiBlocked").textContent = String(blocked);
     if ($("kpiDone")) $("kpiDone").textContent = String(done);
     if ($("kpiOverdue")) $("kpiOverdue").textContent = String(overdue);
+    if ($("kpiToday")) $("kpiToday").textContent = String(dueToday);
+    if ($("kpiUpcoming")) $("kpiUpcoming").textContent = String(upcoming);
+    if ($("kpiNoDeadline")) $("kpiNoDeadline").textContent = String(noDeadline);
   }
 
   function makeCard(t) {
     const meta = taskMetaText(t);
+    const timeMeta = taskTimeMeta(t);
+
+    const timeCls =
+      timeMeta.cls === "overdue" ? "task-overdue" :
+      timeMeta.cls === "today" ? "task-today" :
+      timeMeta.cls === "upcoming" ? "task-upcoming" :
+      timeMeta.cls === "no-deadline" ? "task-no-deadline" :
+      "";
 
     return `
-      <div class="work-card" data-id="${escapeHtml(t.id)}" draggable="true">
+      <div class="work-card ${timeCls}" data-id="${escapeHtml(t.id)}" draggable="true">
         <div class="work-card-title">${escapeHtml(t.title)}</div>
 
         <div class="work-card-meta">
           <span>#${escapeHtml(t.id)}</span>
           <span>${escapeHtml(meta.priorityText)}</span>
           <span>${escapeHtml(t.status || "-")}</span>
+        </div>
+
+        <div class="work-card-meta">
+          <span class="work-card-badge-time ${escapeHtml(timeMeta.cls)}">${escapeHtml(timeMeta.text)}</span>
         </div>
 
         <div class="work-card-meta">
@@ -674,107 +808,109 @@
     renderTaskComments(data?.items || []);
   }
 
-    async function refreshTaskDocs(taskId) {
-      if (!taskId) return;
-      const data = await http(`/api/v1/docs/?linked_target_type=work&linked_target_id=${taskId}`);
-      renderTaskDocs(data?.items || []);
-    }
+  async function refreshTaskDocs(taskId) {
+    if (!taskId) return;
+    const data = await http(`/api/v1/docs/?linked_target_type=work&linked_target_id=${taskId}`);
+    renderTaskDocs(data?.items || []);
+  }
 
-    async function refreshTaskSheets(taskId) {
-      if (!taskId) return;
-      const data = await http(`/api/v1/sheets/?linked_target_type=work&linked_target_id=${taskId}`);
-      renderTaskSheets(data?.items || []);
-    }
+  async function refreshTaskSheets(taskId) {
+    if (!taskId) return;
+    const data = await http(`/api/v1/sheets/?linked_target_type=work&linked_target_id=${taskId}`);
+    renderTaskSheets(data?.items || []);
+  }
 
-    async function createTaskDocQuick() {
-      const taskId = getSelectedTaskId();
-      if (!taskId) throw new Error("Chưa chọn task");
+  async function createTaskDocQuick() {
+    const taskId = getSelectedTaskId();
+    if (!taskId) throw new Error("Chưa chọn task");
 
-      const task = findTaskById(taskId);
+    const task = findTaskById(taskId);
 
-      const payload = {
-        title: task?.title
-          ? `Doc • ${task.title}`
-          : `Document task #${taskId}`,
-        doc_type: "doc",
-        linked_target_type: "work",
-        linked_target_id: taskId,
-        content_blocks: [
-          {
-            type: "header",
-            data: {
-              text: task?.title || `Task #${taskId}`,
-              level: 2
-            }
-          },
-          {
-            type: "paragraph",
-            data: {
-              text: `Tài liệu gắn với task #${taskId}.`
-            }
-          },
-          {
-            type: "paragraph",
-            data: {
-              text: "Có thể dùng cho proposal / note / hướng dẫn triển khai."
-            }
+    const payload = {
+      title: task?.title
+        ? `Doc • ${task.title}`
+        : `Document task #${taskId}`,
+      doc_type: "doc",
+      linked_target_type: "work",
+      linked_target_id: taskId,
+      content_blocks: [
+        {
+          type: "header",
+          data: {
+            text: task?.title || `Task #${taskId}`,
+            level: 2
           }
-        ]
-      };
+        },
+        {
+          type: "paragraph",
+          data: {
+            text: `Tài liệu gắn với task #${taskId}.`
+          }
+        },
+        {
+          type: "paragraph",
+          data: {
+            text: "Có thể dùng cho proposal / note / hướng dẫn triển khai."
+          }
+        }
+      ]
+    };
 
-      const data = await http(`/api/v1/docs/create/`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+    const data = await http(`/api/v1/docs/create/`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-      await refreshTaskDocs(taskId);
+    await refreshTaskDocs(taskId);
 
-      if (data?.item?.id) {
-        window.open(`/os/docs/${data.item.id}/`, "_blank", "noopener");
-      }
+    if (data?.item?.id) {
+      window.open(`/os/docs/${data.item.id}/`, "_blank", "noopener");
     }
+  }
 
-    async function createTaskSheetQuick() {
-      const taskId = getSelectedTaskId();
-      if (!taskId) throw new Error("Chưa chọn task");
+  async function createTaskSheetQuick() {
+    const taskId = getSelectedTaskId();
+    if (!taskId) throw new Error("Chưa chọn task");
 
-      const task = findTaskById(taskId);
+    const task = findTaskById(taskId);
 
-      const payload = {
-        name: task?.title
-          ? `Sheet • ${task.title}`
-          : `Sheet task #${taskId}`,
-        module_code: "work",
-        linked_target_type: "work",
-        linked_target_id: taskId,
-        columns: [
-          { name: "Hạng mục", data_type: "text" },
-          { name: "Trạng thái", data_type: "select" },
-          { name: "Người phụ trách", data_type: "text" },
-          { name: "Ghi chú", data_type: "text" }
-        ]
-      };
+    const payload = {
+      name: task?.title
+        ? `Sheet • ${task.title}`
+        : `Sheet task #${taskId}`,
+      module_code: "work",
+      linked_target_type: "work",
+      linked_target_id: taskId,
+      columns: [
+        { name: "Hạng mục", data_type: "text" },
+        { name: "Trạng thái", data_type: "select" },
+        { name: "Người phụ trách", data_type: "text" },
+        { name: "Ghi chú", data_type: "text" }
+      ]
+    };
 
-      const data = await http(`/api/v1/sheets/create/`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+    const data = await http(`/api/v1/sheets/create/`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-      await refreshTaskSheets(taskId);
+    await refreshTaskSheets(taskId);
 
-      if (data?.item?.id) {
-        window.open(`/os/sheets/${data.item.id}/`, "_blank", "noopener");
-      }
+    if (data?.item?.id) {
+      window.open(`/os/sheets/${data.item.id}/`, "_blank", "noopener");
     }
+  }
+
   function openTaskDrawer(task) {
     if (!task) return;
 
     STATE.selectedTaskId = task.id;
+    const timeMeta = taskTimeMeta(task);
 
     if ($("taskDrawerSub")) {
-      $("taskDrawerSub").textContent = `Task #${task.id} • Shop ${task.shop_id || "-"} • Project ${task.project_id || "-"}`;
+      $("taskDrawerSub").textContent = `Task #${task.id} • Shop ${task.shop_id || "-"} • Project ${task.project_id || "-"} • ${timeMeta.text}`;
     }
 
     if ($("taskEditTitle")) $("taskEditTitle").value = task.title || "";
@@ -1020,7 +1156,6 @@
   }
 
   function bindEvents() {
-
     $("btnUploadTaskAttachment")?.addEventListener("click", async () => {
       const btn = $("btnUploadTaskAttachment");
       if (btn) {
@@ -1102,6 +1237,7 @@
       STATE.filters.priority = $("filterPriority")?.value || "";
       STATE.filters.assignee = $("filterAssignee")?.value || "";
       STATE.filters.shop = $("filterShop")?.value || "";
+      STATE.filters.time_scope = $("filterTimeScope")?.value || "";
       renderAll();
     });
 
@@ -1111,12 +1247,14 @@
       STATE.filters.priority = "";
       STATE.filters.assignee = "";
       STATE.filters.shop = "";
+      STATE.filters.time_scope = "";
 
       if ($("filterKeyword")) $("filterKeyword").value = "";
       if ($("filterStatus")) $("filterStatus").value = "";
       if ($("filterPriority")) $("filterPriority").value = "";
       if ($("filterAssignee")) $("filterAssignee").value = "";
       if ($("filterShop")) $("filterShop").value = "";
+      if ($("filterTimeScope")) $("filterTimeScope").value = "";
 
       renderAll();
     });
@@ -1260,9 +1398,15 @@
       localStorage.setItem("ht_project_id", String(window.HT_CURRENT_PROJECT_ID).trim());
     }
 
+    if ($("filterTimeScope")) {
+      $("filterTimeScope").value = "today";
+      STATE.filters.time_scope = "today";
+    }
+
     bindEvents();
     await refreshWorkData();
   }
+
   async function refreshTaskAttachments(taskId) {
     if (!taskId) return;
     const data = await http(`${CFG.commentsBase}${taskId}/attachments/`);
@@ -1353,6 +1497,7 @@
   window.htWorkRefreshTaskSheets = refreshTaskSheets;
   window.htWorkCreateTaskDocQuick = createTaskDocQuick;
   window.htWorkCreateTaskSheetQuick = createTaskSheetQuick;
+
   boot().catch((e) => {
     console.error(e);
     alert("Work OS load lỗi: " + e.message);

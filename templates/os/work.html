@@ -5,7 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>HeightTech • Work OS</title>
-  <link rel="stylesheet" href="{% static 'os/work.css' %}?v=100" />
+  <link rel="stylesheet" href="{% static 'os/work.css' %}?v=101" />
   <style>
     .os-home-btn{
       display:inline-flex;
@@ -140,6 +140,162 @@
       font-weight:800;
       margin-bottom:12px;
     }
+
+    /* ===== nâng cấp theo deadline / daily workspace ===== */
+
+    .work-toolbar-row{
+      display:grid;
+      grid-template-columns:minmax(220px,1.4fr) repeat(5,minmax(140px,1fr)) auto auto auto;
+      gap:10px;
+      align-items:center;
+    }
+
+    .work-kpis{
+      display:grid;
+      grid-template-columns:repeat(9,minmax(0,1fr));
+      gap:12px;
+    }
+
+    .wkpi{
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;
+      padding:14px;
+      background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.025));
+      box-shadow:0 8px 24px rgba(0,0,0,.12);
+    }
+
+    .wkpi-label{
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.4;
+    }
+
+    .wkpi-value{
+      margin-top:6px;
+      font-size:24px;
+      font-weight:900;
+      letter-spacing:-.02em;
+    }
+
+    .work-card{
+      transition:transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
+    }
+
+    .work-card:hover{
+      transform:translateY(-1px);
+    }
+
+    .work-card.dragging{
+      opacity:.72;
+    }
+
+    .work-col-list.drag-over{
+      outline:1px dashed rgba(138,180,255,.45);
+      outline-offset:-8px;
+      border-radius:16px;
+      background:rgba(138,180,255,.04);
+    }
+
+    .work-card.task-overdue{
+      box-shadow:inset 0 0 0 1px rgba(255,107,124,.45);
+      background:rgba(255,107,124,.07);
+    }
+
+    .work-card.task-today{
+      box-shadow:inset 0 0 0 1px rgba(246,183,60,.45);
+      background:rgba(246,183,60,.07);
+    }
+
+    .work-card.task-upcoming{
+      box-shadow:inset 0 0 0 1px rgba(138,180,255,.35);
+      background:rgba(138,180,255,.05);
+    }
+
+    .work-card.task-no-deadline{
+      opacity:.92;
+    }
+
+    .work-card-badge-time{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:4px 8px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:800;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.05);
+      width:fit-content;
+      max-width:100%;
+    }
+
+    .work-card-badge-time.overdue{
+      color:#ff9fa8;
+      border-color:rgba(255,107,124,.30);
+      background:rgba(255,107,124,.08);
+    }
+
+    .work-card-badge-time.today{
+      color:#ffd98f;
+      border-color:rgba(246,183,60,.30);
+      background:rgba(246,183,60,.08);
+    }
+
+    .work-card-badge-time.upcoming{
+      color:#9fc6ff;
+      border-color:rgba(138,180,255,.30);
+      background:rgba(138,180,255,.08);
+    }
+
+    .work-card-badge-time.no-deadline{
+      color:#c6d3ea;
+      border-color:rgba(198,211,234,.18);
+      background:rgba(198,211,234,.06);
+    }
+
+    .work-card-badge-time.later{
+      color:#d5def0;
+      border-color:rgba(213,222,240,.18);
+      background:rgba(213,222,240,.06);
+    }
+
+    .work-col .work-col-list{
+      min-height:180px;
+    }
+
+    .task-drawer-sub{
+      line-height:1.6;
+    }
+
+    @media (max-width: 1400px){
+      .work-kpis{
+        grid-template-columns:repeat(5,minmax(0,1fr));
+      }
+
+      .work-toolbar-row{
+        grid-template-columns:repeat(4,minmax(0,1fr));
+      }
+
+      .work-toolbar-row > *:first-child{
+        grid-column:1 / -1;
+      }
+    }
+
+    @media (max-width: 980px){
+      .work-kpis{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+
+      .work-toolbar-row{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media (max-width: 640px){
+      .work-kpis{
+        grid-template-columns:1fr 1fr;
+      }
+    }
   </style>
 </head>
 <body data-page="work-os">
@@ -203,12 +359,25 @@
         <div class="wkpi-label">Overdue</div>
         <div class="wkpi-value" id="kpiOverdue">0</div>
       </div>
+      <div class="wkpi">
+        <div class="wkpi-label">Today</div>
+        <div class="wkpi-value" id="kpiToday">0</div>
+      </div>
+      <div class="wkpi">
+        <div class="wkpi-label">Upcoming 3d</div>
+        <div class="wkpi-value" id="kpiUpcoming">0</div>
+      </div>
+      <div class="wkpi">
+        <div class="wkpi-label">No Deadline</div>
+        <div class="wkpi-value" id="kpiNoDeadline">0</div>
+      </div>
     </section>
 
     <section class="work-toolbar card">
       <div class="card-b">
         <div class="work-toolbar-row">
           <input id="filterKeyword" class="input" placeholder="Tìm title / description / assignee / shop..." />
+
           <select id="filterStatus" class="input">
             <option value="">All status</option>
             <option value="todo">todo</option>
@@ -217,6 +386,7 @@
             <option value="done">done</option>
             <option value="cancelled">cancelled</option>
           </select>
+
           <select id="filterPriority" class="input">
             <option value="">All priority</option>
             <option value="1">Thấp</option>
@@ -224,8 +394,18 @@
             <option value="3">Cao</option>
             <option value="4">Gấp</option>
           </select>
+
           <input id="filterAssignee" class="input" placeholder="Assignee" />
           <input id="filterShop" class="input" placeholder="Shop" />
+
+          <select id="filterTimeScope" class="input">
+            <option value="">Tất cả thời gian</option>
+            <option value="overdue">Quá hạn</option>
+            <option value="today">Hôm nay</option>
+            <option value="upcoming">3 ngày tới</option>
+            <option value="no_deadline">Không deadline</option>
+          </select>
+
           <button class="btn mini" id="btnApplyFilter" type="button">Apply</button>
           <button class="btn mini" id="btnResetFilter" type="button">Reset</button>
           <button class="btn mini" id="btnRefreshWork" type="button">Refresh</button>
@@ -504,6 +684,6 @@
     window.HT_TENANT_ID = "{{ current_tenant_id|default:'' }}";
   </script>
 
-  <script src="{% static 'os/work.js' %}?v=3"></script>
+  <script src="{% static 'os/work.js' %}?v=4"></script>
 </body>
 </html>

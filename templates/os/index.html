@@ -571,6 +571,45 @@
 
     <section class="kpis" id="kpis"></section>
 
+    <section class="work-kpis" id="workMiniKpis" style="margin:0 0 18px; display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:12px;">
+      <div class="wkpi">
+        <div class="wkpi-label">Total Work</div>
+        <div class="wkpi-value" id="kpiTotal">0</div>
+      </div>
+      <div class="wkpi">
+        <div class="wkpi-label">Todo</div>
+        <div class="wkpi-value" id="kpiTodo">0</div>
+      </div>
+      <div class="wkpi">
+        <div class="wkpi-label">Doing</div>
+        <div class="wkpi-value" id="kpiDoing">0</div>
+      </div>
+      <div class="wkpi">
+        <div class="wkpi-label">Blocked</div>
+        <div class="wkpi-value" id="kpiBlocked">0</div>
+      </div>
+      <div class="wkpi">
+        <div class="wkpi-label">Done</div>
+        <div class="wkpi-value" id="kpiDone">0</div>
+      </div>
+      <div class="wkpi">
+        <div class="wkpi-label">Overdue</div>
+        <div class="wkpi-value" id="kpiOverdue">0</div>
+      </div>
+      <div class="wkpi">
+        <div class="wkpi-label">Today</div>
+        <div class="wkpi-value" id="kpiToday">0</div>
+      </div>
+      <div class="wkpi">
+        <div class="wkpi-label">Upcoming 3d</div>
+        <div class="wkpi-value" id="kpiUpcoming">0</div>
+      </div>
+      <div class="wkpi">
+        <div class="wkpi-label">No Deadline</div>
+        <div class="wkpi-value" id="kpiNoDeadline">0</div>
+      </div>
+    </section>
+
     <section class="grid">
       <div class="card span2">
         <div class="card-h">
@@ -602,40 +641,6 @@
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-h">Nhập sản phẩm từ file CSV</div>
-
-        <div style="padding:12px">
-          <div id="shopScopeNotice" class="muted" style="margin-bottom:8px;"></div>
-
-          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
-            <select id="shopQuickSelector" class="input" style="min-width:260px;"></select>
-            <button type="button" class="btn" onclick="applyQuickShopSelection()">Chọn shop</button>
-          </div>
-
-          <input type="file" id="productCsvFile" accept=".csv">
-          <button onclick="importProductCsv()" class="btn">Tải lên</button>
-
-          <div id="csvImportResult" style="margin-top:10px;font-size:13px;"></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-h">Nhập doanh số SKU</div>
-
-        <div style="padding:12px; display:flex; gap:8px; flex-wrap:wrap;">
-          <div class="muted" id="shopScopeNoticeSales" style="width:100%; margin-bottom:4px;"></div>
-
-          <input id="skuInput" placeholder="Mã SKU" class="input">
-          <input id="unitsSoldInput" type="number" placeholder="Số lượng bán" class="input">
-          <input id="revenueInput" type="number" placeholder="Doanh thu" class="input">
-          <input id="adsInput" type="number" placeholder="Chi phí quảng cáo" class="input">
-
-          <button onclick="submitSales()" class="btn">Ghi nhận</button>
-
-          <div id="salesResult" style="width:100%; margin-top:8px;"></div>
-        </div>
-      </div>
 
       <div class="panel card span3" id="workPanel">
         <div class="card-h">
@@ -644,9 +649,20 @@
             <div class="brand-sub">Inbox • Kanban • giao việc • chuyển bước • comment • hợp đồng • AI task</div>
           </div>
 
-          <div class="panel-actions">
+          <div class="panel-actions" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
             <button class="mini btn work-view-tab active" data-view="list" type="button">Inbox</button>
             <button class="mini btn work-view-tab" data-view="board" type="button">Kanban</button>
+
+            <select id="filterTimeScope" class="input" style="min-width:150px; height:36px;">
+              <option value="today" selected>Hôm nay</option>
+              <option value="overdue">Quá hạn</option>
+              <option value="upcoming">3 ngày tới</option>
+              <option value="no_deadline">Không deadline</option>
+              <option value="all">Tất cả thời gian</option>
+            </select>
+
+            <button class="mini btn" id="btnApplyFilter" type="button">Áp dụng</button>
+            <button class="mini btn" id="btnResetFilter" type="button">Reset</button>
             <button class="mini btn" id="btnNewTask" type="button">+ Mới</button>
             <button class="mini btn" id="btnRefreshWork" type="button">Làm mới</button>
           </div>
@@ -1035,6 +1051,6 @@
     };
   </script>
 
-  <script src="{% static 'os/os.js' %}?v=19"></script>
+  <script src="{% static 'os/os.js' %}?v=20"></script>
 </body>
 </html>

@@ -58,6 +58,7 @@
         company: "",
         shop: "",
         status: "",
+        time_scope: "today",
       },
     },
   };
@@ -265,43 +266,11 @@
     localStorage.setItem("ht_project_id", STATE.scope.project_id || "");
 
     applyScopeUI();
-    renderCurrentShopNotice();
+
   }
-  function renderCurrentShopNotice() {
-    const shopId = getCurrentShopId();
-    const shops = getKnownShops();
-    const found = shops.find((x) => String(x.id) === String(shopId));
+  
 
-    const els = [
-      document.getElementById("shopScopeNotice"),
-      document.getElementById("shopScopeNoticeSales"),
-    ].filter(Boolean);
-
-    els.forEach((el) => {
-      if (!shopId) {
-        el.innerHTML = `<span style="color:#f87171;font-weight:600;">Chưa chọn shop. Anh chọn shop trước khi nhập dữ liệu nha.</span>`;
-      } else {
-        el.innerHTML = `<span style="color:#86efac;">Đang thao tác cho shop <b>${escapeHtml(found?.name || ("#" + shopId))}</b></span>`;
-      }
-    });
-
-    const hasShop = !!shopId;
-    const importBtn = document.querySelector('button[onclick="importProductCsv()"]');
-    const salesBtn = document.querySelector('button[onclick="submitSales()"]');
-
-    if (importBtn) importBtn.disabled = !hasShop;
-    if (salesBtn) salesBtn.disabled = !hasShop;
-
-    renderQuickShopSelector();
-  }
-
-  function getCurrentShopId() {
-    const shopId =
-      String(STATE?.scope?.shop_id || "").trim() ||
-      String(localStorage.getItem("ht_shop_id") || "").trim();
-
-    return shopId || "";
-  }
+ 
   function getKnownShops() {
     const homeShops = ((STATE.raw.home || {}).blocks || {}).shops_health || [];
     const result = [];
@@ -428,22 +397,7 @@ function renderCreateTaskProjectOptions() {
     if (!selectEl || !inputEl) return;
     inputEl.value = String(selectEl.value || "").trim();
   }
-  function renderQuickShopSelector() {
-    const el = document.getElementById("shopQuickSelector");
-    if (!el) return;
-
-    const shops = getKnownShops();
-    const currentShopId = getCurrentShopId();
-
-    let html = `<option value="">-- Chọn shop để nhập dữ liệu --</option>`;
-
-    shops.forEach((shop) => {
-      const selected = String(shop.id) === String(currentShopId) ? "selected" : "";
-      html += `<option value="${escapeHtml(shop.id)}" ${selected}>${escapeHtml(shop.name)}</option>`;
-    });
-
-    el.innerHTML = html;
-  }
+  
   function renderCreateTaskShopOptions() {
     const el = $("createTaskShopId");
     if (!el) return;
@@ -460,23 +414,7 @@ function renderCreateTaskProjectOptions() {
 
     el.innerHTML = html;
   }
-  function applyQuickShopSelection() {
-    const el = document.getElementById("shopQuickSelector");
-    if (!el) return;
-
-    const shopId = String(el.value || "").trim();
-
-    if (!shopId) {
-      alert("Anh chọn shop trước nha");
-      return;
-    }
-
-    setScope("shop", {
-      shop_id: shopId,
-      company_id: "",
-      project_id: "",
-    });
-  }
+  
 
   function getShopContextById(shopId) {
     const sid = String(shopId || "").trim();
@@ -678,7 +616,6 @@ function renderCreateTaskProjectOptions() {
     localStorage.setItem("ht_project_id", STATE.scope.project_id);
 
     applyScopeUI();
-    renderCurrentShopNotice();
     STATE.timelineCursor = null;
     STATE.lastTimelineIds = new Set();
 
@@ -1215,6 +1152,7 @@ function renderCreateTaskProjectOptions() {
       if (company && !companyHay.includes(company)) return false;
       if (shop && !shopHay.includes(shop)) return false;
       if (status && statusHay !== status) return false;
+      if (!matchTaskTimeScope(task)) return false;
 
       return true;
     }
@@ -1222,6 +1160,13 @@ function renderCreateTaskProjectOptions() {
     function filteredTasks(items) {
       return (Array.isArray(items) ? items : []).filter(matchWorkFilter);
     }
+
+    function syncTimeScopeUI() {
+      const el = $("filterTimeScope");
+      if (!el) return;
+      el.value = STATE.work.filters.time_scope || "today";
+    }
+
     function ensureWorkToolbar() {
     const workPanel = $("workPanel");
     if (!workPanel) return;
@@ -1292,11 +1237,8 @@ function renderCreateTaskProjectOptions() {
     const doing = arr.filter((x) => x.status === "doing").length;
     const blocked = arr.filter((x) => x.status === "blocked").length;
     const done = arr.filter((x) => x.status === "done").length;
-    const overdue = arr.filter((x) => {
-      return x.due_at &&
-        new Date(x.due_at).getTime() < Date.now() &&
-        !["done", "cancelled"].includes(String(x.status || "").toLowerCase());
-    }).length;
+
+    const buckets = getWorkTimeBuckets(arr);
 
     box.innerHTML = `
       Tổng việc: <b>${total}</b> •
@@ -1304,7 +1246,10 @@ function renderCreateTaskProjectOptions() {
       Doing: <b>${doing}</b> •
       Blocked: <b>${blocked}</b> •
       Done: <b>${done}</b> •
-      Quá hạn: <b>${overdue}</b>
+      Quá hạn: <b>${buckets.overdue}</b> •
+      Hôm nay: <b>${buckets.today}</b> •
+      3 ngày tới: <b>${buckets.upcoming}</b> •
+      Không deadline: <b>${buckets.noDeadline}</b>
     `;
   }
 
@@ -1595,6 +1540,7 @@ function renderCreateTaskProjectOptions() {
   }
 
   function renderAllWork() {
+    renderWorkMiniKpis();
     renderWorkInbox({ items: STATE.work.open, open_count: STATE.work.open.length });
     renderWorkBoard();
   }
@@ -1862,8 +1808,6 @@ function renderCreateTaskProjectOptions() {
     renderContractRadar(data.blocks?.contract_radar);
     renderKernel(data);
     renderShopQuickNav(data);
-    renderQuickShopSelector();
-    renderCurrentShopNotice();
     ensureOSQuickLinks();
     syncOSQuickLinksByScroll();
     renderRawJson();
@@ -1955,9 +1899,124 @@ function renderCreateTaskProjectOptions() {
     };
   }
 
- 
+  function toTime(v) {
+    if (!v) return null;
+    try {
+      const t = new Date(v).getTime();
+      return Number.isFinite(t) ? t : null;
+    } catch (e) {
+      return null;
+    }
+  }
 
-  
+  function startOfToday() {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }
+
+  function endOfToday() {
+    const d = new Date();
+    d.setHours(23, 59, 59, 999);
+    return d.getTime();
+  }
+
+  function plusDays(baseTs, days) {
+    return baseTs + days * 24 * 60 * 60 * 1000;
+  }
+
+  function matchTaskTimeScope(task) {
+    const scope = String(STATE.work.filters.time_scope || "today").trim().toLowerCase();
+    if (!scope || scope === "all") return true;
+
+    const due = toTime(task?.due_at);
+    const todayStart = startOfToday();
+    const todayEnd = endOfToday();
+    const next3d = plusDays(todayEnd, 3);
+
+    const isClosed = ["done", "cancelled"].includes(String(task?.status || "").toLowerCase());
+
+    if (scope === "today") {
+      if (due === null) return false;
+      return due >= todayStart && due <= todayEnd;
+    }
+
+    if (scope === "overdue") {
+      if (due === null) return false;
+      return due < todayStart && !isClosed;
+    }
+
+    if (scope === "upcoming") {
+      if (due === null) return false;
+      return due > todayEnd && due <= next3d;
+    }
+
+    if (scope === "no_deadline") {
+      return due === null;
+    }
+
+    return true;
+  }
+
+  function getWorkTimeBuckets(items) {
+    const arr = Array.isArray(items) ? items : [];
+    const todayStart = startOfToday();
+    const todayEnd = endOfToday();
+    const next3d = plusDays(todayEnd, 3);
+
+    let overdue = 0;
+    let today = 0;
+    let upcoming = 0;
+    let noDeadline = 0;
+
+    arr.forEach((task) => {
+      const due = toTime(task?.due_at);
+      const isClosed = ["done", "cancelled"].includes(String(task?.status || "").toLowerCase());
+
+      if (due === null) {
+        noDeadline += 1;
+        return;
+      }
+
+      if (due < todayStart && !isClosed) {
+        overdue += 1;
+        return;
+      }
+
+      if (due >= todayStart && due <= todayEnd) {
+        today += 1;
+        return;
+      }
+
+      if (due > todayEnd && due <= next3d) {
+        upcoming += 1;
+      }
+    });
+
+    return { overdue, today, upcoming, noDeadline };
+  }
+
+  function renderWorkMiniKpis() {
+    const arr = filteredTasks(STATE.work.all);
+
+    const total = arr.length;
+    const todo = arr.filter((x) => String(x.status || "").toLowerCase() === "todo").length;
+    const doing = arr.filter((x) => String(x.status || "").toLowerCase() === "doing").length;
+    const blocked = arr.filter((x) => String(x.status || "").toLowerCase() === "blocked").length;
+    const done = arr.filter((x) => String(x.status || "").toLowerCase() === "done").length;
+
+    const buckets = getWorkTimeBuckets(arr);
+
+    if ($("kpiTotal")) $("kpiTotal").textContent = String(total);
+    if ($("kpiTodo")) $("kpiTodo").textContent = String(todo);
+    if ($("kpiDoing")) $("kpiDoing").textContent = String(doing);
+    if ($("kpiBlocked")) $("kpiBlocked").textContent = String(blocked);
+    if ($("kpiDone")) $("kpiDone").textContent = String(done);
+    if ($("kpiOverdue")) $("kpiOverdue").textContent = String(buckets.overdue);
+    if ($("kpiToday")) $("kpiToday").textContent = String(buckets.today);
+    if ($("kpiUpcoming")) $("kpiUpcoming").textContent = String(buckets.upcoming);
+    if ($("kpiNoDeadline")) $("kpiNoDeadline").textContent = String(buckets.noDeadline);
+  }
 
   let MOVE_LOCK = false;
 
@@ -2425,7 +2484,6 @@ function renderCreateTaskProjectOptions() {
     try {
       applyScopeUI();
       ensureWorkToolbar();
-      renderCurrentShopNotice();
 
       await refreshControlCenter();
       await refreshTimeline(true);
@@ -3058,6 +3116,34 @@ function renderCreateTaskProjectOptions() {
       await refreshWorkData();
     });
 
+    $("btnApplyFilter")?.addEventListener("click", () => {
+      STATE.work.filters.time_scope = $("filterTimeScope")?.value || "today";
+      renderAllWork();
+    });
+
+    $("btnResetFilter")?.addEventListener("click", () => {
+      STATE.work.filters.assignee = "";
+      STATE.work.filters.keyword = "";
+      STATE.work.filters.company = "";
+      STATE.work.filters.shop = "";
+      STATE.work.filters.status = "";
+      STATE.work.filters.time_scope = "today";
+
+      if ($("filterAssigneeFinal")) $("filterAssigneeFinal").value = "";
+      if ($("filterKeywordFinal")) $("filterKeywordFinal").value = "";
+      if ($("filterCompanyFinal")) $("filterCompanyFinal").value = "";
+      if ($("filterShopFinal")) $("filterShopFinal").value = "";
+      if ($("filterStatusFinal")) $("filterStatusFinal").value = "";
+      if ($("filterTimeScope")) $("filterTimeScope").value = "today";
+
+      renderAllWork();
+    });
+
+    $("filterTimeScope")?.addEventListener("change", (e) => {
+      STATE.work.filters.time_scope = e.target.value || "today";
+      renderAllWork();
+    });
+
     // ===== INPUT FILTER =====
     document.addEventListener("input", (e) => {
       if (e.target?.id === "filterAssigneeFinal") {
@@ -3647,7 +3733,6 @@ function renderCreateTaskProjectOptions() {
     ensureStyles();
     setTheme(STATE.ui.theme);
     applyScopeUI();
-    renderCurrentShopNotice();
     ensureWorkToolbar();
     ensureOSQuickLinks();
     bindEvents();
@@ -3687,8 +3772,10 @@ function renderCreateTaskProjectOptions() {
       STATE.scope.scope = "project";
       localStorage.setItem("ht_scope", STATE.scope.scope);
     }
-
+    STATE.work.filters.time_scope = "today";
+    syncTimeScopeUI();
     await safeRefreshAll(true);
+    syncTimeScopeUI();
 
     if ($("boardGroupByFinal")) {
       $("boardGroupByFinal").value = STATE.ui.boardGroupBy;
@@ -5154,70 +5241,6 @@ function renderCreateTaskProjectOptions() {
     `;
   }
 
-  async function submitSales() {
-    const sku = (document.getElementById("skuInput")?.value || "").trim();
-    const units = document.getElementById("unitsSoldInput")?.value || 0;
-    const revenue = document.getElementById("revenueInput")?.value || 0;
-    const ads = document.getElementById("adsInput")?.value || 0;
-    const result = document.getElementById("salesResult");
-    const shopId = getCurrentShopId();
-
-    if (!shopId) {
-      alert("Anh chọn shop trước nha, rồi mới nhập doanh số SKU được.");
-      return;
-    }
-
-    if (!sku) {
-      alert("Anh nhập mã SKU trước nha");
-      return;
-    }
-
-    try {
-      const headers = {
-        "Content-Type": "application/json"
-      };
-
-      const tenantId =
-        String(window.HT_TENANT_ID || "").trim() ||
-        String(localStorage.getItem("ht_tenant_id") || "").trim();
-
-      if (tenantId) headers["X-Tenant-Id"] = tenantId;
-
-      const csrf = getCookie("csrftoken");
-      if (csrf) headers["X-CSRFToken"] = csrf;
-
-      const res = await fetch("/api/v1/os/products/daily-stats/upsert/", {
-        method: "POST",
-        headers,
-        credentials: "include",
-        body: JSON.stringify({
-          shop_id: parseInt(shopId, 10),
-          sku: sku,
-          units_sold: parseInt(units || 0, 10),
-          revenue: parseFloat(revenue || 0),
-          ads_spend: parseFloat(ads || 0)
-        })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.ok) {
-        result.innerHTML = `<span style="color:#f87171;">Lưu dữ liệu lỗi: ${escapeHtml(data.message || "Không xác định")}</span>`;
-        return;
-      }
-
-      result.innerHTML =
-        `Đã ghi nhận cho shop <b>#${escapeHtml(shopId)}</b> • ` +
-        `ROAS: <b>${escapeHtml(data.item.roas_estimate)}</b> • ` +
-        `Lợi nhuận ước tính: <b>${escapeHtml(data.item.profit_estimate)}</b>`;
-
-      if (window.safeRefreshAll) {
-        setTimeout(() => window.safeRefreshAll(true), 300);
-      }
-    } catch (e) {
-      result.innerHTML = `<span style="color:#f87171;">Gửi dữ liệu lỗi, vui lòng thử lại</span>`;
-    }
-  }
   function updateHeroStats(data){
     try{
       const headline = data?.headline || {};
