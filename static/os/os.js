@@ -2604,156 +2604,66 @@ function renderCreateTaskProjectOptions() {
 
     CREATE_TASK_MODAL_LOCK = true;
 
-      renderCreateTaskShopOptions();
+    renderCreateTaskShopOptions();
 
-      if ($("createTaskProjectId")) {
-        $("createTaskProjectId").value = STATE.scope.project_id || "";
-      }
-
-      if ($("createTaskPriority")) $("createTaskPriority").value = "2";
-      if ($("createTaskError")) $("createTaskError").textContent = "";
-      if ($("createTaskOk")) $("createTaskOk").textContent = "";
-
-      hydrateCreateTaskContextRich();
-
-      m.setAttribute("aria-hidden", "false");
-      m.classList.add("open");
-      m.style.display = "flex";
-      document.body.style.overflow = "hidden";
-
-      setTimeout(() => {
-        CREATE_TASK_MODAL_LOCK = false;
-        $("createTaskTitle")?.focus();
-      }, 250);
+    if ($("createTaskProjectId")) {
+      $("createTaskProjectId").value = STATE.scope.project_id || "";
     }
 
-
-    function closeCreateTaskModal(e) {
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-
-      if (CREATE_TASK_MODAL_LOCK) return;
-
-      const m = $("createTaskModal");
-      if (!m) return;
-
-      m.setAttribute("aria-hidden", "true");
-      m.classList.remove("open");
-      m.style.display = "none";
-      m.hidden = true;
-      m.style.pointerEvents = "";
-      document.body.style.overflow = "";
-    }
-
-    function resetCreateTaskModal() {
-      if ($("createTaskTitle")) $("createTaskTitle").value = "";
-      if ($("createTaskDescription")) $("createTaskDescription").value = "";
-      if ($("createTaskPriority")) $("createTaskPriority").value = "2";
-      if ($("createTaskAssigneeId")) $("createTaskAssigneeId").value = "";
-      if ($("createTaskTargetType")) $("createTaskTargetType").value = "";
-      if ($("createTaskTargetId")) $("createTaskTargetId").value = "";
-      if ($("createTaskCompanyId")) $("createTaskCompanyId").value = "";
-      if ($("createTaskCompanyText")) $("createTaskCompanyText").value = "";
-      if ($("createTaskProjectId")) $("createTaskProjectId").value = "";
-      if ($("createTaskError")) $("createTaskError").textContent = "";
-      if ($("createTaskOk")) $("createTaskOk").textContent = "";
-
-      renderCreateTaskShopOptions();
-
-      if ($("createTaskProjectSelect")) {
-        $("createTaskProjectSelect").innerHTML = `<option value="">-- Chọn dự án --</option>`;
-      }
-
-      hydrateCreateTaskContextRich();
-    }
-
-    async function submitCreateTaskModal() {
-    if ($("createTaskProjectSelect") && $("createTaskProjectId")) {
-      $("createTaskProjectId").value = $("createTaskProjectSelect").value || "";
-    }
-
-    const payload = {
-      title: ($("createTaskTitle")?.value || "").trim(),
-      description: ($("createTaskDescription")?.value || "").trim(),
-      company_id: normalizeInt($("createTaskCompanyId")?.value || ""),
-      shop_id: normalizeInt($("createTaskShopId")?.value || ""),
-      project_id: normalizeInt($("createTaskProjectId")?.value || ""),
-      priority: Number(normalizeInt($("createTaskPriority")?.value || "2") || 2),
-      assignee_id: normalizeInt($("createTaskAssigneeId")?.value || ""),
-      due_at: ($("createTaskDueAt")?.value || "").trim() || null,
-      department: ($("createTaskDepartment")?.value || "").trim(),
-      brand_name: ($("createTaskBrandName")?.value || "").trim(),
-      target_type: ($("createTaskTargetType")?.value || "").trim(),
-      target_id: normalizeInt($("createTaskTargetId")?.value || ""),
-    };
-
+    if ($("createTaskPriority")) $("createTaskPriority").value = "2";
     if ($("createTaskError")) $("createTaskError").textContent = "";
     if ($("createTaskOk")) $("createTaskOk").textContent = "";
 
-    if (!payload.title) {
-      if ($("createTaskError")) $("createTaskError").textContent = "Anh cần nhập tiêu đề task.";
+    hydrateCreateTaskContextRich();
+
+    m.setAttribute("aria-hidden", "false");
+    m.classList.add("open");
+    m.style.display = "flex";
+    m.hidden = false;
+
+    document.body.style.overflow = "hidden";
+    document.body.classList.add("modal-open");
+
+    setTimeout(() => {
+      CREATE_TASK_MODAL_LOCK = false;
       $("createTaskTitle")?.focus();
-      return;
+    }, 250);
+  }
+
+  function closeCreateTaskModal(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
 
-    if (!payload.shop_id) {
-      if ($("createTaskError")) $("createTaskError").textContent = "Anh cần chọn shop.";
-      $("createTaskShopId")?.focus();
-      return;
-    }
+    if (CREATE_TASK_MODAL_LOCK) return;
 
-    if (!payload.description) delete payload.description;
-    if (!payload.company_id) delete payload.company_id;
-    if (!payload.project_id) delete payload.project_id;
-    if (!payload.assignee_id) delete payload.assignee_id;
-    if (!payload.due_at) delete payload.due_at;
-    if (!payload.department) delete payload.department;
-    if (!payload.brand_name) delete payload.brand_name;
-    if (!payload.target_type) delete payload.target_type;
-    if (!payload.target_id) delete payload.target_id;
+    const m = $("createTaskModal");
+    if (!m) return;
 
-    const btn = $("submitCreateTaskBtn");
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = "Đang tạo...";
-    }
+    m.setAttribute("aria-hidden", "true");
+    m.classList.remove("open");
+    m.style.display = "none";
+    m.hidden = true;
+    m.style.pointerEvents = "";
 
-    try {
-      await createTaskFromUI(payload);
-
-      if ($("createTaskOk")) {
-        $("createTaskOk").textContent = "Đã tạo task thành công.";
-      }
-
-      setTimeout(() => {
-        closeCreateTaskModal();
-        resetCreateTaskModal();
-      }, 150);
-    } catch (err) {
-      if ($("createTaskError")) {
-        $("createTaskError").textContent = "Tạo task lỗi: " + (err?.message || err);
-      }
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = "Tạo task";
-      }
-    }
+    document.body.style.overflow = "";
+    document.body.classList.remove("modal-open");
   }
     function openModal(id) {
-    const m = $(id);
-    if (!m) return;
-    m.setAttribute("aria-hidden", "false");
-    document.body.style.overflow = "hidden";
-  }
+      const m = $(id);
+      if (!m) return;
+      m.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+      document.body.classList.add("modal-open");
+    }
 
   function closeModal(id) {
     const m = $(id);
     if (!m) return;
     m.setAttribute("aria-hidden", "true");
     document.body.style.overflow = "";
+    document.body.classList.remove("modal-open");
   }
 
   function setCmdHints() {
@@ -2968,7 +2878,104 @@ function renderCreateTaskProjectOptions() {
       if (out) out.textContent = "Error: " + (e?.message || e);
     }
   }
+  function resetCreateTaskModal() {
+    if ($("createTaskTitle")) $("createTaskTitle").value = "";
+    if ($("createTaskDescription")) $("createTaskDescription").value = "";
+    if ($("createTaskPriority")) $("createTaskPriority").value = "2";
+    if ($("createTaskAssigneeId")) $("createTaskAssigneeId").value = "";
+    if ($("createTaskDueAt")) $("createTaskDueAt").value = "";
+    if ($("createTaskBrandName")) $("createTaskBrandName").value = "";
+    if ($("createTaskTargetType")) $("createTaskTargetType").value = "";
+    if ($("createTaskTargetId")) $("createTaskTargetId").value = "";
+    if ($("createTaskCompanyId")) $("createTaskCompanyId").value = "";
+    if ($("createTaskCompanyText")) $("createTaskCompanyText").value = "";
+    if ($("createTaskProjectId")) $("createTaskProjectId").value = "";
+    if ($("createTaskError")) $("createTaskError").textContent = "";
+    if ($("createTaskOk")) $("createTaskOk").textContent = "";
 
+    if ($("createTaskDepartment")) $("createTaskDepartment").value = "production";
+
+    renderCreateTaskShopOptions();
+
+    if ($("createTaskProjectSelect")) {
+      $("createTaskProjectSelect").innerHTML = `<option value="">-- Chọn dự án --</option>`;
+    }
+
+    hydrateCreateTaskContextRich();
+  }
+  async function submitCreateTaskModal() {
+    if ($("createTaskProjectSelect") && $("createTaskProjectId")) {
+      $("createTaskProjectId").value = $("createTaskProjectSelect").value || "";
+    }
+
+    const payload = {
+      title: ($("createTaskTitle")?.value || "").trim(),
+      description: ($("createTaskDescription")?.value || "").trim(),
+      company_id: normalizeInt($("createTaskCompanyId")?.value || ""),
+      shop_id: normalizeInt($("createTaskShopId")?.value || ""),
+      project_id: normalizeInt($("createTaskProjectId")?.value || ""),
+      priority: Number(normalizeInt($("createTaskPriority")?.value || "2") || 2),
+      assignee_id: normalizeInt($("createTaskAssigneeId")?.value || ""),
+      due_at: ($("createTaskDueAt")?.value || "").trim() || null,
+      department: ($("createTaskDepartment")?.value || "").trim(),
+      brand_name: ($("createTaskBrandName")?.value || "").trim(),
+      target_type: ($("createTaskTargetType")?.value || "").trim(),
+      target_id: normalizeInt($("createTaskTargetId")?.value || ""),
+    };
+
+    if ($("createTaskError")) $("createTaskError").textContent = "";
+    if ($("createTaskOk")) $("createTaskOk").textContent = "";
+
+    if (!payload.title) {
+      if ($("createTaskError")) $("createTaskError").textContent = "Anh cần nhập tiêu đề task.";
+      $("createTaskTitle")?.focus();
+      return;
+    }
+
+    if (!payload.shop_id) {
+      if ($("createTaskError")) $("createTaskError").textContent = "Anh cần chọn shop.";
+      $("createTaskShopId")?.focus();
+      return;
+    }
+
+    if (!payload.description) delete payload.description;
+    if (!payload.company_id) delete payload.company_id;
+    if (!payload.project_id) delete payload.project_id;
+    if (!payload.assignee_id) delete payload.assignee_id;
+    if (!payload.due_at) delete payload.due_at;
+    if (!payload.department) delete payload.department;
+    if (!payload.brand_name) delete payload.brand_name;
+    if (!payload.target_type) delete payload.target_type;
+    if (!payload.target_id) delete payload.target_id;
+
+    const btn = $("submitCreateTaskBtn");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Đang tạo...";
+    }
+
+    try {
+      await createTaskFromUI(payload);
+
+      if ($("createTaskOk")) {
+        $("createTaskOk").textContent = "Đã tạo task thành công.";
+      }
+
+      setTimeout(() => {
+        closeCreateTaskModal();
+        resetCreateTaskModal();
+      }, 150);
+    } catch (err) {
+      if ($("createTaskError")) {
+        $("createTaskError").textContent = "Tạo task lỗi: " + (err?.message || err);
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Tạo task";
+      }
+    }
+  }
   function bindEvents() {
     if (STATE.eventsBound) return;
     STATE.eventsBound = true;

@@ -1402,6 +1402,11 @@
       $("filterTimeScope").value = "today";
       STATE.filters.time_scope = "today";
     }
+    document.addEventListener("DOMContentLoaded", () => {
+
+      initThemeToggle();
+
+    });
 
     bindEvents();
     await refreshWorkData();
@@ -1502,4 +1507,27 @@
     console.error(e);
     alert("Work OS load lỗi: " + e.message);
   });
+  function initThemeToggle(){
+    const btn = document.getElementById("themeToggle");
+    if(!btn) return;
+
+    const saved = localStorage.getItem("ht-theme");
+
+    if(saved){
+      document.documentElement.setAttribute("data-theme", saved);
+    }
+
+    btn.addEventListener("click", () => {
+
+      const current = document.documentElement.getAttribute("data-theme") || "dark";
+
+      const next = current === "dark" ? "light" : "dark";
+
+      document.documentElement.setAttribute("data-theme", next);
+
+      localStorage.setItem("ht-theme", next);
+
+      btn.textContent = next === "dark" ? "☾" : "☀";
+    });
+  }
 })();
