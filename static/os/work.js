@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  if (window.__HT_WORK_OS_V2__) return;
-  window.__HT_WORK_OS_V2__ = true;
+  if (window.__HT_WORK_OS_V3_FINAL__) return;
+  window.__HT_WORK_OS_V3_FINAL__ = true;
 
   if (document.body?.dataset?.page !== "work-os") return;
 
@@ -22,7 +22,7 @@
       priority: "",
       assignee: "",
       shop: "",
-      time_scope: "",
+      time_scope: "today",
     },
   };
 
@@ -30,61 +30,6 @@
     docs: [],
     sheets: [],
   };
-
-  function getSelectedTaskId() {
-    return STATE.selectedTaskId ? String(STATE.selectedTaskId) : "";
-  }
-
-  function renderTaskDocs(items) {
-    const box = $("taskDocsList");
-    if (!box) return;
-
-    const arr = Array.isArray(items) ? items : [];
-    RESOURCE_STATE.docs = arr;
-
-    if (!arr.length) {
-      box.innerHTML = `<div class="resource-empty">Chưa có document</div>`;
-      return;
-    }
-
-    box.innerHTML = arr.map((x) => `
-      <div class="resource-item">
-        <div class="resource-item-title">${escapeHtml(x.title || ("Doc #" + x.id))}</div>
-        <div class="resource-item-meta">
-          Type: ${escapeHtml(x.doc_type || "-")}
-        </div>
-        <div class="resource-item-actions">
-          <a class="btn mini" href="/os/docs/${escapeHtml(x.id)}" target="_blank" rel="noopener">Mở doc</a>
-        </div>
-      </div>
-    `).join("");
-  }
-
-  function renderTaskSheets(items) {
-    const box = $("taskSheetsList");
-    if (!box) return;
-
-    const arr = Array.isArray(items) ? items : [];
-    RESOURCE_STATE.sheets = arr;
-
-    if (!arr.length) {
-      box.innerHTML = `<div class="resource-empty">Chưa có sheet</div>`;
-      return;
-    }
-
-    box.innerHTML = arr.map((x) => `
-      <div class="resource-item">
-        <div class="resource-item-title">${escapeHtml(x.name || ("Sheet #" + x.id))}</div>
-        <div class="resource-item-meta">
-          Module: ${escapeHtml(x.module_code || "-")}
-        </div>
-        <div class="resource-item-actions">
-          <a class="btn mini" href="/os/sheets/${escapeHtml(x.id)}" target="_blank" rel="noopener">Mở sheet</a>
-          <a class="btn mini" href="/api/v1/sheets/${escapeHtml(x.id)}/export.xlsx" target="_blank" rel="noopener">Export Excel</a>
-        </div>
-      </div>
-    `).join("");
-  }
 
   function getCookie(name) {
     const m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
@@ -143,7 +88,7 @@
     if (!iso) return "-";
     try {
       return new Date(iso).toLocaleString("vi-VN");
-    } catch (e) {
+    } catch (_) {
       return String(iso);
     }
   }
@@ -155,7 +100,7 @@
       if (Number.isNaN(d.getTime())) return "";
       const pad = (n) => String(n).padStart(2, "0");
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    } catch (e) {
+    } catch (_) {
       return "";
     }
   }
@@ -165,7 +110,7 @@
     try {
       const t = new Date(v).getTime();
       return Number.isFinite(t) ? t : null;
-    } catch (e) {
+    } catch (_) {
       return null;
     }
   }
@@ -192,16 +137,15 @@
     const todayEnd = endOfToday();
     const next3d = plusDays(todayEnd, 3);
 
-    if (due === null) return 4;      // no deadline
-    if (due < todayStart) return 0;  // overdue
-    if (due <= todayEnd) return 1;   // today
-    if (due <= next3d) return 2;     // upcoming 3d
-    return 3;                        // later
+    if (due === null) return 4;
+    if (due < todayStart) return 0;
+    if (due <= todayEnd) return 1;
+    if (due <= next3d) return 2;
+    return 3;
   }
 
   function taskTimeMeta(task) {
     const bucket = taskTimeBucket(task);
-
     if (bucket === 0) return { cls: "overdue", text: "Quá hạn" };
     if (bucket === 1) return { cls: "today", text: "Hôm nay" };
     if (bucket === 2) return { cls: "upcoming", text: "3 ngày tới" };
@@ -231,6 +175,7 @@
       created_at: x.created_at || null,
       updated_at: x.updated_at || null,
       rank: x.rank || "",
+      target_type: x.target_type || "",
     };
   }
 
@@ -250,13 +195,16 @@
     );
   }
 
+  function getSelectedTaskId() {
+    return STATE.selectedTaskId ? String(STATE.selectedTaskId) : "";
+  }
+
   function getKnownShops() {
     const map = new Map();
 
     (STATE.items || []).forEach((x) => {
       const id = String(x.shop_id || "").trim();
       if (!id) return;
-
       map.set(id, {
         id,
         name: String(x.shop_name || `Shop #${id}`),
@@ -317,11 +265,8 @@
       });
       el.innerHTML = html;
 
-      if (currentShopId) {
-        el.value = currentShopId;
-      } else if (shops.length === 1) {
-        el.value = String(shops[0].id);
-      }
+      if (currentShopId) el.value = currentShopId;
+      else if (shops.length === 1) el.value = String(shops[0].id);
     } else {
       el.value = currentShopId;
     }
@@ -361,9 +306,7 @@
       selectEl.value = "";
     }
 
-    if (inputEl) {
-      inputEl.value = String(selectEl.value || "").trim();
-    }
+    if (inputEl) inputEl.value = String(selectEl.value || "").trim();
   }
 
   function hydrateCreateTaskContext() {
@@ -444,11 +387,11 @@
     };
 
     const bucketWeight = {
-      1: 1, // today
-      0: 2, // overdue
-      2: 3, // upcoming 3d
-      3: 4, // later
-      4: 5, // no deadline
+      1: 1,
+      0: 2,
+      2: 3,
+      3: 4,
+      4: 5,
     };
 
     STATE.items = [...STATE.items].sort((a, b) => {
@@ -531,21 +474,10 @@
     const todayEnd = endOfToday();
     const next3d = plusDays(todayEnd, 3);
 
-    if (timeScope === "overdue") {
-      if (!(due !== null && due < todayStart)) return false;
-    }
-
-    if (timeScope === "today") {
-      if (!(due !== null && due >= todayStart && due <= todayEnd)) return false;
-    }
-
-    if (timeScope === "upcoming") {
-      if (!(due !== null && due > todayEnd && due <= next3d)) return false;
-    }
-
-    if (timeScope === "no_deadline") {
-      if (due !== null) return false;
-    }
+    if (timeScope === "overdue" && !(due !== null && due < todayStart)) return false;
+    if (timeScope === "today" && !(due !== null && due >= todayStart && due <= todayEnd)) return false;
+    if (timeScope === "upcoming" && !(due !== null && due > todayEnd && due <= next3d)) return false;
+    if (timeScope === "no_deadline" && due !== null) return false;
 
     return true;
   }
@@ -663,7 +595,7 @@
 
     function makeCol(key, label) {
       return `
-        <div class="work-col">
+        <div class="work-col" data-status="${escapeHtml(key)}">
           <div class="work-col-head">
             <div class="work-col-title">${label}</div>
             <div class="work-col-count">${cols[key].length}</div>
@@ -753,11 +685,8 @@
         }),
       });
 
-      if (resp?.item) {
-        patchTaskLocal(id, resp.item);
-      } else {
-        patchTaskLocal(id, { status });
-      }
+      if (resp?.item) patchTaskLocal(id, resp.item);
+      else patchTaskLocal(id, { status });
 
       renderAll();
     } catch (e) {
@@ -802,6 +731,53 @@
     await refreshWorkData();
   }
 
+  function renderTaskDocs(items) {
+    const box = $("taskDocsList");
+    if (!box) return;
+
+    const arr = Array.isArray(items) ? items : [];
+    RESOURCE_STATE.docs = arr;
+
+    if (!arr.length) {
+      box.innerHTML = `<div class="resource-empty">Chưa có document</div>`;
+      return;
+    }
+
+    box.innerHTML = arr.map((x) => `
+      <div class="resource-item">
+        <div class="resource-item-title">${escapeHtml(x.title || ("Doc #" + x.id))}</div>
+        <div class="resource-item-meta">Type: ${escapeHtml(x.doc_type || "-")}</div>
+        <div class="resource-item-actions">
+          <a class="btn mini" href="/os/docs/${escapeHtml(x.id)}/" target="_blank" rel="noopener">Mở doc</a>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  function renderTaskSheets(items) {
+    const box = $("taskSheetsList");
+    if (!box) return;
+
+    const arr = Array.isArray(items) ? items : [];
+    RESOURCE_STATE.sheets = arr;
+
+    if (!arr.length) {
+      box.innerHTML = `<div class="resource-empty">Chưa có sheet</div>`;
+      return;
+    }
+
+    box.innerHTML = arr.map((x) => `
+      <div class="resource-item">
+        <div class="resource-item-title">${escapeHtml(x.name || ("Sheet #" + x.id))}</div>
+        <div class="resource-item-meta">Module: ${escapeHtml(x.module_code || "-")}</div>
+        <div class="resource-item-actions">
+          <a class="btn mini" href="/os/sheets/${escapeHtml(x.id)}/" target="_blank" rel="noopener">Mở sheet</a>
+          <a class="btn mini" href="/api/v1/sheets/${escapeHtml(x.id)}/export.xlsx" target="_blank" rel="noopener">Export Excel</a>
+        </div>
+      </div>
+    `).join("");
+  }
+
   async function refreshTaskComments(taskId) {
     if (!taskId || !CFG.commentsBase) return;
     const data = await http(`${CFG.commentsBase}${taskId}/comments/`);
@@ -827,9 +803,7 @@
     const task = findTaskById(taskId);
 
     const payload = {
-      title: task?.title
-        ? `Doc • ${task.title}`
-        : `Document task #${taskId}`,
+      title: task?.title ? `Doc • ${task.title}` : `Document task #${taskId}`,
       doc_type: "doc",
       linked_target_type: "work",
       linked_target_id: taskId,
@@ -838,22 +812,18 @@
           type: "header",
           data: {
             text: task?.title || `Task #${taskId}`,
-            level: 2
-          }
+            level: 2,
+          },
         },
         {
           type: "paragraph",
-          data: {
-            text: `Tài liệu gắn với task #${taskId}.`
-          }
+          data: { text: `Tài liệu gắn với task #${taskId}.` },
         },
         {
           type: "paragraph",
-          data: {
-            text: "Có thể dùng cho proposal / note / hướng dẫn triển khai."
-          }
-        }
-      ]
+          data: { text: "Có thể dùng cho proposal / note / hướng dẫn triển khai." },
+        },
+      ],
     };
 
     const data = await http(`/api/v1/docs/create/`, {
@@ -876,9 +846,7 @@
     const task = findTaskById(taskId);
 
     const payload = {
-      name: task?.title
-        ? `Sheet • ${task.title}`
-        : `Sheet task #${taskId}`,
+      name: task?.title ? `Sheet • ${task.title}` : `Sheet task #${taskId}`,
       module_code: "work",
       linked_target_type: "work",
       linked_target_id: taskId,
@@ -886,8 +854,8 @@
         { name: "Hạng mục", data_type: "text" },
         { name: "Trạng thái", data_type: "select" },
         { name: "Người phụ trách", data_type: "text" },
-        { name: "Ghi chú", data_type: "text" }
-      ]
+        { name: "Ghi chú", data_type: "text" },
+      ],
     };
 
     const data = await http(`/api/v1/sheets/create/`, {
@@ -979,6 +947,42 @@
     await moveTask(taskId, next);
   }
 
+  function renderTaskComments(items) {
+    const box = $("taskCommentsList");
+    if (!box) return;
+
+    const arr = Array.isArray(items) ? items : [];
+
+    if (!arr.length) {
+      box.innerHTML = `
+        <div class="item">
+          <div class="t">Chưa có comment</div>
+          <div class="d">Viết comment đầu tiên cho công việc này.</div>
+        </div>
+      `;
+      return;
+    }
+
+    box.innerHTML = arr.map((c) => {
+      const actor =
+        c.actor_name ||
+        c.actor_email ||
+        c.user_name ||
+        c.user_email ||
+        "User";
+
+      const body = c.body || c.content || "";
+
+      return `
+        <div class="task-comment-item">
+          <div class="t">${escapeHtml(actor)}</div>
+          <div class="time">${escapeHtml(fmtTime(c.created_at))}</div>
+          <div class="d">${escapeHtml(body)}</div>
+        </div>
+      `;
+    }).join("");
+  }
+
   async function submitTaskComment() {
     const taskId = STATE.selectedTaskId;
     if (!taskId) throw new Error("Chưa chọn task");
@@ -997,6 +1001,87 @@
 
     if ($("taskCommentInput")) $("taskCommentInput").value = "";
     await refreshTaskComments(taskId);
+  }
+
+  function renderTaskAttachments(items) {
+    const box = $("taskAttachmentsList");
+    if (!box) return;
+
+    const arr = Array.isArray(items) ? items : [];
+
+    if (!arr.length) {
+      box.innerHTML = `<div class="work-empty">Chưa có file</div>`;
+      return;
+    }
+
+    box.innerHTML = arr.map((x) => {
+      const fileName = x.original_name || x.file_name || `File #${x.id}`;
+      const contentType = x.content_type || "-";
+      const size = Number(x.file_size || 0).toLocaleString("vi-VN");
+
+      return `
+        <div class="task-comment-item">
+          <div class="t">${escapeHtml(fileName)}</div>
+          <div class="time">${escapeHtml(contentType)} • ${escapeHtml(size)} bytes</div>
+          <div class="work-card-actions" style="margin-top:8px;">
+            <a class="btn mini" href="${escapeHtml(x.viewer_url)}" target="_blank" rel="noopener">Xem trong OS</a>
+            <a class="btn mini" href="${escapeHtml(x.preview_url)}" target="_blank" rel="noopener">Preview</a>
+            <a class="btn mini" href="${escapeHtml(x.download_url)}" target="_blank" rel="noopener">Tải file</a>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  async function refreshTaskAttachments(taskId) {
+    if (!taskId) return;
+    const data = await http(`${CFG.commentsBase}${taskId}/attachments/`);
+    renderTaskAttachments(data?.items || []);
+  }
+
+  async function uploadTaskAttachment() {
+    const taskId = STATE.selectedTaskId;
+    if (!taskId) throw new Error("Chưa chọn task");
+
+    const input = $("taskAttachmentInput");
+    const file = input?.files?.[0];
+
+    if (!file) {
+      alert("Anh chọn file trước nha");
+      return;
+    }
+
+    const tenantId =
+      String(window.HT_TENANT_ID || "").trim() ||
+      String(localStorage.getItem("ht_tenant_id") || "").trim();
+
+    const csrf = getCookie("csrftoken");
+    const form = new FormData();
+    form.append("file", file);
+
+    const headers = {};
+    if (tenantId) headers["X-Tenant-Id"] = tenantId;
+    if (csrf) headers["X-CSRFToken"] = csrf;
+
+    const res = await fetch(`${CFG.commentsBase}${taskId}/attachments/upload/`, {
+      method: "POST",
+      credentials: "include",
+      headers,
+      body: form,
+    });
+
+    const ct = res.headers.get("content-type") || "";
+    const data = ct.includes("application/json") ? await res.json() : await res.text();
+
+    if (!res.ok) {
+      const msg =
+        (data && (data.message || data.detail || data.error)) ||
+        (typeof data === "string" ? data : JSON.stringify(data));
+      throw new Error(msg || "Upload file lỗi");
+    }
+
+    if (input) input.value = "";
+    await refreshTaskAttachments(taskId);
   }
 
   function bindBoardDnD() {
@@ -1155,6 +1240,27 @@
     }
   }
 
+  function initThemeToggle() {
+    const btn = $("themeToggle");
+    if (!btn) return;
+
+    const saved = localStorage.getItem("ht-theme");
+    if (saved) {
+      document.documentElement.setAttribute("data-theme", saved);
+    }
+
+    const current = document.documentElement.getAttribute("data-theme") || "dark";
+    btn.textContent = current === "dark" ? "☾" : "☀";
+
+    btn.addEventListener("click", () => {
+      const now = document.documentElement.getAttribute("data-theme") || "dark";
+      const next = now === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      localStorage.setItem("ht-theme", next);
+      btn.textContent = next === "dark" ? "☾" : "☀";
+    });
+  }
+
   function bindEvents() {
     $("btnUploadTaskAttachment")?.addEventListener("click", async () => {
       const btn = $("btnUploadTaskAttachment");
@@ -1247,41 +1353,40 @@
       STATE.filters.priority = "";
       STATE.filters.assignee = "";
       STATE.filters.shop = "";
-      STATE.filters.time_scope = "";
+      STATE.filters.time_scope = "today";
 
       if ($("filterKeyword")) $("filterKeyword").value = "";
       if ($("filterStatus")) $("filterStatus").value = "";
       if ($("filterPriority")) $("filterPriority").value = "";
       if ($("filterAssignee")) $("filterAssignee").value = "";
       if ($("filterShop")) $("filterShop").value = "";
-      if ($("filterTimeScope")) $("filterTimeScope").value = "";
+      if ($("filterTimeScope")) $("filterTimeScope").value = "today";
 
       renderAll();
     });
 
     $("createTaskShopId")?.addEventListener("change", (e) => {
       const shopId = String(e.target.value || "").trim();
-
       if ($("createTaskProjectId")) $("createTaskProjectId").value = "";
       renderCreateTaskProjectOptions();
-
       if ($("createTaskShopId")) $("createTaskShopId").value = shopId;
       hydrateCreateTaskContext();
     });
 
     $("createTaskProjectSelect")?.addEventListener("change", (e) => {
       const projectId = String(e.target.value || "").trim();
-      if ($("createTaskProjectId")) {
-        $("createTaskProjectId").value = projectId;
-      }
+      if ($("createTaskProjectId")) $("createTaskProjectId").value = projectId;
       hydrateCreateTaskContext();
     });
 
     $("btnOpenCreateTask")?.addEventListener("click", openCreateTaskModal);
+    $("btnOpenCreateTaskHero")?.addEventListener("click", openCreateTaskModal);
+
     $("closeCreateTaskBtn")?.addEventListener("click", closeCreateTaskModal);
     $("createTaskBackdrop")?.addEventListener("click", closeCreateTaskModal);
     $("resetCreateTaskBtn")?.addEventListener("click", resetCreateTaskModal);
     $("submitCreateTaskBtn")?.addEventListener("click", submitCreateTaskModal);
+    $("btnRefreshWorkHero")?.addEventListener("click", refreshWorkData);
 
     $("btnCloseTaskDrawer")?.addEventListener("click", closeTaskDrawer);
     qsa("[data-drawer-close='1']").forEach((x) => x.addEventListener("click", closeTaskDrawer));
@@ -1367,7 +1472,6 @@
 
         const status = e.target.dataset.status || "todo";
         const title = (e.target.value || "").trim();
-
         if (!title) return;
 
         try {
@@ -1402,95 +1506,10 @@
       $("filterTimeScope").value = "today";
       STATE.filters.time_scope = "today";
     }
-    document.addEventListener("DOMContentLoaded", () => {
 
-      initThemeToggle();
-
-    });
-
+    initThemeToggle();
     bindEvents();
     await refreshWorkData();
-  }
-
-  async function refreshTaskAttachments(taskId) {
-    if (!taskId) return;
-    const data = await http(`${CFG.commentsBase}${taskId}/attachments/`);
-    renderTaskAttachments(data?.items || []);
-  }
-
-  function renderTaskAttachments(items) {
-    const box = $("taskAttachmentsList");
-    if (!box) return;
-
-    const arr = Array.isArray(items) ? items : [];
-
-    if (!arr.length) {
-      box.innerHTML = `<div class="work-empty">Chưa có file</div>`;
-      return;
-    }
-
-    box.innerHTML = arr.map((x) => {
-      const fileName = x.original_name || x.file_name || `File #${x.id}`;
-      const contentType = x.content_type || "-";
-      const size = Number(x.file_size || 0).toLocaleString("vi-VN");
-
-      return `
-        <div class="task-comment-item">
-          <div class="t">${escapeHtml(fileName)}</div>
-          <div class="time">${escapeHtml(contentType)} • ${escapeHtml(size)} bytes</div>
-          <div class="work-card-actions" style="margin-top:8px;">
-            <a class="btn mini" href="${escapeHtml(x.viewer_url)}" target="_blank" rel="noopener">Xem trong OS</a>
-            <a class="btn mini" href="${escapeHtml(x.preview_url)}" target="_blank" rel="noopener">Preview</a>
-            <a class="btn mini" href="${escapeHtml(x.download_url)}" target="_blank" rel="noopener">Tải file</a>
-          </div>
-        </div>
-      `;
-    }).join("");
-  }
-
-  async function uploadTaskAttachment() {
-    const taskId = STATE.selectedTaskId;
-    if (!taskId) throw new Error("Chưa chọn task");
-
-    const input = $("taskAttachmentInput");
-    const file = input?.files?.[0];
-
-    if (!file) {
-      alert("Anh chọn file trước nha");
-      return;
-    }
-
-    const tenantId =
-      String(window.HT_TENANT_ID || "").trim() ||
-      String(localStorage.getItem("ht_tenant_id") || "").trim();
-
-    const csrf = getCookie("csrftoken");
-    const form = new FormData();
-    form.append("file", file);
-
-    const headers = {};
-    if (tenantId) headers["X-Tenant-Id"] = tenantId;
-    if (csrf) headers["X-CSRFToken"] = csrf;
-
-    const res = await fetch(`${CFG.commentsBase}${taskId}/attachments/upload/`, {
-      method: "POST",
-      credentials: "include",
-      headers,
-      body: form,
-    });
-
-    const ct = res.headers.get("content-type") || "";
-    const data = ct.includes("application/json") ? await res.json() : await res.text();
-
-    if (!res.ok) {
-      const msg =
-        (data && (data.message || data.detail || data.error)) ||
-        (typeof data === "string" ? data : JSON.stringify(data));
-      throw new Error(msg || "Upload file lỗi");
-    }
-
-    if (input) input.value = "";
-    await refreshTaskAttachments(taskId);
   }
 
   window.htWorkRefresh = refreshWorkData;
@@ -1507,27 +1526,4 @@
     console.error(e);
     alert("Work OS load lỗi: " + e.message);
   });
-  function initThemeToggle(){
-    const btn = document.getElementById("themeToggle");
-    if(!btn) return;
-
-    const saved = localStorage.getItem("ht-theme");
-
-    if(saved){
-      document.documentElement.setAttribute("data-theme", saved);
-    }
-
-    btn.addEventListener("click", () => {
-
-      const current = document.documentElement.getAttribute("data-theme") || "dark";
-
-      const next = current === "dark" ? "light" : "dark";
-
-      document.documentElement.setAttribute("data-theme", next);
-
-      localStorage.setItem("ht-theme", next);
-
-      btn.textContent = next === "dark" ? "☾" : "☀";
-    });
-  }
 })();

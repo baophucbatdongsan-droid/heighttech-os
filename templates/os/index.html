@@ -5,393 +5,36 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>HeightTech OS</title>
-  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=20" />
-
-  <style>
-    .hero-strip{
-      display:flex;
-      align-items:stretch;
-      justify-content:space-between;
-      gap:18px;
-      padding:22px;
-      border-radius:24px;
-      border:1px solid rgba(255,255,255,.08);
-      background:
-        radial-gradient(circle at top right, rgba(92,141,255,.22), transparent 28%),
-        linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-      margin-bottom:20px;
-      overflow:hidden;
-      position:relative;
-    }
-
-    .hero-strip::after{
-      content:"";
-      position:absolute;
-      inset:auto -80px -80px auto;
-      width:220px;
-      height:220px;
-      border-radius:999px;
-      background:radial-gradient(circle, rgba(120,170,255,.14), transparent 66%);
-      pointer-events:none;
-    }
-
-    .hero-main{
-      min-width:0;
-      flex:1 1 auto;
-      position:relative;
-      z-index:1;
-    }
-
-    .hero-kicker{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.08);
-      background:rgba(255,255,255,.04);
-      font-size:11px;
-      color:var(--muted);
-      margin-bottom:10px;
-      letter-spacing:.2px;
-    }
-
-    .hero-title{
-      font-size:24px;
-      font-weight:900;
-      line-height:1.15;
-      letter-spacing:.2px;
-    }
-
-    .hero-sub{
-      color:var(--muted);
-      font-size:13px;
-      margin-top:8px;
-      line-height:1.65;
-      max-width:780px;
-    }
-
-    .hero-metrics{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-top:14px;
-    }
-
-    .hero-metric{
-      min-width:120px;
-      padding:10px 12px;
-      border-radius:16px;
-      border:1px solid rgba(255,255,255,.08);
-      background:rgba(255,255,255,.035);
-    }
-
-    .hero-metric-k{
-      font-size:11px;
-      color:var(--muted);
-      line-height:1.2;
-    }
-
-    .hero-metric-v{
-      font-size:16px;
-      font-weight:900;
-      margin-top:4px;
-      line-height:1.2;
-    }
-
-    .hero-side{
-      width:320px;
-      max-width:100%;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-      position:relative;
-      z-index:1;
-    }
-
-    .hero-actions{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      justify-content:flex-start;
-    }
-
-    .hero-actions .btn{
-      white-space:nowrap;
-    }
-
-    .hero-panel{
-      padding:14px;
-      border-radius:18px;
-      border:1px solid rgba(255,255,255,.08);
-      background:rgba(255,255,255,.035);
-    }
-
-    .hero-panel-title{
-      font-size:13px;
-      font-weight:800;
-      margin-bottom:6px;
-    }
-
-    .hero-panel-sub{
-      font-size:12px;
-      color:var(--muted);
-      line-height:1.55;
-      margin-bottom:10px;
-    }
-
-    .hero-panel-list{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-    }
-
-    .hero-panel-item{
-      display:flex;
-      align-items:flex-start;
-      gap:8px;
-      font-size:12px;
-      color:var(--text);
-      line-height:1.45;
-    }
-
-    .hero-panel-dot{
-      width:7px;
-      height:7px;
-      border-radius:999px;
-      background:rgba(120,170,255,.8);
-      margin-top:5px;
-      flex:0 0 7px;
-    }
-
-    .os-section{
-      margin:0 0 18px;
-    }
-
-    .os-section-head{
-      display:flex;
-      align-items:end;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:10px;
-      flex-wrap:wrap;
-    }
-
-    .os-section-title{
-      font-size:15px;
-      font-weight:900;
-      letter-spacing:.2px;
-    }
-
-    .os-section-sub{
-      font-size:12px;
-      color:var(--muted);
-      margin-top:4px;
-      line-height:1.45;
-    }
-
-    .quick-entry{
-      display:grid;
-      grid-template-columns:repeat(3, minmax(0,1fr));
-      gap:12px;
-      margin-bottom:18px;
-    }
-
-    .quick-tile{
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:18px;
-      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.025));
-      padding:14px;
-      min-height:124px;
-      display:flex;
-      flex-direction:column;
-      justify-content:space-between;
-      gap:10px;
-    }
-
-    .quick-tile-top{
-      display:flex;
-      gap:10px;
-      align-items:flex-start;
-    }
-
-    .quick-tile-icon{
-      width:40px;
-      height:40px;
-      min-width:40px;
-      border-radius:12px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:18px;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.08);
-    }
-
-    .quick-tile-title{
-      font-size:14px;
-      font-weight:800;
-      margin-bottom:4px;
-      line-height:1.3;
-    }
-
-    .quick-tile-sub{
-      font-size:12px;
-      color:var(--muted);
-      line-height:1.5;
-    }
-
-    .quick-tile .btn{
-      width:100%;
-      justify-content:center;
-    }
-
-    .os-launcher{
-      display:grid;
-      grid-template-columns:repeat(3, minmax(0,1fr));
-      gap:12px;
-      margin:0 0 18px;
-    }
-
-    .os-launcher.compact{
-      grid-template-columns:repeat(4, minmax(0,1fr));
-    }
-
-    .os-launcher-card{
-      position:relative;
-      display:flex;
-      align-items:flex-start;
-      gap:12px;
-      padding:16px;
-      border-radius:20px;
-      border:1px solid rgba(255,255,255,.08);
-      background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.025));
-      text-decoration:none;
-      color:inherit;
-      transition:transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
-      overflow:hidden;
-      min-height:112px;
-    }
-
-    .os-launcher-card:hover{
-      transform:translateY(-3px);
-      border-color:rgba(110,168,254,.38);
-      background:linear-gradient(180deg, rgba(110,168,254,.10), rgba(255,255,255,.04));
-      box-shadow:0 14px 28px rgba(0,0,0,.20);
-    }
-
-    .os-launcher-icon{
-      width:50px;
-      height:50px;
-      min-width:50px;
-      border-radius:15px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:22px;
-      background:rgba(255,255,255,.07);
-      border:1px solid rgba(255,255,255,.08);
-    }
-
-    .os-launcher-body{
-      min-width:0;
-      flex:1 1 auto;
-    }
-
-    .os-launcher-title{
-      font-size:15px;
-      font-weight:800;
-      line-height:1.25;
-      padding-right:70px;
-    }
-
-    .os-launcher-sub{
-      font-size:12px;
-      color:var(--muted);
-      margin-top:5px;
-      line-height:1.5;
-    }
-
-    .os-launcher-badge{
-      position:absolute;
-      top:10px;
-      right:10px;
-      font-size:11px;
-      padding:4px 8px;
-      border-radius:999px;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.08);
-      color:var(--muted);
-    }
-
-    .os-launcher-meta{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-top:10px;
-    }
-
-    .os-meta-pill{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding:4px 8px;
-      border-radius:999px;
-      font-size:11px;
-      border:1px solid rgba(255,255,255,.07);
-      background:rgba(255,255,255,.035);
-      color:var(--muted);
-    }
-
-    @media (max-width: 1200px){
-      .os-launcher.compact{
-        grid-template-columns:repeat(2, minmax(0,1fr));
-      }
-      .hero-side{
-        width:280px;
-      }
-    }
-
-    @media (max-width: 1100px){
-      .os-launcher{
-        grid-template-columns:repeat(2, minmax(0,1fr));
-      }
-      .quick-entry{
-        grid-template-columns:repeat(2, minmax(0,1fr));
-      }
-    }
-
-    @media (max-width: 900px){
-      .hero-strip{
-        flex-direction:column;
-        align-items:flex-start;
-      }
-
-      .hero-side{
-        width:100%;
-      }
-    }
-
-    @media (max-width: 680px){
-      .os-launcher,
-      .os-launcher.compact,
-      .quick-entry{
-        grid-template-columns:1fr;
-      }
-
-      .hero-metrics{
-        display:grid;
-        grid-template-columns:repeat(2, minmax(0,1fr));
-        width:100%;
-      }
-    }
-  </style>
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'os/img/logo-heighttech-os-32.svg' %}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'os/img/logo-heighttech-os-180.svg' %}">
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=340" />
 </head>
 
-<body>
+<body data-page="os-home">
+  <script>
+    window.HT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
+
+    window.HT_OS = {
+      home: "/api/v1/os/home/",
+      controlCenter: "/api/v1/os/control-center/",
+      timeline: "/api/v1/os/timeline/",
+      notifications: "/api/v1/os/notifications/",
+      stream: "/api/v1/os/stream/",
+      workInbox: "/api/v1/os/work/inbox/",
+      workCreate: "/api/v1/os/work/create/",
+      workAssignBase: "/api/v1/os/work/",
+      workUpdateBase: "/api/v1/os/work/",
+      workAssignBy: "/api/v1/os/work/assign-by/",
+      workCommentsBase: "/api/v1/os/work/"
+    };
+  </script>
+
   <header class="topbar">
     <div class="brand">
-      <div class="logo">HT</div>
+      <div class="logo">
+        <img src="{% static 'os/img/logo-heighttech-os-256.svg' %}" alt="HeightTech OS" class="brand-logo-img">
+      </div>
+
       <div class="brand-text">
         <div class="brand-title">HeightTech OS</div>
         <div class="brand-sub">Commerce Control Center</div>
@@ -400,12 +43,17 @@
 
     <div class="searchbar" id="searchbar">
       <span class="kbd">Ctrl+K</span>
-      <input id="q" placeholder="Tìm company / shop / task / hợp đồng…" autocomplete="off" />
+      <input
+        id="q"
+        type="search"
+        placeholder="Tìm company / shop / task / hợp đồng…"
+        autocomplete="off"
+      />
     </div>
 
     <div class="actions">
       <div class="scope" id="scopeChips">
-        <button class="chip" data-scope="tenant" type="button">Tenant</button>
+        <button class="chip active" data-scope="tenant" type="button">Tenant</button>
         <button class="chip" data-scope="company" type="button">Company</button>
         <button class="chip" data-scope="shop" type="button">Shop</button>
         <button class="chip" data-scope="project" type="button">Project</button>
@@ -428,6 +76,7 @@
               Guest
             {% endif %}
           </div>
+
           <div class="user-role">
             {% if request.user.is_authenticated %}
               Đã đăng nhập
@@ -442,20 +91,23 @@
         {% endif %}
       </div>
 
-      <button class="btn icon" id="themeToggle" type="button">☾</button>
-      <button class="btn icon" id="helpBtn" type="button">?</button>
+      <button class="btn icon" id="themeToggle" type="button" aria-label="Đổi giao diện">☾</button>
+      <button class="btn icon" id="helpBtn" type="button" aria-label="Trợ giúp">?</button>
       <button class="btn primary" id="cmdBtn" type="button">Lệnh ⌘K</button>
     </div>
   </header>
 
   <main class="wrap">
-    <section class="hero-strip hero-v2">
+    <!-- HERO -->
+    <section class="hero-strip hero-v2" id="osHeroSection">
       <div class="hero-v2-left">
         <div class="hero-kicker">HEIGHTTECH OS</div>
         <h1 class="hero-v2-title">Commerce Operating System</h1>
+
         <p class="hero-v2-desc">
           Trung tâm điều hành cho founder, leader và đội vận hành —
-          nơi công việc, hợp đồng, shop, SKU và tín hiệu AI được kết nối trong một luồng vận hành thống nhất.
+          nơi công việc, hợp đồng, shop, SKU, dịch vụ và tín hiệu AI
+          được kết nối trong một luồng vận hành thống nhất.
         </p>
 
         <div class="hero-actions">
@@ -463,7 +115,7 @@
           <a class="btn" href="/os/founder/content-priority/">Founder AI</a>
           <a class="btn" href="/os/shops/">Tạo shop</a>
           <a class="btn" href="/os/sku/">Tạo SKU</a>
-          <a class="btn" href="/os/contracts/">Hợp Đồng</a>
+          <a class="btn" href="/os/contracts/">Hợp đồng</a>
 
           <div class="os-quick-create" id="osQuickCreate">
             <button type="button" class="btn quick-create-btn" id="osQuickCreateBtn">
@@ -473,23 +125,28 @@
 
             <div class="os-quick-create-menu" id="osQuickCreateMenu" hidden>
               <a class="os-quick-create-item" href="/os/partners/new/">
-                <span class="os-quick-create-item-title">Khách hàng / Công Ty / Đối Tác</span>
+                <span class="os-quick-create-item-title">Khách hàng / Công ty / Đối tác</span>
                 <span class="os-quick-create-item-sub">Tạo đơn vị khách hàng hoặc đối tác mới</span>
               </a>
 
               <a class="os-quick-create-item" href="/os/shops/">
                 <span class="os-quick-create-item-title">Shop</span>
-                <span class="os-quick-create-item-sub">Tạo shop mới để vận hành</span>
+                <span class="os-quick-create-item-sub">Khởi tạo shop mới để vận hành</span>
               </a>
 
               <a class="os-quick-create-item" href="/os/sku/">
                 <span class="os-quick-create-item-title">SKU / Sản phẩm</span>
-                <span class="os-quick-create-item-sub">Tạo SKU để quản trị bán hàng</span>
+                <span class="os-quick-create-item-sub">Tạo SKU để quản trị tăng trưởng</span>
               </a>
 
               <a class="os-quick-create-item" href="/os/contracts/">
                 <span class="os-quick-create-item-title">Hợp đồng</span>
-                <span class="os-quick-create-item-sub">Tạo hợp đồng và khởi tạo vận hành</span>
+                <span class="os-quick-create-item-sub">Tạo hợp đồng và khởi tạo tiến trình vận hành</span>
+              </a>
+
+              <a class="os-quick-create-item" href="/os/partners/">
+                <span class="os-quick-create-item-title">Danh sách partner</span>
+                <span class="os-quick-create-item-sub">Mở nhanh không gian đối tác / khách hàng</span>
               </a>
             </div>
           </div>
@@ -519,101 +176,26 @@
       </div>
     </section>
 
-    <section class="os-section">
-      <div class="os-section-head">
-        <div>
-          <div class="os-section-title">Điều hành tổ chức</div>
-          <div class="os-section-sub">Nhân sự, content và không gian làm việc theo từng vai trò vận hành</div>
-        </div>
+    <!-- QUICK LINKS -->
+    <section class="card span3" id="osQuickLinksBox">
+      <div class="card-b">
+        <div id="osQuickLinksWrap"></div>
       </div>
-
-      <section class="os-launcher">
-        <a href="/os/team/" class="os-launcher-card">
-          <div class="os-launcher-badge">Admin</div>
-          <div class="os-launcher-icon">👥</div>
-          <div>
-            <div class="os-launcher-title">Team</div>
-            <div class="os-launcher-sub">Quản lý leader, nhân sự và phân quyền làm việc theo từng phạm vi vận hành</div>
-            <div class="contract-meta">
-              <span class="tag2">Leader</span>
-              <span class="tag2">Phân quyền</span>
-            </div>
-          </div>
-        </a>
-
-        <a href="/os/founder/content-priority/" class="os-launcher-card">
-          <div class="os-launcher-badge">Studio</div>
-          <div class="os-launcher-icon">🎬</div>
-          <div>
-            <div class="os-launcher-title">Content Studio</div>
-            <div class="os-launcher-sub">Quản lý kịch bản, tiến độ sản xuất, lịch quay và video đã air theo từng shop</div>
-            <div class="contract-meta">
-              <span class="tag2">Kịch bản</span>
-              <span class="tag2">Tiến độ</span>
-            </div>
-          </div>
-        </a>
-
-        <a href="/client/work/" class="os-launcher-card">
-          <div class="os-launcher-badge">Client</div>
-          <div class="os-launcher-icon">🏪</div>
-          <div>
-            <div class="os-launcher-title">Client Work</div>
-            <div class="os-launcher-sub">Không gian làm việc cho shop và client theo phạm vi được cấp quyền</div>
-            <div class="contract-meta">
-              <span class="tag2">Portal</span>
-              <span class="tag2">Scope Access</span>
-            </div>
-          </div>
-        </a>
-      </section>
     </section>
 
+    <!-- KPI STRIP -->
     <section class="kpis" id="kpis"></section>
 
-    <section class="work-kpis" id="workMiniKpis" style="margin:0 0 18px; display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:12px;">
-      <div class="wkpi">
-        <div class="wkpi-label">Total Work</div>
-        <div class="wkpi-value" id="kpiTotal">0</div>
-      </div>
-      <div class="wkpi">
-        <div class="wkpi-label">Todo</div>
-        <div class="wkpi-value" id="kpiTodo">0</div>
-      </div>
-      <div class="wkpi">
-        <div class="wkpi-label">Doing</div>
-        <div class="wkpi-value" id="kpiDoing">0</div>
-      </div>
-      <div class="wkpi">
-        <div class="wkpi-label">Blocked</div>
-        <div class="wkpi-value" id="kpiBlocked">0</div>
-      </div>
-      <div class="wkpi">
-        <div class="wkpi-label">Done</div>
-        <div class="wkpi-value" id="kpiDone">0</div>
-      </div>
-      <div class="wkpi">
-        <div class="wkpi-label">Overdue</div>
-        <div class="wkpi-value" id="kpiOverdue">0</div>
-      </div>
-      <div class="wkpi">
-        <div class="wkpi-label">Today</div>
-        <div class="wkpi-value" id="kpiToday">0</div>
-      </div>
-      <div class="wkpi">
-        <div class="wkpi-label">Upcoming 3d</div>
-        <div class="wkpi-value" id="kpiUpcoming">0</div>
-      </div>
-      <div class="wkpi">
-        <div class="wkpi-label">No Deadline</div>
-        <div class="wkpi-value" id="kpiNoDeadline">0</div>
-      </div>
-    </section>
-
+    <!-- OPERATING GRID -->
     <section class="grid">
-      <div class="card span2">
+      <!-- LEFT COLUMN -->
+      <div class="card span2" id="timelineBox">
         <div class="card-h">
-          <div class="card-title">Dòng thời gian hệ thống</div>
+          <div>
+            <div class="card-title">Dòng thời gian hệ thống</div>
+            <div class="muted">Theo dõi biến động vận hành theo scope hiện tại</div>
+          </div>
+
           <div class="card-meta">
             <span class="pill" id="rtPill">realtime</span>
             <span class="pill" id="scopePill">tenant</span>
@@ -622,15 +204,21 @@
 
         <div class="card-b">
           <div class="list" id="timelineList"></div>
+
           <div class="list-footer">
             <button class="btn" id="loadMoreTimeline" type="button">Tải thêm</button>
           </div>
         </div>
       </div>
 
-      <div class="card">
+      <!-- RIGHT COLUMN -->
+      <div class="card" id="notifBox">
         <div class="card-h">
-          <div class="card-title">Thông báo</div>
+          <div>
+            <div class="card-title">Thông báo</div>
+            <div class="muted">Những cảnh báo và nhắc việc gần nhất</div>
+          </div>
+
           <div class="card-meta">
             <span class="badge" id="notifBadge">0</span>
           </div>
@@ -641,19 +229,19 @@
         </div>
       </div>
 
-
+      <!-- WORK SNAPSHOT -->
       <div class="panel card span3" id="workPanel">
         <div class="card-h">
           <div>
             <div class="card-title">Khu làm việc</div>
-            <div class="brand-sub">Inbox • Kanban • giao việc • chuyển bước • comment • hợp đồng • AI task</div>
+            <div class="muted">Inbox • Kanban • giao việc • chuyển bước • comment • AI task</div>
           </div>
 
-          <div class="panel-actions" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <div class="panel-actions">
             <button class="mini btn work-view-tab active" data-view="list" type="button">Inbox</button>
             <button class="mini btn work-view-tab" data-view="board" type="button">Kanban</button>
 
-            <select id="filterTimeScope" class="input" style="min-width:150px; height:36px;">
+            <select id="filterTimeScope" class="input" style="min-width:150px;height:36px;">
               <option value="today" selected>Hôm nay</option>
               <option value="overdue">Quá hạn</option>
               <option value="upcoming">3 ngày tới</option>
@@ -665,6 +253,7 @@
             <button class="mini btn" id="btnResetFilter" type="button">Reset</button>
             <button class="mini btn" id="btnNewTask" type="button">+ Mới</button>
             <button class="mini btn" id="btnRefreshWork" type="button">Làm mới</button>
+            <a class="mini btn ghost" href="/work/">Mở Work OS</a>
           </div>
         </div>
 
@@ -678,9 +267,15 @@
           </div>
         </div>
       </div>
-            <div class="card span3">
+
+      <!-- HEALTH -->
+      <div class="card span3" id="healthBox">
         <div class="card-h">
-          <div class="card-title">Giám sát sức khỏe shop</div>
+          <div>
+            <div class="card-title">Giám sát sức khỏe shop</div>
+            <div class="muted">Top risk / low health / tín hiệu bất thường</div>
+          </div>
+
           <div class="card-meta">
             <span class="pill">Top risk</span>
           </div>
@@ -691,9 +286,14 @@
         </div>
       </div>
 
-      <div class="card span3">
+      <!-- STRATEGY -->
+      <div class="card span3" id="strategyBox">
         <div class="card-h">
-          <div class="card-title">Bảng chiến lược AI</div>
+          <div>
+            <div class="card-title">Bảng chiến lược AI</div>
+            <div class="muted">Deterministic recommendations cho vận hành</div>
+          </div>
+
           <div class="card-meta">
             <span class="pill">deterministic</span>
           </div>
@@ -704,9 +304,14 @@
         </div>
       </div>
 
-      <div class="card">
+      <!-- KERNEL -->
+      <div class="card" id="kernelBox">
         <div class="card-h">
-          <div class="card-title">Trung tâm hệ thống</div>
+          <div>
+            <div class="card-title">Trung tâm hệ thống</div>
+            <div class="muted">Kernel / scope / refresh / generated at</div>
+          </div>
+
           <div class="card-meta">
             <button class="btn mini" id="btnRefreshKernel" type="button">Làm mới</button>
           </div>
@@ -717,9 +322,14 @@
         </div>
       </div>
 
-      <div class="card span2">
+      <!-- RAW VIEWER -->
+      <div class="card span2" id="rawViewerBox">
         <div class="card-h">
-          <div class="card-title">Trình xem API thô</div>
+          <div>
+            <div class="card-title">Trình xem API thô</div>
+            <div class="muted">Kiểm tra response nhanh khi debug OS</div>
+          </div>
+
           <div class="card-meta">
             <button class="btn mini" id="btnRawToggle" type="button">Bật / tắt</button>
           </div>
@@ -746,34 +356,7 @@
     </section>
   </main>
 
-  <nav class="bottombar">
-    <button class="bb-item active" data-tab="home" type="button">
-      <span class="bb-ic">⌂</span>
-      <span class="bb-tx">Home</span>
-    </button>
-
-    <button class="bb-item" data-tab="timeline" type="button">
-      <span class="bb-ic">≡</span>
-      <span class="bb-tx">Timeline</span>
-    </button>
-
-    <button class="bb-item" data-tab="alerts" type="button">
-      <span class="bb-ic">!</span>
-      <span class="bb-tx">Alerts</span>
-      <span class="bb-dot" id="bbDot"></span>
-    </button>
-
-    <button class="bb-item" data-tab="work" type="button">
-      <span class="bb-ic">✓</span>
-      <span class="bb-tx">Work</span>
-    </button>
-
-    <button class="bb-item" data-tab="command" id="bbCmd" type="button">
-      <span class="bb-ic">⌘</span>
-      <span class="bb-tx">Cmd</span>
-    </button>
-  </nav>
-
+  <!-- TASK DRAWER -->
   <div class="drawer" id="taskDrawer" aria-hidden="true">
     <div class="drawer-backdrop" data-drawer-close="1"></div>
 
@@ -870,6 +453,7 @@
             <div class="card-h">
               <div>Bình luận</div>
             </div>
+
             <div class="card-b">
               <div id="taskCommentsList"></div>
 
@@ -878,11 +462,11 @@
                   id="taskCommentInput"
                   class="input"
                   placeholder="Viết comment..."
-                  style="width:100%; min-height:100px; resize:vertical;"
+                  style="width:100%;min-height:100px;resize:vertical;"
                 ></textarea>
 
-                <div style="display:flex; justify-content:flex-end; margin-top:8px;">
-                  <button id="btnSubmitTaskComment" type="button">Gửi comment</button>
+                <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+                  <button id="btnSubmitTaskComment" class="btn mini" type="button">Gửi comment</button>
                 </div>
               </div>
             </div>
@@ -892,6 +476,7 @@
     </aside>
   </div>
 
+  <!-- COMMAND MODAL -->
   <div class="modal" id="cmdModal" aria-hidden="true">
     <div class="modal-backdrop" data-close="1"></div>
 
@@ -916,6 +501,7 @@
     </div>
   </div>
 
+  <!-- HELP MODAL -->
   <div class="modal" id="helpModal" aria-hidden="true">
     <div class="modal-backdrop" data-close="1"></div>
 
@@ -940,6 +526,7 @@
     </div>
   </div>
 
+  <!-- CREATE TASK MODAL -->
   <div class="modal" id="createTaskModal" aria-hidden="true">
     <div class="modal-backdrop" id="createTaskBackdrop"></div>
 
@@ -951,12 +538,12 @@
             Tạo việc theo shop và dự án vận hành hiện tại.
           </div>
         </div>
+
         <button class="btn" id="closeCreateTaskBtn" type="button">Đóng</button>
       </div>
 
       <div class="modal-b">
         <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
-
           <div style="grid-column:1 / -1;">
             <div class="muted" style="margin-bottom:6px;">Tiêu đề *</div>
             <input id="createTaskTitle" class="input" placeholder="VD: Viết content hook cho 70mai">
@@ -971,6 +558,9 @@
             <div class="muted" style="margin-bottom:6px;">Phòng ban</div>
             <select id="createTaskDepartment" class="input">
               <option value="production">Sản xuất</option>
+              <option value="content">Content</option>
+              <option value="design">Design</option>
+              <option value="ads">Ads</option>
               <option value="operation">Vận hành</option>
               <option value="booking">Booking</option>
             </select>
@@ -1015,7 +605,6 @@
             <input id="createTaskDueAt" type="datetime-local" class="input">
           </div>
 
-          <!-- hidden -->
           <input id="createTaskCompanyId" type="hidden">
           <input id="createTaskCompanyText" type="hidden">
           <input id="createTaskProjectId" type="hidden">
@@ -1034,23 +623,35 @@
     </div>
   </div>
 
-  <script>
-    window.HT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
-    window.HT_OS = {
-      home: "/api/v1/os/home/",
-      controlCenter: "/api/v1/os/control-center/",
-      timeline: "/api/v1/os/timeline/",
-      notifications: "/api/v1/os/notifications/",
-      stream: "/api/v1/os/stream/",
-      workInbox: "/api/v1/os/work/inbox/",
-      workCreate: "/api/v1/os/work/create/",
-      workAssignBase: "/api/v1/os/work/",
-      workUpdateBase: "/api/v1/os/work/",
-      workAssignBy: "/api/v1/os/work/assign-by/",
-      workCommentsBase: "/api/v1/os/work/"
-    };
-  </script>
+  <!-- MOBILE BOTTOM BAR -->
+  <nav class="bottombar">
+    <button class="bb-item active" data-tab="home" type="button">
+      <span class="bb-ic">⌂</span>
+      <span class="bb-tx">Home</span>
+    </button>
 
-  <script src="{% static 'os/os.js' %}?v=31"></script>
+    <button class="bb-item" data-tab="timeline" type="button">
+      <span class="bb-ic">≡</span>
+      <span class="bb-tx">Timeline</span>
+    </button>
+
+    <button class="bb-item" data-tab="alerts" type="button">
+      <span class="bb-ic">!</span>
+      <span class="bb-tx">Alerts</span>
+      <span class="bb-dot" id="bbDot"></span>
+    </button>
+
+    <button class="bb-item" data-tab="work" type="button">
+      <span class="bb-ic">✓</span>
+      <span class="bb-tx">Work</span>
+    </button>
+
+    <button class="bb-item" data-tab="command" id="bbCmd" type="button">
+      <span class="bb-ic">⌘</span>
+      <span class="bb-tx">Cmd</span>
+    </button>
+  </nav>
+
+  <script src="{% static 'os/os.js' %}?v=300"></script>
 </body>
 </html>
