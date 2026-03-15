@@ -11,33 +11,33 @@ from rest_framework.views import APIView
 
 from apps.api.v1.insight import FounderInsightApi, _get_tenant_id
 from apps.contracts.models import ContractBookingItem, ContractMilestone, ContractPayment
-from apps.work.models import WorkItem
 from apps.core.permissions import resolve_user_role
 from apps.intelligence.action_runner import run_actions
 from apps.intelligence.decision_engine import run_decisions
 from apps.intelligence.risk_engine import detect_risks
 from apps.intelligence.strategy_actions import plans_to_actions
 from apps.intelligence.strategy_engine import build_strategies, plans_to_dict
+from apps.os.agency_health_score import build_agency_health_score
+from apps.os.ai_decision_engine import build_ai_decisions
+from apps.os.cashflow_radar import build_cashflow_radar
+from apps.os.contract_health_score import build_contract_health_score
+from apps.os.founder_dashboard import build_founder_dashboard
+from apps.os.mission_control import build_mission_control
+from apps.os.product_radar import build_product_radar
+from apps.os.revenue_prediction import build_revenue_prediction
+from apps.os.shop_ai_actions import build_shop_ai_actions
+from apps.os.shop_brain import build_shop_brain
+from apps.os.shop_command_center import build_shop_command_center
+from apps.os.shop_kpi_strip import build_shop_kpi_strip
+from apps.os.shop_mission_digest import build_shop_mission_digest
+from apps.os.shop_risk_radar import build_shop_risk_radar
+from apps.os.shop_service_timeline import build_shop_service_timeline
+from apps.os.shop_services_overview import build_shop_services_overview
+from apps.os.sku_radar import build_sku_radar
 from apps.os.ui_schema import build_os_ui_schema
 from apps.contracts.timeline_engine import build_contract_timeline
 from apps.contracts.radar_engine import build_contract_radar
-from apps.os.founder_dashboard import build_founder_dashboard
-from apps.os.shop_risk_radar import build_shop_risk_radar
-from apps.os.cashflow_radar import build_cashflow_radar
-from apps.os.revenue_prediction import build_revenue_prediction
-from apps.os.ai_decision_engine import build_ai_decisions
-from apps.os.contract_health_score import build_contract_health_score
-from apps.os.mission_control import build_mission_control
-from apps.os.agency_health_score import build_agency_health_score
-from apps.os.shop_brain import build_shop_brain
-from apps.os.product_radar import build_product_radar
-from apps.os.shop_services_overview import build_shop_services_overview
-from apps.os.shop_service_timeline import build_shop_service_timeline
-from apps.os.shop_command_center import build_shop_command_center
-from apps.os.shop_ai_actions import build_shop_ai_actions
-from apps.os.shop_mission_digest import build_shop_mission_digest
-from apps.os.shop_kpi_strip import build_shop_kpi_strip
-from apps.os.sku_radar import build_sku_radar
+from apps.work.models import WorkItem
 
 
 CONTRACT_SOON_DAYS = 3
@@ -229,6 +229,8 @@ def _contract_alert_summary(
         },
         "items": cards[:8],
     }
+
+
 def _contract_work_summary(
     *,
     tenant_id: int,
@@ -287,6 +289,8 @@ def _contract_work_summary(
         },
         "items": items,
     }
+
+
 class OSHomeApi(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -515,9 +519,6 @@ class OSHomeApi(APIView):
             limit=5,
         )
 
-        if not isinstance(headline, dict):
-            headline = {}
-
         headline.update(contract_alerts.get("headline", {}) or {})
         headline.update(contract_work.get("headline", {}) or {})
         headline.update(getattr(contract_timeline, "headline", {}) or {})
@@ -536,9 +537,6 @@ class OSHomeApi(APIView):
         headline.update(getattr(shop_mission_digest, "headline", {}) or {})
         headline.update(getattr(shop_kpi_strip, "headline", {}) or {})
         headline.update(getattr(sku_radar, "headline", {}) or {})
-
-        if not isinstance(blocks, dict):
-            blocks = {}
 
         blocks["contracts_alerts"] = contract_alerts
         blocks["contract_work"] = contract_work
@@ -578,13 +576,13 @@ class OSHomeApi(APIView):
         }
         blocks["agency_health"] = {
             "score": getattr(agency_health, "score", 0),
-            "blocks": getattr(agency_health, "blocks", {}),
+            "blocks": getattr(agency_health, "blocks", {}) or {},
         }
         blocks["shop_brain"] = {
-            "headline": getattr(shop_brain, "headline", {}),
-            "daily_mission": getattr(shop_brain, "daily_mission", []),
-            "risks": getattr(shop_brain, "risks", []),
-            "growth": getattr(shop_brain, "growth", []),
+            "headline": getattr(shop_brain, "headline", {}) or {},
+            "daily_mission": getattr(shop_brain, "daily_mission", []) or [],
+            "risks": getattr(shop_brain, "risks", []) or [],
+            "growth": getattr(shop_brain, "growth", []) or [],
         }
         blocks["product_radar"] = {
             "headline": getattr(product_radar, "headline", {}) or {},
@@ -614,6 +612,11 @@ class OSHomeApi(APIView):
             "headline": getattr(shop_kpi_strip, "headline", {}) or {},
             "items": getattr(shop_kpi_strip, "items", []) or [],
         }
+        blocks["sku_radar"] = {
+            "headline": getattr(sku_radar, "headline", {}) or {},
+            "blocks": getattr(sku_radar, "blocks", {}) or {},
+        }
+
         contract_items = contract_alerts.get("items", []) or []
 
         if isinstance(chien_luoc, list):
@@ -623,9 +626,6 @@ class OSHomeApi(APIView):
                 chien_luoc["items"] = contract_items + chien_luoc["items"]
             elif isinstance(chien_luoc.get("plans"), list):
                 chien_luoc["plans"] = contract_items + chien_luoc["plans"]
-
-        if not isinstance(quyet_dinh, dict):
-            quyet_dinh = {}
 
         goi_y = quyet_dinh.get("goi_y")
         if isinstance(goi_y, list) and contract_items:
@@ -653,11 +653,11 @@ class OSHomeApi(APIView):
                 "chien_luoc": chien_luoc,
                 "ket_qua_hanh_dong_chien_luoc": action_results_strategy,
                 "layout": [
-                    "shop_kpi_strip"
+                    "shop_kpi_strip",
                     "sku_radar",
                     "shop_mission_digest",
                     "shop_command_center",
-                    "shop_ai_actions"
+                    "shop_ai_actions",
                     "mission_control",
                     "agency_health",
                     "shop_brain",
@@ -679,7 +679,7 @@ class OSHomeApi(APIView):
                     "recommendations",
                     "shops_health",
                     "tasks",
-                    "events",                   
+                    "events",
                 ],
                 "blocks": blocks,
             }

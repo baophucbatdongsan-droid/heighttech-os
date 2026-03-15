@@ -1,4 +1,3 @@
-# apps/os/notifications_service.py
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -32,22 +31,29 @@ def create_notification(
 ):
     OSNotification = _get_model("os", "OSNotification")
     if not OSNotification:
-        return None
+        raise RuntimeError("OSNotification model not found")
+
+    sev = (severity or "info").strip().lower()
+    if sev not in {"info", "warning", "critical"}:
+        sev = "info"
+
+    st = (status or "new").strip().lower()
+    if st not in {"new", "read", "archived"}:
+        st = "new"
 
     obj = OSNotification.objects_all.create(
         tenant_id=int(tenant_id),
-        target_role=(target_role or "").strip().lower(),
-        target_user_id=target_user_id,
-        severity=(severity or "info").strip().lower(),
-        status=(status or "new").strip().lower(),
-        tieu_de=(tieu_de or "Thông báo").strip(),
-        noi_dung=(noi_dung or "").strip(),
-        entity_kind=(entity_kind or "").strip(),
-        entity_id=entity_id,
         company_id=company_id,
         shop_id=shop_id,
-        actor_id=actor_id,
+        target_user_id=target_user_id,
+        target_role=(target_role or "").strip().lower(),
+        tieu_de=(tieu_de or "Thông báo").strip(),
+        noi_dung=(noi_dung or "").strip(),
+        severity=sev,
+        entity_kind=(entity_kind or "").strip(),
+        entity_id=entity_id,
         meta=meta or {},
+        status=st,
         created_at=timezone.now(),
     )
     return obj

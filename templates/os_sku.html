@@ -1,1466 +1,1376 @@
+{% extends "os/os_layout.html" %}
 {% load static %}
-<!doctype html>
-<html lang="vi" data-theme="dark">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>HeightTech • SKU Control Center</title>
-  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=40" />
-  <style>
-    .page-wrap{
-      max-width:1440px;
-      margin:0 auto;
-      padding:24px;
+
+{% block page_title %}HeightTech • SKU Control Center{% endblock %}
+{% block body_page %}os-sku{% endblock %}
+
+{% block sidebar_brand_title %}HeightTech OS{% endblock %}
+{% block sidebar_brand_sub %}Commerce Control Center{% endblock %}
+
+{% block topbar_brand_title %}SKU Control Center{% endblock %}
+{% block topbar_brand_sub %}Quản lý SKU, tồn kho, margin, tài liệu và sheet vận hành theo tenant hiện tại{% endblock %}
+
+{% block search_placeholder %}Tìm SKU / sản phẩm / company / shop{% endblock %}
+
+{% block extra_head %}
+<style>
+  .hero-v2-compact{
+    padding:22px;
+  }
+
+  .hero-v2-right-mini{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .hero-stat-value-sm{
+    font-size:18px;
+    line-height:1.25;
+    letter-spacing:-.01em;
+    word-break:break-word;
+  }
+
+  .sku-kpi-row{
+    grid-template-columns:repeat(6,minmax(0,1fr));
+    margin-bottom:18px;
+  }
+
+  .sku-workspace-grid{
+    display:grid;
+    grid-template-columns:320px minmax(0,1fr) 360px;
+    gap:18px;
+    align-items:start;
+  }
+
+  .sku-left-panel,
+  .sku-center-panel,
+  .sku-right-panel{
+    overflow:hidden;
+  }
+
+  .sku-filter-grid .input,
+  .sku-filter-grid select,
+  .sku-filter-grid input{
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    box-sizing:border-box;
+  }
+
+  .sku-filter-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+    min-width:0;
+  }
+
+  .sku-filter-grid > div{
+    min-width:0;
+  }
+
+  .sku-mini-label{
+    font-size:12px;
+    color:var(--muted);
+    font-weight:700;
+    margin-bottom:6px;
+  }
+
+  .sku-small-title{
+    font-size:14px;
+  }
+
+  .sku-inline-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:2px;
+  }
+
+  .sku-section-divider{
+    margin:14px 0;
+    border:none;
+    border-top:1px dashed rgba(255,255,255,.10);
+  }
+
+  .sku-quick-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:10px;
+  }
+
+  .sku-quick-btn{
+    appearance:none;
+    border:none;
+    cursor:pointer;
+    padding:11px 12px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(255,255,255,.04);
+    color:var(--text);
+    font-weight:800;
+    text-align:left;
+    line-height:1.35;
+  }
+
+  .sku-quick-btn:hover{
+    background:rgba(255,255,255,.08);
+    transform:translateY(-1px);
+  }
+
+  .sku-quick-btn small{
+    display:block;
+    margin-top:4px;
+    color:var(--muted);
+    font-size:11px;
+    font-weight:600;
+  }
+
+  .sku-radar-list{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-top:10px;
+  }
+
+  .sku-radar-item{
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;
+    padding:12px;
+    background:rgba(255,255,255,.025);
+  }
+
+  .sku-radar-item b{
+    display:block;
+    margin-bottom:4px;
+  }
+
+  .sku-radar-item div{
+    color:var(--muted);
+    font-size:12px;
+    line-height:1.6;
+  }
+
+  .sku-table-toolbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+
+  .sku-table-toolbar-left{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+    min-width:0;
+    flex:1;
+  }
+
+  .sku-table-toolbar-left .input{
+    max-width:320px;
+  }
+
+  .sku-table-toolbar-right{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+
+  .sku-table-wrap{
+    overflow:auto;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:18px;
+    background:rgba(255,255,255,.02);
+  }
+
+  .sku-main{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+
+  .sku-code{
+    font-weight:900;
+    color:var(--text);
+  }
+
+  .sku-name{
+    color:var(--text-soft);
+    line-height:1.5;
+  }
+
+  .sku-sub{
+    color:var(--muted);
+    font-size:12px;
+  }
+
+  .money{
+    font-weight:800;
+    white-space:nowrap;
+  }
+
+  .stock-bar{
+    width:100%;
+    height:8px;
+    border-radius:999px;
+    background:rgba(255,255,255,.08);
+    overflow:hidden;
+    margin-top:6px;
+    min-width:90px;
+  }
+
+  .stock-fill{
+    height:100%;
+    border-radius:999px;
+    background:linear-gradient(90deg, rgba(138,180,255,.95), rgba(98,150,255,.65));
+  }
+
+  .row-actions{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+  }
+
+  .soft-btn{
+    appearance:none;
+    border:none;
+    cursor:pointer;
+    padding:6px 10px;
+    border-radius:10px;
+    background:rgba(255,255,255,.06);
+    color:var(--text);
+    border:1px solid rgba(255,255,255,.08);
+    font-size:12px;
+    white-space:nowrap;
+  }
+
+  .soft-btn:hover{
+    background:rgba(255,255,255,.11);
+  }
+
+  .detail-top{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+
+  .detail-card{
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:16px;
+    background:rgba(255,255,255,.02);
+    padding:14px;
+  }
+
+  .detail-card h4{
+    margin:0 0 10px 0;
+    font-size:14px;
+  }
+
+  .detail-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+
+  .detail-meta{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+
+  .detail-meta-label{
+    font-size:11px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.04em;
+  }
+
+  .detail-meta-value{
+    font-size:14px;
+    font-weight:800;
+    line-height:1.5;
+    color:var(--text);
+    word-break:break-word;
+  }
+
+  .detail-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:10px;
+  }
+
+  .detail-empty{
+    border:1px dashed rgba(255,255,255,.10);
+    border-radius:16px;
+    padding:16px;
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.6;
+  }
+
+  .resource-list{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+
+  .resource-item{
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;
+    padding:12px;
+    background:rgba(255,255,255,.02);
+  }
+
+  .resource-title{
+    font-weight:800;
+    line-height:1.5;
+  }
+
+  .resource-meta{
+    color:var(--muted);
+    font-size:12px;
+    margin-top:4px;
+    line-height:1.6;
+  }
+
+  .resource-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:8px;
+  }
+
+  @media (max-width: 1320px){
+    .sku-workspace-grid{
+      grid-template-columns:300px minmax(0,1fr);
     }
 
-    .page-head{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:16px;
-      flex-wrap:wrap;
-      margin-bottom:18px;
+    .sku-right-panel{
+      grid-column:1 / -1;
     }
+  }
 
-    .page-title{
-      font-size:34px;
-      font-weight:900;
-      letter-spacing:-.03em;
-      line-height:1.1;
+  @media (max-width: 1100px){
+    .sku-kpi-row{
+      grid-template-columns:repeat(3,minmax(0,1fr));
     }
+  }
 
-    .page-sub{
-      color:var(--muted);
-      margin-top:8px;
-      line-height:1.7;
-      max-width:860px;
-      font-size:14px;
-    }
-
-    .head-actions{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-
-    .tenant-pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      margin-top:14px;
-      padding:8px 12px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.08);
-      background:rgba(255,255,255,.04);
-      font-size:12px;
-      color:var(--muted);
-    }
-
-    .kpi-row{
-      display:grid;
-      grid-template-columns:repeat(6,minmax(0,1fr));
-      gap:12px;
-      margin-bottom:18px;
-    }
-
-    .kpi-card{
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:18px;
-      background:rgba(255,255,255,.03);
-      padding:14px;
-      box-shadow:0 10px 28px rgba(0,0,0,.12);
-    }
-
-    .kpi-label{
-      color:var(--muted);
-      font-size:12px;
-    }
-
-    .kpi-value{
-      margin-top:8px;
-      font-size:26px;
-      font-weight:900;
-      letter-spacing:-.02em;
-    }
-
-    .kpi-note{
-      margin-top:6px;
-      font-size:12px;
-      color:var(--muted);
-    }
-
-    .workspace{
-      display:grid;
-      grid-template-columns:320px minmax(0,1fr) 360px;
-      gap:18px;
-      align-items:start;
-    }
-
-    .panel{
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:22px;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02));
-      box-shadow:0 10px 32px rgba(0,0,0,.12);
-      overflow:hidden;
-    }
-
-    .filter-grid .input,
-    .filter-grid select,
-    .filter-grid input{
-      width: 100%;
-      min-width: 0;
-      max-width: 100%;
-      box-sizing: border-box;
-    }
-
-    .panel-b{
-      overflow: hidden;
-    }
-    select.input{
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .filter-grid{
-      min-width: 0;
-    }
-
-    .filter-grid > div{
-      min-width: 0;
-    }
-
-    .panel-h{
-      padding:16px 18px;
-      border-bottom:1px solid rgba(255,255,255,.06);
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-
-    .panel-b{
-      padding:16px;
-    }
-
-    .panel-title{
-      font-weight:900;
-      font-size:16px;
-    }
-
-    .panel-sub{
-      font-size:12px;
-      color:var(--muted);
-      margin-top:4px;
-      line-height:1.6;
-    }
-
-    .stack{
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-    }
-
-    .filter-grid{
-      display:grid;
+  @media (max-width: 980px){
+    .hero-v2-right-mini{
       grid-template-columns:1fr;
-      gap:10px;
     }
 
-    .section-divider{
-      margin:14px 0;
-      border:none;
-      border-top:1px dashed rgba(255,255,255,.10);
+    .sku-workspace-grid{
+      grid-template-columns:1fr;
     }
 
-    .mini-label{
-      font-size:12px;
-      color:var(--muted);
-      font-weight:700;
-      margin-bottom:6px;
-    }
-
-    .quick-actions{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:10px;
-    }
-
-    .quick-btn{
-      appearance:none;
-      border:none;
-      cursor:pointer;
-      padding:11px 12px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.08);
-      background:rgba(255,255,255,.04);
-      color:#fff;
-      font-weight:800;
-      text-align:left;
-      line-height:1.35;
-    }
-
-    .quick-btn:hover{
-      background:rgba(255,255,255,.08);
-      transform:translateY(-1px);
-    }
-
-    .quick-btn small{
-      display:block;
-      margin-top:4px;
-      color:var(--muted);
-      font-size:11px;
-      font-weight:600;
-    }
-
-    .radar-list{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-
-    .radar-item{
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:14px;
-      padding:12px;
-      background:rgba(255,255,255,.025);
-    }
-
-    .radar-item b{
-      display:block;
-      margin-bottom:4px;
-    }
-
-    .radar-item div{
-      color:var(--muted);
-      font-size:12px;
-      line-height:1.6;
-    }
-
-    .table-toolbar{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-bottom:14px;
-    }
-
-    .table-toolbar-left{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      min-width:0;
-      flex:1;
-    }
-
-    .table-toolbar-right{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-
-    .table-wrap{
-      overflow:auto;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:18px;
-      background:rgba(255,255,255,.02);
-    }
-
-    table{
-      width:100%;
-      border-collapse:collapse;
-      min-width:1120px;
-    }
-
-    thead th{
-      text-align:left;
-      font-size:12px;
-      color:#dbe6ff;
-      background:rgba(255,255,255,.04);
-      position:sticky;
-      top:0;
-      z-index:1;
-      border-bottom:1px solid rgba(255,255,255,.08);
-      padding:12px 12px;
-      white-space:nowrap;
-    }
-
-    tbody td{
-      padding:12px;
-      border-bottom:1px solid rgba(255,255,255,.06);
-      vertical-align:top;
-      font-size:14px;
-    }
-
-    tbody tr{
-      cursor:pointer;
-      transition:.15s ease;
-    }
-
-    tbody tr:hover{
-      background:rgba(255,255,255,.035);
-    }
-
-    tbody tr.active{
-      background:rgba(138,180,255,.09);
-      box-shadow:inset 0 0 0 1px rgba(138,180,255,.22);
-    }
-
-    .sku-main{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-    }
-
-    .sku-code{
-      font-weight:900;
-      color:#fff;
-    }
-
-    .sku-name{
-      color:#dbe6ff;
-      line-height:1.5;
-    }
-
-    .sku-sub{
-      color:var(--muted);
-      font-size:12px;
-    }
-
-    .money{
-      font-weight:800;
-      white-space:nowrap;
-    }
-
-    .pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:5px 10px;
-      border-radius:999px;
-      font-size:12px;
-      font-weight:800;
-      border:1px solid rgba(255,255,255,.08);
-      background:rgba(255,255,255,.05);
-      white-space:nowrap;
-    }
-
-    .pill.green{
-      color:#9ef0b0;
-      border-color:rgba(41,214,111,.25);
-      background:rgba(41,214,111,.08);
-    }
-
-    .pill.yellow{
-      color:#ffd98f;
-      border-color:rgba(246,183,60,.25);
-      background:rgba(246,183,60,.08);
-    }
-
-    .pill.red{
-      color:#ff9fa8;
-      border-color:rgba(255,107,124,.25);
-      background:rgba(255,107,124,.08);
-    }
-
-    .stock-bar{
-      width:100%;
-      height:8px;
-      border-radius:999px;
-      background:rgba(255,255,255,.08);
-      overflow:hidden;
-      margin-top:6px;
-      min-width:90px;
-    }
-
-    .stock-fill{
-      height:100%;
-      border-radius:999px;
-      background:linear-gradient(90deg, rgba(138,180,255,.95), rgba(98,150,255,.65));
-    }
-
-    .row-actions{
-      display:flex;
-      gap:6px;
-      flex-wrap:wrap;
-    }
-
-    .soft-btn{
-      appearance:none;
-      border:none;
-      cursor:pointer;
-      padding:6px 10px;
-      border-radius:10px;
-      background:rgba(255,255,255,.06);
-      color:#fff;
-      border:1px solid rgba(255,255,255,.08);
-      font-size:12px;
-      white-space:nowrap;
-    }
-
-    .soft-btn:hover{
-      background:rgba(255,255,255,.11);
-    }
-
-    .detail-top{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-
-    .detail-card{
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:16px;
-      background:rgba(255,255,255,.02);
-      padding:14px;
-    }
-
-    .detail-card h4{
-      margin:0 0 10px 0;
-      font-size:14px;
+    .sku-quick-actions{
+      grid-template-columns:1fr;
     }
 
     .detail-grid{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:10px;
+      grid-template-columns:1fr;
+    }
+  }
+
+  @media (max-width: 768px){
+    .sku-kpi-row{
+      grid-template-columns:1fr;
     }
 
-    .detail-meta{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
+    .sku-table-toolbar-left .input{
+      max-width:none;
+      width:100%;
     }
 
-    .detail-meta-label{
-      font-size:11px;
-      color:var(--muted);
-      text-transform:uppercase;
-      letter-spacing:.04em;
+    .sku-table-toolbar-left{
+      width:100%;
     }
+  }
+</style>
+{% endblock %}
 
-    .detail-meta-value{
-      font-size:14px;
-      font-weight:800;
-      line-height:1.5;
-      color:#fff;
-      word-break:break-word;
-    }
+{% block main_content %}
+<section class="hero-v2 hero-v2-compact">
+  <div class="hero-v2-left">
+    <div class="hero-kicker">SKU CONTROL CENTER</div>
+    <h1 class="hero-v2-title">SKU Workspace</h1>
+    <p class="hero-v2-desc">
+      Trung tâm điều hành SKU cho HeightTech OS: quản lý sản phẩm, tồn kho, giá vốn,
+      biên lợi nhuận, sheet vận hành, tài liệu và tài nguyên liên quan trong cùng một workspace.
+    </p>
 
-    .detail-actions{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-top:10px;
-    }
+    <div class="hero-actions">
+      <a class="btn" href="/os/">← Về OS</a>
+      <button class="btn" type="button" onclick="refreshPageData()">Làm mới</button>
+      <button class="btn primary" type="button" onclick="focusCreateSku()">+ Tạo SKU</button>
+    </div>
+  </div>
 
-    .detail-empty{
-      border:1px dashed rgba(255,255,255,.10);
-      border-radius:16px;
-      padding:16px;
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.6;
-    }
+  <div class="hero-v2-right hero-v2-right-mini">
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Tenant</div>
+      <div class="hero-stat-value hero-stat-value-sm">{{ current_tenant_id|default:"?" }}</div>
+    </div>
 
-    .resource-list{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Entity</div>
+      <div class="hero-stat-value hero-stat-value-sm">sku</div>
+    </div>
 
-    .resource-item{
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:14px;
-      padding:12px;
-      background:rgba(255,255,255,.02);
-    }
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Flow</div>
+      <div class="hero-stat-value hero-stat-value-sm">control</div>
+    </div>
 
-    .resource-title{
-      font-weight:800;
-      line-height:1.5;
-    }
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Scope</div>
+      <div class="hero-stat-value hero-stat-value-sm">tenant</div>
+    </div>
+  </div>
+</section>
 
-    .resource-meta{
-      color:var(--muted);
-      font-size:12px;
-      margin-top:4px;
-      line-height:1.6;
-    }
+<section class="kpis sku-kpi-row" id="kpiRow">
+  <div class="kpi">
+    <div class="k">Tổng SKU</div>
+    <div class="v">0</div>
+    <div class="s">Toàn bộ SKU trong phạm vi lọc</div>
+  </div>
+  <div class="kpi">
+    <div class="k">Đang bán</div>
+    <div class="v">0</div>
+    <div class="s">Healthy / có thể scale</div>
+  </div>
+  <div class="kpi">
+    <div class="k">Tồn thấp</div>
+    <div class="v">0</div>
+    <div class="s">Cần theo dõi nhập hàng</div>
+  </div>
+  <div class="kpi">
+    <div class="k">Margin thấp</div>
+    <div class="v">0</div>
+    <div class="s">Biên lợi nhuận cần xem lại</div>
+  </div>
+  <div class="kpi">
+    <div class="k">Doanh thu 7 ngày</div>
+    <div class="v">0 đ</div>
+    <div class="s">Giả lập từ dữ liệu đang có</div>
+  </div>
+  <div class="kpi">
+    <div class="k">Radar</div>
+    <div class="v">Healthy</div>
+    <div class="s">Tình trạng chung SKU workspace</div>
+  </div>
+</section>
 
-    .resource-actions{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-top:8px;
-    }
-
-    .status-box{
-      min-height:18px;
-      font-size:13px;
-      color:var(--muted);
-      margin-top:10px;
-    }
-
-    .empty-box{
-      border:1px dashed rgba(255,255,255,.10);
-      border-radius:16px;
-      padding:18px;
-      color:var(--muted);
-      line-height:1.7;
-      font-size:13px;
-    }
-
-    @media (max-width: 1320px){
-      .workspace{
-        grid-template-columns:300px minmax(0,1fr);
-      }
-      .right-panel{
-        grid-column:1 / -1;
-      }
-    }
-
-    @media (max-width: 980px){
-      .page-wrap{padding:14px;}
-      .kpi-row{grid-template-columns:repeat(2,minmax(0,1fr));}
-      .workspace{grid-template-columns:1fr;}
-      .quick-actions{grid-template-columns:1fr;}
-      .detail-grid{grid-template-columns:1fr;}
-    }
-  </style>
-</head>
-<body>
-  <div class="page-wrap">
-    <div class="page-head">
+<section class="sku-workspace-grid">
+  <div class="card sku-left-panel">
+    <div class="card-h">
       <div>
-        <div class="page-title">SKU Control Center</div>
-        <div class="page-sub">
-          Trung tâm điều hành SKU cho HeightTech OS: quản lý sản phẩm, tồn kho, giá vốn, biên lợi nhuận, sheet vận hành, tài liệu và tài nguyên liên quan.
-        </div>
-        <div class="tenant-pill">
-          Tenant hiện tại:
-          <b id="tenantBadge">{{ current_tenant_id|default:"?" }}</b>
-        </div>
-      </div>
-
-      <div class="head-actions">
-        <a class="btn" href="/os/">← Về OS</a>
-        <button class="btn" type="button" onclick="refreshPageData()">Làm mới</button>
-        <button class="btn primary" type="button" onclick="focusCreateSku()">+ Tạo SKU</button>
+        <div class="card-title">Control Panel</div>
+        <div class="brand-sub">Lọc theo công ty / shop / trạng thái và chạy các tác vụ SKU nhanh</div>
       </div>
     </div>
 
-    <div class="kpi-row" id="kpiRow">
-      <div class="kpi-card"><div class="kpi-label">Tổng SKU</div><div class="kpi-value">0</div></div>
-      <div class="kpi-card"><div class="kpi-label">Đang bán</div><div class="kpi-value">0</div></div>
-      <div class="kpi-card"><div class="kpi-label">Tồn thấp</div><div class="kpi-value">0</div></div>
-      <div class="kpi-card"><div class="kpi-label">Margin thấp</div><div class="kpi-value">0</div></div>
-      <div class="kpi-card"><div class="kpi-label">Doanh thu giả lập</div><div class="kpi-value">0 đ</div></div>
-      <div class="kpi-card"><div class="kpi-label">Radar</div><div class="kpi-value">Healthy</div></div>
+    <div class="card-b">
+      <div class="sku-filter-grid">
+        <div>
+          <div class="sku-mini-label">Tìm kiếm SKU / tên sản phẩm</div>
+          <input id="filterKeyword" class="input" placeholder="VD: 70mai, SKU-001..." />
+        </div>
+
+        <div>
+          <div class="sku-mini-label">Chọn công ty</div>
+          <select id="filterCompanyId" class="input">
+            <option value="">Tất cả công ty</option>
+          </select>
+        </div>
+
+        <div>
+          <div class="sku-mini-label">Chọn shop</div>
+          <select id="filterShopId" class="input">
+            <option value="">Tất cả shop</option>
+          </select>
+        </div>
+
+        <div>
+          <div class="sku-mini-label">Trạng thái</div>
+          <select id="filterStatus" class="input">
+            <option value="">Tất cả</option>
+            <option value="healthy">Healthy</option>
+            <option value="low_stock">Low stock</option>
+            <option value="low_margin">Low margin</option>
+            <option value="out_of_stock">Out of stock</option>
+          </select>
+        </div>
+
+        <div class="sku-inline-actions">
+          <button class="btn primary" type="button" onclick="applyFilters()">Áp dụng</button>
+          <button class="btn" type="button" onclick="resetFilters()">Reset</button>
+        </div>
+      </div>
+
+      <hr class="sku-section-divider">
+
+      <div class="card-title sku-small-title">Quick Actions</div>
+      <div class="sku-quick-actions">
+        <button class="sku-quick-btn" type="button" onclick="focusCreateSku()">
+          + Create SKU
+          <small>Tạo SKU mới nhanh</small>
+        </button>
+
+        <button class="sku-quick-btn" type="button" onclick="openSkuSheetsPage()">
+          Open Sheets
+          <small>Đi tới khu Sheet SKU</small>
+        </button>
+
+        <button class="sku-quick-btn" type="button" onclick="openSkuDocsPage()">
+          Open Docs
+          <small>Tài liệu / báo giá / mô tả</small>
+        </button>
+
+        <button class="sku-quick-btn" type="button" onclick="exportSelectedSkuSheet()">
+          Export Sheet
+          <small>Xuất sheet SKU đang chọn</small>
+        </button>
+      </div>
+
+      <hr class="sku-section-divider">
+
+      <div class="card-title sku-small-title">Radar</div>
+      <div class="sku-radar-list">
+        <div class="sku-radar-item">
+          <b>Top Revenue</b>
+          <div id="radarTopRevenue">Chưa có dữ liệu</div>
+        </div>
+        <div class="sku-radar-item">
+          <b>Top Margin</b>
+          <div id="radarTopMargin">Chưa có dữ liệu</div>
+        </div>
+        <div class="sku-radar-item">
+          <b>Need Restock</b>
+          <div id="radarNeedRestock">Chưa có dữ liệu</div>
+        </div>
+        <div class="sku-radar-item">
+          <b>Low Margin Watch</b>
+          <div id="radarLowMargin">Chưa có dữ liệu</div>
+        </div>
+      </div>
+
+      <hr class="sku-section-divider">
+
+      <div class="card-title sku-small-title" id="createSkuAnchor">Tạo SKU mới</div>
+      <div class="brand-sub">Tạo SKU để quản lý giá bán, giá vốn, tồn kho và gắn tài nguyên vận hành</div>
+
+      <div class="sku-filter-grid" style="margin-top:12px;">
+        <div>
+          <div class="sku-mini-label">Chọn công ty</div>
+          <select id="createCompanyId" class="input">
+            <option value="">-- Chọn công ty --</option>
+          </select>
+        </div>
+
+        <div>
+          <div class="sku-mini-label">Chọn shop</div>
+          <select id="createShopId" class="input">
+            <option value="">-- Chọn shop --</option>
+          </select>
+        </div>
+
+        <div>
+          <div class="sku-mini-label">Mã SKU</div>
+          <input id="createSkuCode" class="input" placeholder="VD: SKU-SON-001" />
+        </div>
+
+        <div>
+          <div class="sku-mini-label">Tên sản phẩm</div>
+          <input id="createSkuName" class="input" placeholder="VD: Son kem lì A" />
+        </div>
+
+        <div>
+          <div class="sku-mini-label">Danh mục</div>
+          <input id="createCategory" class="input" placeholder="VD: Mỹ phẩm" />
+        </div>
+
+        <div>
+          <div class="sku-mini-label">Giá bán</div>
+          <input id="createPrice" class="input" placeholder="VD: 199000" />
+        </div>
+
+        <div>
+          <div class="sku-mini-label">Giá vốn</div>
+          <input id="createCost" class="input" placeholder="VD: 85000" />
+        </div>
+
+        <div>
+          <div class="sku-mini-label">Tồn kho</div>
+          <input id="createStock" class="input" placeholder="VD: 120" />
+        </div>
+
+        <div class="sku-inline-actions">
+          <button class="btn" type="button" onclick="resetCreateForm()">Xóa form</button>
+          <button class="btn primary" type="button" onclick="createSku()">Tạo SKU</button>
+        </div>
+      </div>
+
+      <div id="createStatus" class="status-box"></div>
+    </div>
+  </div>
+
+  <div class="card sku-center-panel">
+    <div class="card-h">
+      <div>
+        <div class="card-title">SKU Table</div>
+        <div class="brand-sub">Danh sách SKU trực quan với profit, margin, tồn kho và hành động nhanh</div>
+      </div>
     </div>
 
-    <div class="workspace">
-      <div class="panel">
-        <div class="panel-h">
-          <div>
-            <div class="panel-title">Control Panel</div>
-            <div class="panel-sub">Lọc theo công ty / shop / trạng thái và chạy các tác vụ SKU nhanh.</div>
-          </div>
+    <div class="card-b">
+      <div class="sku-table-toolbar">
+        <div class="sku-table-toolbar-left">
+          <input id="tableSearch" class="input" placeholder="Tìm trong bảng..." />
+          <button class="btn" type="button" onclick="applyTableSearch()">Tìm</button>
         </div>
 
-        <div class="panel-b">
-          <div class="filter-grid">
-            <div>
-              <div class="mini-label">Tìm kiếm SKU / tên sản phẩm</div>
-              <input id="filterKeyword" class="input" placeholder="VD: 70mai, SKU-001..." />
-            </div>
-
-            <div>
-              <div class="mini-label">Chọn công ty</div>
-              <select id="filterCompanyId" class="input">
-                <option value="">Tất cả công ty</option>
-              </select>
-            </div>
-
-            <div>
-              <div class="mini-label">Chọn shop</div>
-              <select id="filterShopId" class="input">
-                <option value="">Tất cả shop</option>
-              </select>
-            </div>
-
-            <div>
-              <div class="mini-label">Trạng thái</div>
-              <select id="filterStatus" class="input">
-                <option value="">Tất cả</option>
-                <option value="healthy">Healthy</option>
-                <option value="low_stock">Low stock</option>
-                <option value="low_margin">Low margin</option>
-                <option value="out_of_stock">Out of stock</option>
-              </select>
-            </div>
-
-            <div class="row">
-              <button class="btn primary" type="button" onclick="applyFilters()">Áp dụng</button>
-              <button class="btn" type="button" onclick="resetFilters()">Reset</button>
-            </div>
-          </div>
-
-          <hr class="section-divider">
-
-          <div class="panel-title" style="font-size:14px;">Quick Actions</div>
-          <div class="quick-actions" style="margin-top:10px;">
-            <button class="quick-btn" type="button" onclick="focusCreateSku()">
-              + Create SKU
-              <small>Tạo SKU mới nhanh</small>
-            </button>
-
-            <button class="quick-btn" type="button" onclick="openSkuSheetsPage()">
-              Open Sheets
-              <small>Đi tới khu Sheet SKU</small>
-            </button>
-
-            <button class="quick-btn" type="button" onclick="openSkuDocsPage()">
-              Open Docs
-              <small>Tài liệu / báo giá / mô tả</small>
-            </button>
-
-            <button class="quick-btn" type="button" onclick="exportSelectedSkuSheet()">
-              Export Sheet
-              <small>Xuất sheet SKU đang chọn</small>
-            </button>
-          </div>
-
-          <hr class="section-divider">
-
-          <div class="panel-title" style="font-size:14px;">Radar</div>
-          <div class="radar-list" style="margin-top:10px;">
-            <div class="radar-item">
-              <b>Top Revenue</b>
-              <div id="radarTopRevenue">Chưa có dữ liệu</div>
-            </div>
-            <div class="radar-item">
-              <b>Top Margin</b>
-              <div id="radarTopMargin">Chưa có dữ liệu</div>
-            </div>
-            <div class="radar-item">
-              <b>Need Restock</b>
-              <div id="radarNeedRestock">Chưa có dữ liệu</div>
-            </div>
-            <div class="radar-item">
-              <b>Low Margin Watch</b>
-              <div id="radarLowMargin">Chưa có dữ liệu</div>
-            </div>
-          </div>
-
-          <hr class="section-divider">
-
-          <div class="panel-title" id="createSkuAnchor" style="font-size:14px;">Tạo SKU mới</div>
-          <div class="panel-sub">Tạo SKU để quản lý giá bán, giá vốn, tồn kho và gắn tài nguyên vận hành.</div>
-
-          <div class="filter-grid" style="margin-top:12px;">
-            <div>
-              <div class="mini-label">Chọn công ty</div>
-              <select id="createCompanyId" class="input">
-                <option value="">-- Chọn công ty --</option>
-              </select>
-            </div>
-
-            <div>
-              <div class="mini-label">Chọn shop</div>
-              <select id="createShopId" class="input">
-                <option value="">-- Chọn shop --</option>
-              </select>
-            </div>
-
-            <div>
-              <div class="mini-label">Mã SKU</div>
-              <input id="createSkuCode" class="input" placeholder="VD: SKU-SON-001" />
-            </div>
-
-            <div>
-              <div class="mini-label">Tên sản phẩm</div>
-              <input id="createSkuName" class="input" placeholder="VD: Son kem lì A" />
-            </div>
-
-            <div>
-              <div class="mini-label">Danh mục</div>
-              <input id="createCategory" class="input" placeholder="VD: Mỹ phẩm" />
-            </div>
-
-            <div>
-              <div class="mini-label">Giá bán</div>
-              <input id="createPrice" class="input" placeholder="VD: 199000" />
-            </div>
-
-            <div>
-              <div class="mini-label">Giá vốn</div>
-              <input id="createCost" class="input" placeholder="VD: 85000" />
-            </div>
-
-            <div>
-              <div class="mini-label">Tồn kho</div>
-              <input id="createStock" class="input" placeholder="VD: 120" />
-            </div>
-
-            <div class="row">
-              <button class="btn" type="button" onclick="resetCreateForm()">Xóa form</button>
-              <button class="btn primary" type="button" onclick="createSku()">Tạo SKU</button>
-            </div>
-          </div>
-
-          <div id="createStatus" class="status-box"></div>
+        <div class="sku-table-toolbar-right">
+          <button class="btn" type="button" onclick="refreshPageData()">Reload</button>
         </div>
       </div>
 
-      <div class="panel">
-        <div class="panel-h">
-          <div>
-            <div class="panel-title">SKU Table</div>
-            <div class="panel-sub">Danh sách SKU trực quan với profit, margin, tồn kho và hành động nhanh.</div>
-          </div>
-        </div>
-
-        <div class="panel-b">
-          <div class="table-toolbar">
-            <div class="table-toolbar-left">
-              <input id="tableSearch" class="input" placeholder="Tìm trong bảng..." style="max-width:320px;" />
-              <button class="btn" type="button" onclick="applyTableSearch()">Tìm</button>
-            </div>
-
-            <div class="table-toolbar-right">
-              <button class="btn" type="button" onclick="refreshPageData()">Reload</button>
-            </div>
-          </div>
-
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>SKU</th>
-                  <th>Category</th>
-                  <th>Price</th>
-                  <th>Cost</th>
-                  <th>Margin</th>
-                  <th>Margin %</th>
-                  <th>Stock</th>
-                  <th>Orders 7d</th>
-                  <th>Revenue 7d</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="skuTableBody">
-                <tr><td colspan="11" class="empty-box">Đang tải dữ liệu SKU...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <div class="panel right-panel">
-        <div class="panel-h">
-          <div>
-            <div class="panel-title">SKU Detail</div>
-            <div class="panel-sub">Thông tin điều hành, tài nguyên và radar của SKU đang chọn.</div>
-          </div>
-        </div>
-
-        <div class="panel-b" id="skuDetailBox">
-          <div class="detail-empty">
-            Chọn một SKU trong bảng để mở panel chi tiết.  
-            Khu này sẽ hiển thị Overview, Sheet, Docs, Files và Radar.
-          </div>
-        </div>
+      <div class="sku-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Cost</th>
+              <th>Margin</th>
+              <th>Margin %</th>
+              <th>Stock</th>
+              <th>Orders 7d</th>
+              <th>Revenue 7d</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="skuTableBody">
+            <tr><td colspan="11"><div class="empty-box">Đang tải dữ liệu SKU...</div></td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 
-  <script>
-    const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
+  <div class="card sku-right-panel">
+    <div class="card-h">
+      <div>
+        <div class="card-title">SKU Detail</div>
+        <div class="brand-sub">Thông tin điều hành, tài nguyên và radar của SKU đang chọn</div>
+      </div>
+    </div>
 
-    const STATE = {
-      items: [],
-      filtered: [],
-      selectedSkuId: null,
-      searchKeyword: "",
-      tableKeyword: "",
-      filters: {
-        company_id: "",
-        shop_id: "",
-        status: "",
-      }
+    <div class="card-b" id="skuDetailBox">
+      <div class="detail-empty">
+        Chọn một SKU trong bảng để mở panel chi tiết.
+        Khu này sẽ hiển thị Overview, Sheet, Docs, Files và Radar.
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
+
+  const STATE = {
+    items: [],
+    filtered: [],
+    selectedSkuId: null,
+    searchKeyword: "",
+    tableKeyword: "",
+    filters: {
+      company_id: "",
+      shop_id: "",
+      status: "",
+    }
+  };
+
+  function getCookie(name) {
+    const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
+    return m ? decodeURIComponent(m[2]) : "";
+  }
+
+  function authHeaders(extra = {}) {
+    const headers = Object.assign({}, extra || {});
+    if (CURRENT_TENANT_ID) headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
+    const csrf = getCookie("csrftoken");
+    if (csrf) headers["X-CSRFToken"] = csrf;
+    return headers;
+  }
+
+  async function readJsonSafe(res) {
+    const ct = res.headers.get("content-type") || "";
+    if (ct.includes("application/json")) return await res.json();
+    const txt = await res.text();
+    throw new Error(txt || `HTTP ${res.status}`);
+  }
+
+  function esc(v){
+    return String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function num(v){
+    const n = Number(String(v ?? 0).replaceAll(",", ""));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function money(v){
+    return `${num(v).toLocaleString("vi-VN")} đ`;
+  }
+
+  function percent(v){
+    return `${num(v).toFixed(1)}%`;
+  }
+
+  function setCreateStatus(msg, type="info"){
+    const el = document.getElementById("createStatus");
+    if (!el) return;
+    el.textContent = msg || "";
+    el.style.color =
+      type === "err" ? "#ff8f9c" :
+      type === "ok" ? "#8fe3a1" :
+      "#8ab4ff";
+  }
+
+  function normalizeSkuItem(x){
+    const price = num(x.price ?? x.sale_price ?? 0);
+    const cost = num(x.cost_price ?? x.cost ?? 0);
+    const stock = num(x.stock ?? x.inventory_qty ?? 0);
+    const orders7d = num(x.orders_7d ?? x.orders7d ?? 0);
+    const revenue7d = num(x.revenue_7d ?? x.revenue7d ?? (orders7d * price));
+    const marginValue = price - cost;
+    const marginPercent = price > 0 ? (marginValue / price) * 100 : 0;
+
+    return {
+      id: x.id,
+      company_id: x.company_id ?? "",
+      company_name: x.company_name || "",
+      shop_id: x.shop_id ?? "",
+      shop_name: x.shop_name || "",
+      sku_code: x.sku_code || x.code || `SKU-${x.id}`,
+      name: x.name || x.product_name || `SKU #${x.id}`,
+      category: x.category || x.category_name || "-",
+      price,
+      cost,
+      stock,
+      orders_7d: orders7d,
+      revenue_7d: revenue7d,
+      margin_value: marginValue,
+      margin_percent: marginPercent,
     };
+  }
 
-    function getCookie(name) {
-      const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
-      return m ? decodeURIComponent(m[2]) : "";
+  function stockRatio(x){
+    const s = num(x.stock);
+    if (s >= 100) return 100;
+    if (s <= 0) return 0;
+    return Math.max(8, s);
+  }
+
+  function statusInfo(x){
+    if (num(x.stock) <= 0) {
+      return { key: "out_of_stock", text: "Out of stock", cls: "red" };
+    }
+    if (num(x.stock) < 10) {
+      return { key: "low_stock", text: "Low stock", cls: "yellow" };
+    }
+    if (num(x.margin_percent) < 15) {
+      return { key: "low_margin", text: "Low margin", cls: "yellow" };
+    }
+    return { key: "healthy", text: "Healthy", cls: "green" };
+  }
+
+  function matchFilters(x){
+    const keyword = (STATE.searchKeyword || "").trim().toLowerCase();
+    const tableKeyword = (STATE.tableKeyword || "").trim().toLowerCase();
+    const companyId = String(STATE.filters.company_id || "").trim();
+    const shopId = String(STATE.filters.shop_id || "").trim();
+    const st = String(STATE.filters.status || "").trim();
+
+    const hay = [
+      x.sku_code,
+      x.name,
+      x.category,
+      x.company_id,
+      x.shop_id,
+    ].filter(Boolean).join(" ").toLowerCase();
+
+    if (keyword && !hay.includes(keyword)) return false;
+    if (tableKeyword && !hay.includes(tableKeyword)) return false;
+    if (companyId && String(x.company_id) !== companyId) return false;
+    if (shopId && String(x.shop_id) !== shopId) return false;
+    if (st && statusInfo(x).key !== st) return false;
+
+    return true;
+  }
+
+  function recomputeFiltered(){
+    STATE.filtered = STATE.items.filter(matchFilters);
+    renderKpis();
+    renderRadar();
+    renderTable();
+    renderDetail();
+  }
+
+  function renderKpis(){
+    const items = STATE.filtered;
+    const total = items.length;
+    const healthy = items.filter(x => statusInfo(x).key === "healthy").length;
+    const lowStock = items.filter(x => statusInfo(x).key === "low_stock").length + items.filter(x => statusInfo(x).key === "out_of_stock").length;
+    const lowMargin = items.filter(x => statusInfo(x).key === "low_margin").length;
+    const revenue = items.reduce((s, x) => s + num(x.revenue_7d), 0);
+
+    const html = `
+      <div class="kpi">
+        <div class="k">Tổng SKU</div>
+        <div class="v">${total.toLocaleString("vi-VN")}</div>
+        <div class="s">Toàn bộ SKU trong phạm vi lọc</div>
+      </div>
+      <div class="kpi">
+        <div class="k">Đang ổn</div>
+        <div class="v">${healthy.toLocaleString("vi-VN")}</div>
+        <div class="s">Healthy / có thể scale</div>
+      </div>
+      <div class="kpi">
+        <div class="k">Tồn thấp</div>
+        <div class="v">${lowStock.toLocaleString("vi-VN")}</div>
+        <div class="s">Cần theo dõi nhập hàng</div>
+      </div>
+      <div class="kpi">
+        <div class="k">Margin thấp</div>
+        <div class="v">${lowMargin.toLocaleString("vi-VN")}</div>
+        <div class="s">Biên lợi nhuận cần xem lại</div>
+      </div>
+      <div class="kpi">
+        <div class="k">Doanh thu 7 ngày</div>
+        <div class="v">${money(revenue)}</div>
+        <div class="s">Giả lập từ dữ liệu đang có</div>
+      </div>
+      <div class="kpi">
+        <div class="k">Radar tổng</div>
+        <div class="v">${lowStock + lowMargin > 0 ? "Watch" : "Healthy"}</div>
+        <div class="s">Tình trạng chung SKU workspace</div>
+      </div>
+    `;
+
+    document.getElementById("kpiRow").innerHTML = html;
+  }
+
+  function renderRadar(){
+    const items = [...STATE.filtered];
+
+    const topRevenue = [...items].sort((a,b) => num(b.revenue_7d) - num(a.revenue_7d))[0];
+    const topMargin = [...items].sort((a,b) => num(b.margin_percent) - num(a.margin_percent))[0];
+    const needRestock = items.filter(x => num(x.stock) < 10).sort((a,b) => num(a.stock) - num(b.stock))[0];
+    const lowMargin = items.filter(x => num(x.margin_percent) < 15).sort((a,b) => num(a.margin_percent) - num(b.margin_percent))[0];
+
+    document.getElementById("radarTopRevenue").textContent =
+      topRevenue ? `${topRevenue.sku_code} • ${topRevenue.name} • ${money(topRevenue.revenue_7d)}` : "Chưa có dữ liệu";
+
+    document.getElementById("radarTopMargin").textContent =
+      topMargin ? `${topMargin.sku_code} • ${topMargin.name} • ${percent(topMargin.margin_percent)}` : "Chưa có dữ liệu";
+
+    document.getElementById("radarNeedRestock").textContent =
+      needRestock ? `${needRestock.sku_code} • ${needRestock.name} • tồn ${needRestock.stock}` : "Chưa có SKU cần restock";
+
+    document.getElementById("radarLowMargin").textContent =
+      lowMargin ? `${lowMargin.sku_code} • ${lowMargin.name} • margin ${percent(lowMargin.margin_percent)}` : "Chưa có SKU margin thấp";
+  }
+
+  function rowHtml(x){
+    const st = statusInfo(x);
+    const active = String(STATE.selectedSkuId || "") === String(x.id) ? "active" : "";
+
+    return `
+      <tr class="${active}" onclick="selectSku(${x.id})">
+        <td>
+          <div class="sku-main">
+            <div class="sku-code">${esc(x.sku_code)}</div>
+            <div class="sku-name">${esc(x.name)}</div>
+            <div class="sku-sub">
+              ${esc(x.company_name || ("Company #" + (x.company_id || "-")))} •
+              ${esc(x.shop_name || ("Shop #" + (x.shop_id || "-")))}
+            </div>
+          </div>
+        </td>
+        <td>${esc(x.category || "-")}</td>
+        <td><span class="money">${money(x.price)}</span></td>
+        <td><span class="money">${money(x.cost)}</span></td>
+        <td><span class="money">${money(x.margin_value)}</span></td>
+        <td>${percent(x.margin_percent)}</td>
+        <td>
+          <div>${num(x.stock).toLocaleString("vi-VN")}</div>
+          <div class="stock-bar"><div class="stock-fill" style="width:${stockRatio(x)}%"></div></div>
+        </td>
+        <td>${num(x.orders_7d).toLocaleString("vi-VN")}</td>
+        <td><span class="money">${money(x.revenue_7d)}</span></td>
+        <td><span class="pill ${st.cls}">${st.text}</span></td>
+        <td>
+          <div class="row-actions">
+            <button class="soft-btn" type="button" onclick="event.stopPropagation(); selectSku(${x.id})">Mở</button>
+            <button class="soft-btn" type="button" onclick="event.stopPropagation(); openSkuSheet(${x.id})">Sheet</button>
+            <button class="soft-btn" type="button" onclick="event.stopPropagation(); openSkuDoc(${x.id})">Doc</button>
+            <button class="soft-btn" type="button" onclick="event.stopPropagation(); openSkuFiles(${x.id})">Files</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+
+  function renderTable(){
+    const box = document.getElementById("skuTableBody");
+    const items = STATE.filtered;
+
+    if (!items.length){
+      box.innerHTML = `<tr><td colspan="11"><div class="empty-box">Không có SKU phù hợp với bộ lọc hiện tại.</div></td></tr>`;
+      return;
     }
 
-    function authHeaders(extra = {}) {
-      const headers = Object.assign({}, extra || {});
-      if (CURRENT_TENANT_ID) headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
-      const csrf = getCookie("csrftoken");
-      if (csrf) headers["X-CSRFToken"] = csrf;
-      return headers;
-    }
+    box.innerHTML = items.map(rowHtml).join("");
+  }
 
-    async function readJsonSafe(res) {
-      const ct = res.headers.get("content-type") || "";
-      if (ct.includes("application/json")) return await res.json();
-      const txt = await res.text();
-      throw new Error(txt || `HTTP ${res.status}`);
-    }
+  function selectedSku(){
+    return STATE.items.find(x => String(x.id) === String(STATE.selectedSkuId)) || null;
+  }
 
-    function esc(v){
-      return String(v ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
+  function renderDetail(){
+    const box = document.getElementById("skuDetailBox");
+    const x = selectedSku();
 
-    function num(v){
-      const n = Number(String(v ?? 0).replaceAll(",", ""));
-      return Number.isFinite(n) ? n : 0;
-    }
-
-    function money(v){
-      return `${num(v).toLocaleString("vi-VN")} đ`;
-    }
-
-    function percent(v){
-      return `${num(v).toFixed(1)}%`;
-    }
-
-    function setCreateStatus(msg, type="info"){
-      const el = document.getElementById("createStatus");
-      if (!el) return;
-      el.textContent = msg || "";
-      el.style.color =
-        type === "err" ? "#ff8f9c" :
-        type === "ok" ? "#8fe3a1" :
-        "#8ab4ff";
-    }
-
-    function normalizeSkuItem(x){
-      const price = num(x.price ?? x.sale_price ?? 0);
-      const cost = num(x.cost_price ?? x.cost ?? 0);
-      const stock = num(x.stock ?? x.inventory_qty ?? 0);
-      const orders7d = num(x.orders_7d ?? x.orders7d ?? 0);
-      const revenue7d = num(x.revenue_7d ?? x.revenue7d ?? (orders7d * price));
-      const marginValue = price - cost;
-      const marginPercent = price > 0 ? (marginValue / price) * 100 : 0;
-
-      return {
-        id: x.id,
-        company_id: x.company_id ?? "",
-        company_name: x.company_name || "",
-        shop_id: x.shop_id ?? "",
-        shop_name: x.shop_name || "",
-        sku_code: x.sku_code || x.code || `SKU-${x.id}`,
-        name: x.name || x.product_name || `SKU #${x.id}`,
-        category: x.category || x.category_name || "-",
-        price,
-        cost,
-        stock,
-        orders_7d: orders7d,
-        revenue_7d: revenue7d,
-        margin_value: marginValue,
-        margin_percent: marginPercent,
-      };
-    }
-
-    function stockRatio(x){
-      const s = num(x.stock);
-      if (s >= 100) return 100;
-      if (s <= 0) return 0;
-      return Math.max(8, s);
-    }
-
-    function statusInfo(x){
-      if (num(x.stock) <= 0) {
-        return { key: "out_of_stock", text: "Out of stock", cls: "red" };
-      }
-      if (num(x.stock) < 10) {
-        return { key: "low_stock", text: "Low stock", cls: "yellow" };
-      }
-      if (num(x.margin_percent) < 15) {
-        return { key: "low_margin", text: "Low margin", cls: "yellow" };
-      }
-      return { key: "healthy", text: "Healthy", cls: "green" };
-    }
-
-    function matchFilters(x){
-      const keyword = (STATE.searchKeyword || "").trim().toLowerCase();
-      const tableKeyword = (STATE.tableKeyword || "").trim().toLowerCase();
-      const companyId = String(STATE.filters.company_id || "").trim();
-      const shopId = String(STATE.filters.shop_id || "").trim();
-      const st = String(STATE.filters.status || "").trim();
-
-      const hay = [
-        x.sku_code,
-        x.name,
-        x.category,
-        x.company_id,
-        x.shop_id,
-      ].filter(Boolean).join(" ").toLowerCase();
-
-      if (keyword && !hay.includes(keyword)) return false;
-      if (tableKeyword && !hay.includes(tableKeyword)) return false;
-      if (companyId && String(x.company_id) !== companyId) return false;
-      if (shopId && String(x.shop_id) !== shopId) return false;
-      if (st && statusInfo(x).key !== st) return false;
-
-      return true;
-    }
-
-    function recomputeFiltered(){
-      STATE.filtered = STATE.items.filter(matchFilters);
-      renderKpis();
-      renderRadar();
-      renderTable();
-      renderDetail();
-    }
-
-    function renderKpis(){
-      const items = STATE.filtered;
-      const total = items.length;
-      const healthy = items.filter(x => statusInfo(x).key === "healthy").length;
-      const lowStock = items.filter(x => statusInfo(x).key === "low_stock").length + items.filter(x => statusInfo(x).key === "out_of_stock").length;
-      const lowMargin = items.filter(x => statusInfo(x).key === "low_margin").length;
-      const revenue = items.reduce((s, x) => s + num(x.revenue_7d), 0);
-
-      const html = `
-        <div class="kpi-card">
-          <div class="kpi-label">Tổng SKU</div>
-          <div class="kpi-value">${total.toLocaleString("vi-VN")}</div>
-          <div class="kpi-note">Toàn bộ SKU trong phạm vi lọc</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Đang ổn</div>
-          <div class="kpi-value">${healthy.toLocaleString("vi-VN")}</div>
-          <div class="kpi-note">Healthy / có thể scale</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Tồn thấp</div>
-          <div class="kpi-value">${lowStock.toLocaleString("vi-VN")}</div>
-          <div class="kpi-note">Cần theo dõi nhập hàng</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Margin thấp</div>
-          <div class="kpi-value">${lowMargin.toLocaleString("vi-VN")}</div>
-          <div class="kpi-note">Biên lợi nhuận cần xem lại</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Doanh thu 7 ngày</div>
-          <div class="kpi-value">${money(revenue)}</div>
-          <div class="kpi-note">Giả lập từ dữ liệu đang có</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Radar tổng</div>
-          <div class="kpi-value">${lowStock + lowMargin > 0 ? "Watch" : "Healthy"}</div>
-          <div class="kpi-note">Tình trạng chung SKU workspace</div>
+    if (!x){
+      box.innerHTML = `
+        <div class="detail-empty">
+          Chọn một SKU trong bảng để mở panel chi tiết.
+          Khu này sẽ hiển thị Overview, Sheet, Docs, Files và Radar.
         </div>
       `;
-
-      document.getElementById("kpiRow").innerHTML = html;
+      return;
     }
 
-    function renderRadar(){
-      const items = [...STATE.filtered];
+    const st = statusInfo(x);
 
-      const topRevenue = [...items].sort((a,b) => num(b.revenue_7d) - num(a.revenue_7d))[0];
-      const topMargin = [...items].sort((a,b) => num(b.margin_percent) - num(a.margin_percent))[0];
-      const needRestock = items.filter(x => num(x.stock) < 10).sort((a,b) => num(a.stock) - num(b.stock))[0];
-      const lowMargin = items.filter(x => num(x.margin_percent) < 15).sort((a,b) => num(a.margin_percent) - num(b.margin_percent))[0];
-
-      document.getElementById("radarTopRevenue").textContent =
-        topRevenue ? `${topRevenue.sku_code} • ${topRevenue.name} • ${money(topRevenue.revenue_7d)}` : "Chưa có dữ liệu";
-
-      document.getElementById("radarTopMargin").textContent =
-        topMargin ? `${topMargin.sku_code} • ${topMargin.name} • ${percent(topMargin.margin_percent)}` : "Chưa có dữ liệu";
-
-      document.getElementById("radarNeedRestock").textContent =
-        needRestock ? `${needRestock.sku_code} • ${needRestock.name} • tồn ${needRestock.stock}` : "Chưa có SKU cần restock";
-
-      document.getElementById("radarLowMargin").textContent =
-        lowMargin ? `${lowMargin.sku_code} • ${lowMargin.name} • margin ${percent(lowMargin.margin_percent)}` : "Chưa có SKU margin thấp";
-    }
-
-    function rowHtml(x){
-      const st = statusInfo(x);
-      const active = String(STATE.selectedSkuId || "") === String(x.id) ? "active" : "";
-
-      return `
-        <tr class="${active}" onclick="selectSku(${x.id})">
-          <td>
-            <div class="sku-main">
-              <div class="sku-code">${esc(x.sku_code)}</div>
-              <div class="sku-name">${esc(x.name)}</div>
-              <div class="sku-sub">
+    box.innerHTML = `
+      <div class="detail-top">
+        <div class="detail-card">
+          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start;">
+            <div>
+              <div style="font-size:22px;font-weight:900;line-height:1.2;">${esc(x.name)}</div>
+              <div style="margin-top:6px;color:var(--muted);font-size:13px;">
+                ${esc(x.sku_code)} •
                 ${esc(x.company_name || ("Company #" + (x.company_id || "-")))} •
                 ${esc(x.shop_name || ("Shop #" + (x.shop_id || "-")))}
               </div>
             </div>
-          </td>
-          <td>${esc(x.category || "-")}</td>
-          <td><span class="money">${money(x.price)}</span></td>
-          <td><span class="money">${money(x.cost)}</span></td>
-          <td><span class="money">${money(x.margin_value)}</span></td>
-          <td>${percent(x.margin_percent)}</td>
-          <td>
-            <div>${num(x.stock).toLocaleString("vi-VN")}</div>
-            <div class="stock-bar"><div class="stock-fill" style="width:${stockRatio(x)}%"></div></div>
-          </td>
-          <td>${num(x.orders_7d).toLocaleString("vi-VN")}</td>
-          <td><span class="money">${money(x.revenue_7d)}</span></td>
-          <td><span class="pill ${st.cls}">${st.text}</span></td>
-          <td>
-            <div class="row-actions">
-              <button class="soft-btn" type="button" onclick="event.stopPropagation(); selectSku(${x.id})">Mở</button>
-              <button class="soft-btn" type="button" onclick="event.stopPropagation(); openSkuSheet(${x.id})">Sheet</button>
-              <button class="soft-btn" type="button" onclick="event.stopPropagation(); openSkuDoc(${x.id})">Doc</button>
-              <button class="soft-btn" type="button" onclick="event.stopPropagation(); openSkuFiles(${x.id})">Files</button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }
-
-    function renderTable(){
-      const box = document.getElementById("skuTableBody");
-      const items = STATE.filtered;
-
-      if (!items.length){
-        box.innerHTML = `<tr><td colspan="11"><div class="empty-box">Không có SKU phù hợp với bộ lọc hiện tại.</div></td></tr>`;
-        return;
-      }
-
-      box.innerHTML = items.map(rowHtml).join("");
-    }
-
-    function selectedSku(){
-      return STATE.items.find(x => String(x.id) === String(STATE.selectedSkuId)) || null;
-    }
-
-    function renderDetail(){
-      const box = document.getElementById("skuDetailBox");
-      const x = selectedSku();
-
-      if (!x){
-        box.innerHTML = `
-          <div class="detail-empty">
-            Chọn một SKU trong bảng để mở panel chi tiết.  
-            Khu này sẽ hiển thị Overview, Sheet, Docs, Files và Radar.
-          </div>
-        `;
-        return;
-      }
-
-      const st = statusInfo(x);
-
-      box.innerHTML = `
-        <div class="detail-top">
-          <div class="detail-card">
-            <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start;">
-              <div>
-                <div style="font-size:22px;font-weight:900;line-height:1.2;">${esc(x.name)}</div>
-                <div style="margin-top:6px;color:var(--muted);font-size:13px;">
-                  ${esc(x.sku_code)} •
-                  ${esc(x.company_name || ("Company #" + (x.company_id || "-")))} •
-                  ${esc(x.shop_name || ("Shop #" + (x.shop_id || "-")))}
-                </div>
-              </div>
-              <span class="pill ${st.cls}">${st.text}</span>
-            </div>
-
-            <div class="detail-actions">
-              <button class="btn" type="button" onclick="openSkuSheet(${x.id})">Mở Sheet</button>
-              <button class="btn" type="button" onclick="openSkuDoc(${x.id})">Mở Doc</button>
-              <button class="btn" type="button" onclick="openSkuFiles(${x.id})">Mở Files</button>
-            </div>
+            <span class="pill ${st.cls}">${st.text}</span>
           </div>
 
-          <div class="detail-card">
-            <h4>Overview</h4>
-            <div class="detail-grid">
-              <div class="detail-meta">
-                <div class="detail-meta-label">Category</div>
-                <div class="detail-meta-value">${esc(x.category || "-")}</div>
-              </div>
-              <div class="detail-meta">
-                <div class="detail-meta-label">Stock</div>
-                <div class="detail-meta-value">${num(x.stock).toLocaleString("vi-VN")}</div>
-              </div>
-              <div class="detail-meta">
-                <div class="detail-meta-label">Price</div>
-                <div class="detail-meta-value">${money(x.price)}</div>
-              </div>
-              <div class="detail-meta">
-                <div class="detail-meta-label">Cost</div>
-                <div class="detail-meta-value">${money(x.cost)}</div>
-              </div>
-              <div class="detail-meta">
-                <div class="detail-meta-label">Margin</div>
-                <div class="detail-meta-value">${money(x.margin_value)}</div>
-              </div>
-              <div class="detail-meta">
-                <div class="detail-meta-label">Margin %</div>
-                <div class="detail-meta-value">${percent(x.margin_percent)}</div>
-              </div>
-              <div class="detail-meta">
-                <div class="detail-meta-label">Orders 7d</div>
-                <div class="detail-meta-value">${num(x.orders_7d).toLocaleString("vi-VN")}</div>
-              </div>
-              <div class="detail-meta">
-                <div class="detail-meta-label">Revenue 7d</div>
-                <div class="detail-meta-value">${money(x.revenue_7d)}</div>
-              </div>
+          <div class="detail-actions">
+            <button class="btn" type="button" onclick="openSkuSheet(${x.id})">Mở Sheet</button>
+            <button class="btn" type="button" onclick="openSkuDoc(${x.id})">Mở Doc</button>
+            <button class="btn" type="button" onclick="openSkuFiles(${x.id})">Mở Files</button>
+          </div>
+        </div>
+
+        <div class="detail-card">
+          <h4>Overview</h4>
+          <div class="detail-grid">
+            <div class="detail-meta">
+              <div class="detail-meta-label">Category</div>
+              <div class="detail-meta-value">${esc(x.category || "-")}</div>
+            </div>
+            <div class="detail-meta">
+              <div class="detail-meta-label">Stock</div>
+              <div class="detail-meta-value">${num(x.stock).toLocaleString("vi-VN")}</div>
+            </div>
+            <div class="detail-meta">
+              <div class="detail-meta-label">Price</div>
+              <div class="detail-meta-value">${money(x.price)}</div>
+            </div>
+            <div class="detail-meta">
+              <div class="detail-meta-label">Cost</div>
+              <div class="detail-meta-value">${money(x.cost)}</div>
+            </div>
+            <div class="detail-meta">
+              <div class="detail-meta-label">Margin</div>
+              <div class="detail-meta-value">${money(x.margin_value)}</div>
+            </div>
+            <div class="detail-meta">
+              <div class="detail-meta-label">Margin %</div>
+              <div class="detail-meta-value">${percent(x.margin_percent)}</div>
+            </div>
+            <div class="detail-meta">
+              <div class="detail-meta-label">Orders 7d</div>
+              <div class="detail-meta-value">${num(x.orders_7d).toLocaleString("vi-VN")}</div>
+            </div>
+            <div class="detail-meta">
+              <div class="detail-meta-label">Revenue 7d</div>
+              <div class="detail-meta-value">${money(x.revenue_7d)}</div>
             </div>
           </div>
+        </div>
 
-          <div class="detail-card">
-            <h4>Radar</h4>
-            <div class="detail-grid">
-              <div class="detail-meta">
-                <div class="detail-meta-label">Health</div>
-                <div class="detail-meta-value">${st.text}</div>
-              </div>
-              <div class="detail-meta">
-                <div class="detail-meta-label">Restock</div>
-                <div class="detail-meta-value">${num(x.stock) < 10 ? "Cần nhập thêm" : "Tồn ổn"}</div>
-              </div>
-              <div class="detail-meta">
-                <div class="detail-meta-label">Profit Watch</div>
-                <div class="detail-meta-value">${num(x.margin_percent) < 15 ? "Cần xem lại giá vốn / giá bán" : "Biên lợi nhuận ổn"}</div>
-              </div>
-              <div class="detail-meta">
-                <div class="detail-meta-label">Operator Hint</div>
-                <div class="detail-meta-value">${num(x.orders_7d) <= 0 ? "Ưu tiên test content / ads / bundle" : "Có tín hiệu đơn hàng"}</div>
-              </div>
+        <div class="detail-card">
+          <h4>Radar</h4>
+          <div class="detail-grid">
+            <div class="detail-meta">
+              <div class="detail-meta-label">Health</div>
+              <div class="detail-meta-value">${st.text}</div>
+            </div>
+            <div class="detail-meta">
+              <div class="detail-meta-label">Restock</div>
+              <div class="detail-meta-value">${num(x.stock) < 10 ? "Cần nhập thêm" : "Tồn ổn"}</div>
+            </div>
+            <div class="detail-meta">
+              <div class="detail-meta-label">Profit Watch</div>
+              <div class="detail-meta-value">${num(x.margin_percent) < 15 ? "Cần xem lại giá vốn / giá bán" : "Biên lợi nhuận ổn"}</div>
+            </div>
+            <div class="detail-meta">
+              <div class="detail-meta-label">Operator Hint</div>
+              <div class="detail-meta-value">${num(x.orders_7d) <= 0 ? "Ưu tiên test content / ads / bundle" : "Có tín hiệu đơn hàng"}</div>
             </div>
           </div>
+        </div>
 
-          <div class="detail-card">
-            <h4>Linked Resources</h4>
-            <div class="resource-list">
-              <div class="resource-item">
-                <div class="resource-title">Sheet workspace</div>
-                <div class="resource-meta">Dùng để chỉnh tồn kho, giá bán, giá vốn, mapping vận hành theo SKU.</div>
-                <div class="resource-actions">
-                  <button class="soft-btn" type="button" onclick="openSkuSheet(${x.id})">Mở Sheet</button>
-                  <button class="soft-btn" type="button" onclick="createSkuSheet(${x.id})">Tạo Sheet mới</button>
-                </div>
+        <div class="detail-card">
+          <h4>Linked Resources</h4>
+          <div class="resource-list">
+            <div class="resource-item">
+              <div class="resource-title">Sheet workspace</div>
+              <div class="resource-meta">Dùng để chỉnh tồn kho, giá bán, giá vốn, mapping vận hành theo SKU.</div>
+              <div class="resource-actions">
+                <button class="soft-btn" type="button" onclick="openSkuSheet(${x.id})">Mở Sheet</button>
+                <button class="soft-btn" type="button" onclick="createSkuSheet(${x.id})">Tạo Sheet mới</button>
               </div>
+            </div>
 
-              <div class="resource-item">
-                <div class="resource-title">Document workspace</div>
-                <div class="resource-meta">Dùng cho báo giá, mô tả sản phẩm, hướng dẫn đóng gói, note nhà cung cấp.</div>
-                <div class="resource-actions">
-                  <button class="soft-btn" type="button" onclick="openSkuDoc(${x.id})">Mở Doc</button>
-                  <button class="soft-btn" type="button" onclick="createSkuDoc(${x.id})">Tạo Doc mới</button>
-                </div>
+            <div class="resource-item">
+              <div class="resource-title">Document workspace</div>
+              <div class="resource-meta">Dùng cho báo giá, mô tả sản phẩm, hướng dẫn đóng gói, note nhà cung cấp.</div>
+              <div class="resource-actions">
+                <button class="soft-btn" type="button" onclick="openSkuDoc(${x.id})">Mở Doc</button>
+                <button class="soft-btn" type="button" onclick="createSkuDoc(${x.id})">Tạo Doc mới</button>
               </div>
+            </div>
 
-              <div class="resource-item">
-                <div class="resource-title">Files</div>
-                <div class="resource-meta">Ảnh, chứng từ, tài nguyên sản phẩm, file spec, file media.</div>
-                <div class="resource-actions">
-                  <button class="soft-btn" type="button" onclick="openSkuFiles(${x.id})">Mở Files</button>
-                </div>
+            <div class="resource-item">
+              <div class="resource-title">Files</div>
+              <div class="resource-meta">Ảnh, chứng từ, tài nguyên sản phẩm, file spec, file media.</div>
+              <div class="resource-actions">
+                <button class="soft-btn" type="button" onclick="openSkuFiles(${x.id})">Mở Files</button>
               </div>
             </div>
           </div>
         </div>
+      </div>
+    `;
+  }
+
+  function selectSku(id){
+    STATE.selectedSkuId = id;
+    renderTable();
+    renderDetail();
+  }
+
+  function focusCreateSku(){
+    const el = document.getElementById("createSkuAnchor");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    const first = document.getElementById("createCompanyId");
+    if (first) first.focus();
+  }
+
+  function applyFilters(){
+    STATE.searchKeyword = document.getElementById("filterKeyword").value.trim();
+    STATE.filters.company_id = document.getElementById("filterCompanyId").value.trim();
+    STATE.filters.shop_id = document.getElementById("filterShopId").value.trim();
+    STATE.filters.status = document.getElementById("filterStatus").value.trim();
+    STATE.tableKeyword = document.getElementById("tableSearch").value.trim();
+    recomputeFiltered();
+  }
+
+  function resetFilters(){
+    document.getElementById("filterKeyword").value = "";
+    document.getElementById("filterCompanyId").value = "";
+    document.getElementById("filterStatus").value = "";
+
+    renderShopSelect("filterShopId", SHOP_OPTIONS, "", "");
+    document.getElementById("filterShopId").value = "";
+    document.getElementById("tableSearch").value = "";
+
+    STATE.searchKeyword = "";
+    STATE.filters.company_id = "";
+    STATE.filters.shop_id = "";
+    STATE.filters.status = "";
+    STATE.tableKeyword = "";
+    recomputeFiltered();
+  }
+
+  function applyTableSearch(){
+    STATE.tableKeyword = document.getElementById("tableSearch").value.trim();
+    recomputeFiltered();
+  }
+
+  function resetCreateForm(){
+    document.getElementById("createCompanyId").value = "";
+    renderShopSelect("createShopId", SHOP_OPTIONS, "", "");
+    document.getElementById("createShopId").value = "";
+
+    ["createSkuCode","createSkuName","createCategory","createPrice","createCost","createStock"]
+      .forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+
+    setCreateStatus("", "info");
+  }
+
+  async function loadSkus(){
+    try {
+      const res = await fetch("/api/v1/shops/skus/", {
+        credentials: "include",
+        headers: authHeaders(),
+        cache: "no-store",
+      });
+
+      const data = await readJsonSafe(res);
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.message || "Không tải được danh sách SKU");
+      }
+
+      const items = Array.isArray(data.items) ? data.items : [];
+      STATE.items = items.map(normalizeSkuItem);
+
+      if (!STATE.selectedSkuId && STATE.items.length) {
+        STATE.selectedSkuId = STATE.items[0].id;
+      } else if (STATE.selectedSkuId && !STATE.items.find(x => String(x.id) === String(STATE.selectedSkuId))) {
+        STATE.selectedSkuId = STATE.items.length ? STATE.items[0].id : null;
+      }
+
+      recomputeFiltered();
+    } catch (err) {
+      document.getElementById("skuTableBody").innerHTML = `
+        <tr><td colspan="11"><div class="empty-box">Có lỗi khi tải danh sách SKU: ${esc(err.message || err)}</div></td></tr>
       `;
     }
+  }
 
-    function selectSku(id){
-      STATE.selectedSkuId = id;
-      renderTable();
-      renderDetail();
+  async function createSku(){
+    const payload = {
+      company_id: document.getElementById("createCompanyId").value.trim(),
+      shop_id: document.getElementById("createShopId").value.trim(),
+      sku_code: document.getElementById("createSkuCode").value.trim(),
+      name: document.getElementById("createSkuName").value.trim(),
+      category: document.getElementById("createCategory").value.trim(),
+      price: document.getElementById("createPrice").value.trim(),
+      cost_price: document.getElementById("createCost").value.trim(),
+      stock: document.getElementById("createStock").value.trim(),
+    };
+
+    if (!payload.company_id || !payload.shop_id || !payload.sku_code || !payload.name) {
+      setCreateStatus("Thiếu công ty / shop / mã SKU / tên sản phẩm", "err");
+      return;
     }
 
-    function focusCreateSku(){
-      const el = document.getElementById("createSkuAnchor");
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-      const first = document.getElementById("createCompanyId");
-      if (first) first.focus();
-    }
+    setCreateStatus("Đang tạo SKU...", "info");
 
-    function applyFilters(){
-      STATE.searchKeyword = document.getElementById("filterKeyword").value.trim();
-      STATE.filters.company_id = document.getElementById("filterCompanyId").value.trim();
-      STATE.filters.shop_id = document.getElementById("filterShopId").value.trim();
-      STATE.filters.status = document.getElementById("filterStatus").value.trim();
-      STATE.tableKeyword = document.getElementById("tableSearch").value.trim();
-      recomputeFiltered();
-    }
+    try {
+      const res = await fetch("/api/v1/shops/skus/create/", {
+        method: "POST",
+        credentials: "include",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(payload),
+      });
 
-    function resetFilters(){
-      document.getElementById("filterKeyword").value = "";
-      document.getElementById("filterCompanyId").value = "";
-      document.getElementById("filterStatus").value = "";
+      const data = await readJsonSafe(res);
 
-      renderShopSelect("filterShopId", SHOP_OPTIONS, "", "");
-      document.getElementById("filterShopId").value = "";
-
-      STATE.searchKeyword = "";
-      STATE.filters.company_id = "";
-      STATE.filters.shop_id = "";
-      STATE.filters.status = "";
-      recomputeFiltered();
-    }
-
-    function applyTableSearch(){
-      STATE.tableKeyword = document.getElementById("tableSearch").value.trim();
-      recomputeFiltered();
-    }
-
-    function resetCreateForm(){
-      document.getElementById("createCompanyId").value = "";
-      renderShopSelect("createShopId", SHOP_OPTIONS, "", "");
-      document.getElementById("createShopId").value = "";
-
-      ["createSkuCode","createSkuName","createCategory","createPrice","createCost","createStock"]
-        .forEach(id => {
-          const el = document.getElementById(id);
-          if (el) el.value = "";
-        });
-
-      setCreateStatus("", "info");
-    }
-
-    async function loadSkus(){
-      try {
-        const res = await fetch("/api/v1/shops/skus/", {
-          credentials: "include",
-          headers: authHeaders(),
-          cache: "no-store",
-        });
-
-        const data = await readJsonSafe(res);
-
-        if (!res.ok || !data.ok) {
-          throw new Error(data.message || "Không tải được danh sách SKU");
-        }
-
-        const items = Array.isArray(data.items) ? data.items : [];
-        STATE.items = items.map(normalizeSkuItem);
-
-        if (!STATE.selectedSkuId && STATE.items.length) {
-          STATE.selectedSkuId = STATE.items[0].id;
-        } else if (STATE.selectedSkuId && !STATE.items.find(x => String(x.id) === String(STATE.selectedSkuId))) {
-          STATE.selectedSkuId = STATE.items.length ? STATE.items[0].id : null;
-        }
-
-        recomputeFiltered();
-      } catch (err) {
-        document.getElementById("skuTableBody").innerHTML = `
-          <tr><td colspan="11"><div class="empty-box">Có lỗi khi tải danh sách SKU: ${esc(err.message || err)}</div></td></tr>
-        `;
-      }
-    }
-
-    async function createSku(){
-      const payload = {
-        company_id: document.getElementById("createCompanyId").value.trim(),
-        shop_id: document.getElementById("createShopId").value.trim(),
-        sku_code: document.getElementById("createSkuCode").value.trim(),
-        name: document.getElementById("createSkuName").value.trim(),
-        category: document.getElementById("createCategory").value.trim(),
-        price: document.getElementById("createPrice").value.trim(),
-        cost_price: document.getElementById("createCost").value.trim(),
-        stock: document.getElementById("createStock").value.trim(),
-      };
-
-      if (!payload.company_id || !payload.shop_id || !payload.sku_code || !payload.name) {
-        setCreateStatus("Thiếu công ty / shop / mã SKU / tên sản phẩm", "err");
+      if (!res.ok || !data.ok) {
+        setCreateStatus(data.message || "Tạo SKU lỗi", "err");
         return;
       }
 
-      setCreateStatus("Đang tạo SKU...", "info");
-
-      try {
-        const res = await fetch("/api/v1/shops/skus/create/", {
-          method: "POST",
-          credentials: "include",
-          headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify(payload),
-        });
-
-        const data = await readJsonSafe(res);
-
-        if (!res.ok || !data.ok) {
-          setCreateStatus(data.message || "Tạo SKU lỗi", "err");
-          return;
-        }
-
-        setCreateStatus("Đã tạo SKU thành công", "ok");
-        resetCreateForm();
-        await loadSkus();
-      } catch (err) {
-        setCreateStatus(`Tạo SKU lỗi: ${err.message || err}`, "err");
-      }
-    }
-
-    function openSkuSheetsPage(){
-      window.location.href = "/os/sheets/";
-    }
-
-    function openSkuDocsPage(){
-      window.location.href = "/os/docs/";
-    }
-
-    function openSkuSheet(skuId){
-      window.location.href = `/os/sheets/?linked_target_type=sku&linked_target_id=${skuId}`;
-    }
-
-    function openSkuDoc(skuId){
-      window.location.href = `/os/docs/?linked_target_type=sku&linked_target_id=${skuId}`;
-    }
-
-    function openSkuFiles(skuId){
-      window.location.href = `/os/docs/?linked_target_type=sku&linked_target_id=${skuId}#files`;
-    }
-
-    function exportSelectedSkuSheet(){
-      const x = selectedSku();
-      if (!x) {
-        alert("Chọn SKU trước đã anh");
-        return;
-      }
-      openSkuSheet(x.id);
-    }
-
-    function createSkuSheet(skuId){
-      window.location.href = `/os/sheets/?linked_target_type=sku&linked_target_id=${skuId}`;
-    }
-
-    function createSkuDoc(skuId){
-      window.location.href = `/os/docs/?linked_target_type=sku&linked_target_id=${skuId}`;
-    }
-
-    async function refreshPageData(){
+      setCreateStatus("Đã tạo SKU thành công", "ok");
+      resetCreateForm();
       await loadSkus();
+    } catch (err) {
+      setCreateStatus(`Tạo SKU lỗi: ${err.message || err}`, "err");
     }
+  }
 
-    let SHOP_OPTIONS = [];
-    let COMPANY_OPTIONS = [];
+  function openSkuSheetsPage(){
+    window.location.href = "/os/sheets/";
+  }
 
-    function uniqueCompaniesFromShops(items){
-      const map = new Map();
+  function openSkuDocsPage(){
+    window.location.href = "/os/docs/";
+  }
 
-      (items || []).forEach((x) => {
-        const companyId = String(x.company_id || "").trim();
-        if (!companyId) return;
+  function openSkuSheet(skuId){
+    window.location.href = `/os/sheets/?linked_target_type=sku&linked_target_id=${skuId}`;
+  }
 
-        map.set(companyId, {
-          id: companyId,
-          name: String(x.company_name || `Company #${companyId}`),
-        });
+  function openSkuDoc(skuId){
+    window.location.href = `/os/docs/?linked_target_type=sku&linked_target_id=${skuId}`;
+  }
+
+  function openSkuFiles(skuId){
+    window.location.href = `/os/docs/?linked_target_type=sku&linked_target_id=${skuId}#files`;
+  }
+
+  function exportSelectedSkuSheet(){
+    const x = selectedSku();
+    if (!x) {
+      alert("Chọn SKU trước đã anh");
+      return;
+    }
+    openSkuSheet(x.id);
+  }
+
+  function createSkuSheet(skuId){
+    window.location.href = `/os/sheets/?linked_target_type=sku&linked_target_id=${skuId}`;
+  }
+
+  function createSkuDoc(skuId){
+    window.location.href = `/os/docs/?linked_target_type=sku&linked_target_id=${skuId}`;
+  }
+
+  async function refreshPageData(){
+    await loadSkus();
+  }
+
+  let SHOP_OPTIONS = [];
+  let COMPANY_OPTIONS = [];
+
+  function uniqueCompaniesFromShops(items){
+    const map = new Map();
+
+    (items || []).forEach((x) => {
+      const companyId = String(x.company_id || "").trim();
+      if (!companyId) return;
+
+      map.set(companyId, {
+        id: companyId,
+        name: String(x.company_name || `Company #${companyId}`),
+      });
+    });
+
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  function renderCompanySelect(selectId, companies, selectedValue = ""){
+    const el = document.getElementById(selectId);
+    if (!el) return;
+
+    const firstText = selectId.startsWith("create")
+      ? "-- Chọn công ty --"
+      : "Tất cả công ty";
+
+    let html = `<option value="">${firstText}</option>`;
+    (companies || []).forEach((x) => {
+      const selected = String(selectedValue) === String(x.id) ? "selected" : "";
+      html += `<option value="${esc(x.id)}" ${selected}>${esc(x.name)}</option>`;
+    });
+
+    el.innerHTML = html;
+  }
+
+  function renderShopSelect(selectId, shops, companyId = "", selectedValue = ""){
+    const el = document.getElementById(selectId);
+    if (!el) return;
+
+    const firstText = selectId.startsWith("create")
+      ? "-- Chọn shop --"
+      : "Tất cả shop";
+
+    const companyIdText = String(companyId || "").trim();
+
+    const filtered = (shops || []).filter((x) => {
+      if (!companyIdText) return true;
+      return String(x.company_id || "") === companyIdText;
+    });
+
+    let html = `<option value="">${firstText}</option>`;
+    filtered.forEach((x) => {
+      const selected = String(selectedValue) === String(x.id) ? "selected" : "";
+      const companyText = x.company_name ? ` • ${x.company_name}` : "";
+      html += `<option value="${esc(x.id)}" ${selected}>${esc(x.name)}${esc(companyText)}</option>`;
+    });
+
+    el.innerHTML = html;
+  }
+
+  async function loadShopOptions(){
+    try{
+      const res = await fetch("/api/v1/shops/", {
+        credentials: "include",
+        headers: authHeaders(),
+        cache: "no-store",
       });
 
-      return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+      const data = await readJsonSafe(res);
+      if (!res.ok || !data.ok) return;
+
+      SHOP_OPTIONS = Array.isArray(data.items) ? data.items : [];
+      COMPANY_OPTIONS = uniqueCompaniesFromShops(SHOP_OPTIONS);
+
+      renderCompanySelect("filterCompanyId", COMPANY_OPTIONS, document.getElementById("filterCompanyId")?.value || "");
+      renderCompanySelect("createCompanyId", COMPANY_OPTIONS, document.getElementById("createCompanyId")?.value || "");
+
+      renderShopSelect(
+        "filterShopId",
+        SHOP_OPTIONS,
+        document.getElementById("filterCompanyId")?.value || "",
+        document.getElementById("filterShopId")?.value || ""
+      );
+
+      renderShopSelect(
+        "createShopId",
+        SHOP_OPTIONS,
+        document.getElementById("createCompanyId")?.value || "",
+        document.getElementById("createShopId")?.value || ""
+      );
+    } catch(err){
+      console.warn("loadShopOptions error", err);
     }
+  }
 
-    function renderCompanySelect(selectId, companies, selectedValue = ""){
-      const el = document.getElementById(selectId);
-      if (!el) return;
-
-      const firstText = selectId.startsWith("create")
-        ? "-- Chọn công ty --"
-        : "Tất cả công ty";
-
-      let html = `<option value="">${firstText}</option>`;
-      (companies || []).forEach((x) => {
-        const selected = String(selectedValue) === String(x.id) ? "selected" : "";
-        html += `<option value="${esc(x.id)}" ${selected}>${esc(x.name)}</option>`;
-      });
-
-      el.innerHTML = html;
-    }
-
-    function renderShopSelect(selectId, shops, companyId = "", selectedValue = ""){
-      const el = document.getElementById(selectId);
-      if (!el) return;
-
-      const firstText = selectId.startsWith("create")
-        ? "-- Chọn shop --"
-        : "Tất cả shop";
-
-      const companyIdText = String(companyId || "").trim();
-
-      const filtered = (shops || []).filter((x) => {
-        if (!companyIdText) return true;
-        return String(x.company_id || "") === companyIdText;
-      });
-
-      let html = `<option value="">${firstText}</option>`;
-      filtered.forEach((x) => {
-        const selected = String(selectedValue) === String(x.id) ? "selected" : "";
-        const companyText = x.company_name ? ` • ${x.company_name}` : "";
-        html += `<option value="${esc(x.id)}" ${selected}>${esc(x.name)}${esc(companyText)}</option>`;
-      });
-
-      el.innerHTML = html;
-    }
-
-    async function loadShopOptions(){
-      try{
-        const res = await fetch("/api/v1/shops/", {
-          credentials: "include",
-          headers: authHeaders(),
-          cache: "no-store",
-        });
-
-        const data = await readJsonSafe(res);
-        if (!res.ok || !data.ok) return;
-
-        SHOP_OPTIONS = Array.isArray(data.items) ? data.items : [];
-        COMPANY_OPTIONS = uniqueCompaniesFromShops(SHOP_OPTIONS);
-
-        renderCompanySelect("filterCompanyId", COMPANY_OPTIONS, document.getElementById("filterCompanyId")?.value || "");
-        renderCompanySelect("createCompanyId", COMPANY_OPTIONS, document.getElementById("createCompanyId")?.value || "");
-
-        renderShopSelect(
-          "filterShopId",
-          SHOP_OPTIONS,
-          document.getElementById("filterCompanyId")?.value || "",
-          document.getElementById("filterShopId")?.value || ""
-        );
-
-        renderShopSelect(
-          "createShopId",
-          SHOP_OPTIONS,
-          document.getElementById("createCompanyId")?.value || "",
-          document.getElementById("createShopId")?.value || ""
-        );
-      } catch(err){
-        console.warn("loadShopOptions error", err);
-      }
-    }
-
-    document.getElementById("filterCompanyId")?.addEventListener("change", (e) => {
+  document.addEventListener("change", function(e){
+    if (e.target && e.target.id === "filterCompanyId") {
       renderShopSelect("filterShopId", SHOP_OPTIONS, e.target.value, "");
-    });
-
-    document.getElementById("createCompanyId")?.addEventListener("change", (e) => {
-      renderShopSelect("createShopId", SHOP_OPTIONS, e.target.value, "");
-    });
-
-    async function bootSkuPage(){
-      await loadShopOptions();
-      await loadSkus();
     }
+    if (e.target && e.target.id === "createCompanyId") {
+      renderShopSelect("createShopId", SHOP_OPTIONS, e.target.value, "");
+    }
+  });
 
+  async function bootSkuPage(){
+    await loadShopOptions();
+    await loadSkus();
+  }
+
+  document.addEventListener("DOMContentLoaded", function(){
     bootSkuPage();
-  </script>
-</body>
-</html>
+  });
+</script>
+{% endblock %}

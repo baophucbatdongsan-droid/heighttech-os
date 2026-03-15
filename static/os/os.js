@@ -58,7 +58,7 @@
         company: "",
         shop: "",
         status: "",
-        time_scope: "today",
+        time_scope: "all",
       },
     },
   };
@@ -127,6 +127,43 @@
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
+  }
+
+  function ensureToastRoot() {
+    let root = $("htToastRoot");
+    if (root) return root;
+
+    root = document.createElement("div");
+    root.id = "htToastRoot";
+    root.className = "ht-toast-root";
+    document.body.appendChild(root);
+    return root;
+  }
+
+  function showToast(message, type = "error", timeout = 2600) {
+    const root = ensureToastRoot();
+
+    const toast = document.createElement("div");
+    toast.className = `ht-toast ${type}`;
+    toast.innerHTML = `
+      <div class="ht-toast-text">${escapeHtml(message || "")}</div>
+      <button class="ht-toast-close" type="button" aria-label="Đóng">×</button>
+    `;
+
+    root.appendChild(toast);
+
+    const remove = () => {
+      toast.classList.add("leave");
+      setTimeout(() => toast.remove(), 180);
+    };
+
+    toast.querySelector(".ht-toast-close")?.addEventListener("click", remove);
+
+    requestAnimationFrame(() => {
+      toast.classList.add("show");
+    });
+
+    setTimeout(remove, timeout);
   }
 
   function asText(v, fallback = "") {
@@ -2133,18 +2170,54 @@
       done: items.filter((x) => x.status === "done"),
     };
 
-    const makeCol = (key, label) => `
-      <div class="kanban-col">
-        <div class="kanban-head">
-          <span>${label}</span>
-          <span class="pill">${cols[key].length}</span>
+    const visibleMap = STATE.work.boardVisible || {
+      todo: 8,
+      doing: 8,
+      blocked: 8,
+      done: 8,
+    };
+
+    const makeCol = (key, label) => {
+      const allItems = cols[key] || [];
+      const visible = Number(visibleMap[key] || 8);
+      const shownItems = allItems.slice(0, visible);
+      const remain = Math.max(0, allItems.length - shownItems.length);
+
+      return `
+        <div class="kanban-col">
+          <div class="kanban-head">
+            <span>${label}</span>
+            <span class="pill">${allItems.length}</span>
+          </div>
+
+          ${makeQuickCreateBox("status", key, `Tạo nhanh việc ở cột ${label}...`)}
+
+          <div class="kanban-list" data-drop-type="status" data-drop-key="${key}">
+            ${
+              shownItems.length
+                ? shownItems.map(makeBoardCard).join("")
+                : `<div class="kanban-empty">Chưa có việc</div>`
+            }
+          </div>
+
+          ${
+            remain > 0
+              ? `
+                <div class="work-col-more-wrap">
+                  <button
+                    class="btn mini work-col-loadmore"
+                    data-status="${key}"
+                    type="button"
+                  >
+                    Xem thêm ${remain} việc
+                  </button>
+                </div>
+              `
+              : ""
+          }
         </div>
-        ${makeQuickCreateBox("status", key, `Tạo nhanh việc ở cột ${label}...`)}
-        <div class="kanban-list" data-drop-type="status" data-drop-key="${key}">
-          ${cols[key].length ? cols[key].map(makeBoardCard).join("") : `<div class="kanban-empty">Chưa có việc</div>`}
-        </div>
-      </div>
-    `;
+      `;
+    };
 
     board.innerHTML = `
       ${makeCol("todo", "Todo")}
@@ -2389,6 +2462,7 @@
     }
 
     const rawNewItem = created?.item || created?.data || created || null;
+
     STATE.work.filters.assignee = "";
     STATE.work.filters.keyword = "";
     STATE.work.filters.company = "";
@@ -2480,6 +2554,9 @@
     await createTask(payload);
     if (inputEl) inputEl.value = "";
 
+    STATE.work.filters.status = "";
+    if ($("filterStatusFinal")) $("filterStatusFinal").value = "";
+
     await refreshWorkData();
     await refreshTimeline(true);
     await refreshHome();
@@ -2517,7 +2594,7 @@
           const toPosition = calcDropPosition(col, taskId);
           await moveTask(taskId, dropKey, toPosition);
         } catch (err) {
-          alert("Drag move lỗi: " + err.message);
+          showToast("Drag move lỗi: " + (err?.message || err), "error");
         }
       });
     });
@@ -3205,6 +3282,7 @@
 
     const shopId = $("createTaskShopId")?.value || "";
     const projectId = $("createTaskProjectId")?.value || "";
+
     const parts = [];
     if (shopId) parts.push("Shop #" + shopId);
     if (projectId) parts.push("Project #" + projectId);
@@ -3726,6 +3804,17 @@
     });
 
     document.addEventListener("click", async (e) => {
+      const loadMoreBtn = e.target.closest(".work-col-loadmore");
+      if (loadMoreBtn) {
+        const status = loadMoreBtn.dataset.status || "";
+        if (!status) return;
+
+        const current = Number(STATE.work.boardVisible?.[status] || 8);
+        STATE.work.boardVisible[status] = current + 8;
+        renderWorkBoard();
+        return;
+      }
+
       const quickLinkBtn = e.target.closest(".os-quick-link-btn");
       if (quickLinkBtn) {
         const url = quickLinkBtn.dataset.url || "";
@@ -3800,8 +3889,9 @@
         moveBtn.textContent = "…";
         try {
           await moveTask(id, status);
+          showToast(`Đã chuyển task #${id} sang ${status}`, "success", 1800);
         } catch (err) {
-          alert("Move lỗi: " + err.message);
+          showToast("Move lỗi: " + (err?.message || err), "error");
         } finally {
           moveBtn.textContent = "Move";
         }
@@ -3822,8 +3912,9 @@
             await updateTask(id, { priority });
           }
           await moveTask(id, status);
+          showToast(`Đã chuyển task #${id} sang ${status}`, "success", 1800);
         } catch (err) {
-          alert("Move lỗi: " + err.message);
+          showToast("Move lỗi: " + (err?.message || err), "error");
         } finally {
           kbMoveBtn.textContent = "Move";
         }
@@ -4034,7 +4125,30 @@
     bindQuickCreateMenu();
   }
 
-  function getCreateTaskPrefillAndApplyScope() {
+  
+  async function boot() {
+    ensureCreateTaskModalAtBody();
+    if (typeof ensureStyles === "function") ensureStyles();
+    setTheme(STATE.ui.theme);
+    applyScopeUI();
+    ensureWorkToolbar();
+    ensureOSQuickLinks();
+    bindEvents();
+    bootOsShellUi();
+    switchWorkView(STATE.ui.workView);
+
+    const currentTenantId = String(window.HT_TENANT_ID || "").trim();
+    if (currentTenantId) {
+      localStorage.setItem("ht_tenant_id", currentTenantId);
+    }
+
+    if (!localStorage.getItem("ht_board_group_by")) {
+      STATE.ui.boardGroupBy = "status";
+      localStorage.setItem("ht_board_group_by", "status");
+    } else {
+      STATE.ui.boardGroupBy = localStorage.getItem("ht_board_group_by") || "status";
+    }
+
     const qp = getCreateTaskPrefill();
 
     if (qp.company_id) {
@@ -4058,69 +4172,204 @@
       localStorage.setItem("ht_scope", STATE.scope.scope);
     }
 
-    return qp;
-  }
-
-  function openPrefilledCreateTaskIfNeeded(qp) {
-    if (!qp.open) return;
-
-    switchWorkView("board");
-    openCreateTaskModal();
-
-    if ($("createTaskShopId") && qp.shop_id) $("createTaskShopId").value = qp.shop_id;
-    if ($("createTaskProjectId") && qp.project_id) $("createTaskProjectId").value = qp.project_id;
-    if ($("createTaskTargetType") && qp.target_type) $("createTaskTargetType").value = qp.target_type;
-    if ($("createTaskTargetId") && qp.target_id) $("createTaskTargetId").value = qp.target_id;
-    if ($("createTaskTitle") && qp.title) $("createTaskTitle").value = qp.title;
-
-    hydrateCreateTaskContextRich();
-
-    const cleanUrl = new URL(window.location.href);
-    cleanUrl.searchParams.delete("open_create_task");
-    cleanUrl.searchParams.delete("company_id");
-    cleanUrl.searchParams.delete("shop_id");
-    cleanUrl.searchParams.delete("project_id");
-    cleanUrl.searchParams.delete("target_type");
-    cleanUrl.searchParams.delete("target_id");
-    cleanUrl.searchParams.delete("title");
-
-    window.history.replaceState({}, "", cleanUrl.pathname + (cleanUrl.search ? cleanUrl.search : ""));
-  }
-
-  async function boot() {
-    ensureCreateTaskModalAtBody();
-    setTheme(STATE.ui.theme);
-    applyScopeUI();
-    ensureWorkToolbar();
-    ensureOSQuickLinks();
-    bindEvents();
-    switchWorkView(STATE.ui.workView);
-
-    const currentTenantId = String(window.HT_TENANT_ID || "").trim();
-    if (currentTenantId) localStorage.setItem("ht_tenant_id", currentTenantId);
-
-    if (!localStorage.getItem("ht_board_group_by")) {
-      STATE.ui.boardGroupBy = "status";
-      localStorage.setItem("ht_board_group_by", "status");
-    } else {
-      STATE.ui.boardGroupBy = localStorage.getItem("ht_board_group_by") || "status";
-    }
-
-    const qp = getCreateTaskPrefillAndApplyScope();
-
-    STATE.work.filters.time_scope = "today";
+    STATE.work.filters.time_scope = "all";
     syncTimeScopeUI();
 
     await safeRefreshAll(true);
-
     syncTimeScopeUI();
-    if ($("boardGroupByFinal")) $("boardGroupByFinal").value = STATE.ui.boardGroupBy;
 
-    openPrefilledCreateTaskIfNeeded(qp);
+    if ($("boardGroupByFinal")) {
+      $("boardGroupByFinal").value = STATE.ui.boardGroupBy;
+    }
+    if ($("filterStatusFinal")) {
+      $("filterStatusFinal").value = STATE.work.filters.status || "";
+    }
+    if (qp.open) {
+      switchWorkView("board");
+      openCreateTaskModal();
+
+      if ($("createTaskShopId") && qp.shop_id) {
+        $("createTaskShopId").value = qp.shop_id;
+      }
+
+      if ($("createTaskProjectId") && qp.project_id) {
+        $("createTaskProjectId").value = qp.project_id;
+      }
+
+      if ($("createTaskTargetType") && qp.target_type) {
+        $("createTaskTargetType").value = qp.target_type;
+      }
+
+      if ($("createTaskTargetId") && qp.target_id) {
+        $("createTaskTargetId").value = qp.target_id;
+      }
+
+      if ($("createTaskTitle") && qp.title) {
+        $("createTaskTitle").value = qp.title;
+      }
+
+      hydrateCreateTaskContextRich();
+
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete("open_create_task");
+      cleanUrl.searchParams.delete("company_id");
+      cleanUrl.searchParams.delete("shop_id");
+      cleanUrl.searchParams.delete("project_id");
+      cleanUrl.searchParams.delete("target_type");
+      cleanUrl.searchParams.delete("target_id");
+      cleanUrl.searchParams.delete("title");
+
+      window.history.replaceState(
+        {},
+        "",
+        cleanUrl.pathname + (cleanUrl.search ? cleanUrl.search : "")
+      );
+    }
 
     setTimeout(() => {
       restartSSE();
     }, 1500);
+  }
+  function ensureStyles() {
+    if (document.getElementById("htFinalStylePatch")) return;
+
+    const style = document.createElement("style");
+    style.id = "htFinalStylePatch";
+    style.textContent = `
+      #workBoardWrap{
+        display:block;
+        width:100%;
+        overflow-x:auto;
+        overflow-y:hidden;
+        padding-bottom:6px;
+      }
+
+      #workBoard{
+        display:grid !important;
+        grid-template-columns:repeat(4, minmax(280px, 1fr)) !important;
+        gap:14px;
+        align-items:start;
+        min-width:1200px;
+      }
+
+      .kcard.dragging{
+        opacity:.45;
+        transform:scale(.98);
+      }
+
+      .kanban-col{
+        width:auto !important;
+        min-width:280px;
+        max-width:none !important;
+        border:1px solid rgba(255,255,255,.08);
+        border-radius:16px;
+        background:rgba(255,255,255,.03);
+        overflow:hidden;
+        display:flex;
+        flex-direction:column;
+        min-height:420px;
+      }
+
+      .kanban-col-group{
+        width:auto !important;
+        min-width:280px;
+        max-width:none !important;
+      }
+
+      .kanban-head{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:8px;
+        padding:12px;
+        border-bottom:1px solid rgba(255,255,255,.06);
+        font-weight:800;
+      }
+
+      .kanban-list{
+        min-height:260px;
+        padding:10px;
+        border-radius:14px;
+      }
+
+      .kanban-list.drag-over{
+        border:1px dashed rgba(110,168,254,.55);
+        background:rgba(110,168,254,.08);
+        border-radius:14px;
+      }
+
+      .kanban-empty{
+        padding:14px;
+        border:1px dashed rgba(255,255,255,.10);
+        border-radius:12px;
+        color:var(--muted);
+        font-size:13px;
+        text-align:center;
+      }
+
+      .kcard.v12{
+        border:1px solid rgba(255,255,255,.07);
+        border-radius:14px;
+        padding:12px;
+        background:rgba(255,255,255,.03);
+        margin-bottom:10px;
+        cursor:grab;
+      }
+
+      .kcard .ktitle{
+        font-weight:850;
+        margin-bottom:8px;
+        line-height:1.35;
+      }
+
+      .kcard .kmeta{
+        display:flex;
+        gap:8px;
+        flex-wrap:wrap;
+        font-size:12px;
+        color:var(--muted);
+        margin-bottom:6px;
+      }
+
+      .kcard .kdesc{
+        font-size:12px;
+        line-height:1.5;
+        margin:8px 0;
+        color:var(--text);
+        opacity:.92;
+      }
+
+      .kcard .kact{
+        display:flex;
+        gap:8px;
+        align-items:center;
+        margin-top:10px;
+        flex-wrap:wrap;
+      }
+
+      @media (max-width: 1200px){
+        #workBoard{
+          grid-template-columns:repeat(2, minmax(280px, 1fr)) !important;
+          min-width:760px;
+        }
+      }
+
+      @media (max-width: 768px){
+        #workBoard{
+          grid-template-columns:1fr !important;
+          min-width:100%;
+        }
+
+        #workBoardWrap{
+          overflow-x:hidden;
+        }
+
+        .kanban-col{
+          min-width:100%;
+        }
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   window.safeRefreshAll = safeRefreshAll;
@@ -4131,8 +4380,122 @@
   window.htPatchTaskLocal = patchTaskLocal;
   window.htStateWork = () => STATE.work;
 
-  boot().catch((e) => {
-    console.error(e);
-    alert("OS load lỗi: " + e.message);
-  });
+  if (typeof boot === "function") {
+    boot().catch((e) => {
+      console.error("HT OS boot error:", e);
+    });
+  } else {
+    console.error("HT OS boot missing");
+  }
+  /* =========================================================
+    HEIGHTTECH OS — SIDEBAR / MOBILE SHELL PATCH
+  ========================================================= */
+
+  function ensureOsShellBehavior() {
+    const shell = document.getElementById("osShell");
+    const sidebar = document.getElementById("osSidebar");
+    const sidebarToggle = document.getElementById("osSidebarToggle");
+    const sidebarBackdrop = document.getElementById("osSidebarBackdrop");
+
+    if (!shell || !sidebar) return;
+
+    function openSidebar() {
+      shell.classList.add("sidebar-open");
+      document.body.classList.add("sidebar-open");
+    }
+
+    function closeSidebar() {
+      shell.classList.remove("sidebar-open");
+      document.body.classList.remove("sidebar-open");
+    }
+
+    function toggleSidebar() {
+      if (shell.classList.contains("sidebar-open")) closeSidebar();
+      else openSidebar();
+    }
+
+    if (sidebarToggle && !sidebarToggle.dataset.bound) {
+      sidebarToggle.dataset.bound = "1";
+      sidebarToggle.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleSidebar();
+      });
+    }
+
+    if (sidebarBackdrop && !sidebarBackdrop.dataset.bound) {
+      sidebarBackdrop.dataset.bound = "1";
+      sidebarBackdrop.addEventListener("click", function () {
+        closeSidebar();
+      });
+    }
+
+    if (!document.body.dataset.osSidebarBound) {
+      document.body.dataset.osSidebarBound = "1";
+
+      document.addEventListener("click", function (e) {
+        const isMobile = window.innerWidth <= 1100;
+        if (!isMobile) return;
+        if (!shell.classList.contains("sidebar-open")) return;
+
+        const insideSidebar = sidebar.contains(e.target);
+        const onToggle = sidebarToggle && sidebarToggle.contains(e.target);
+
+        if (!insideSidebar && !onToggle) {
+          closeSidebar();
+        }
+      });
+
+      window.addEventListener("resize", function () {
+        if (window.innerWidth > 1100) {
+          closeSidebar();
+        }
+      });
+    }
+
+    qsa(".os-nav-item", sidebar).forEach((link) => {
+      if (link.dataset.mobileCloseBound) return;
+      link.dataset.mobileCloseBound = "1";
+
+      link.addEventListener("click", function () {
+        if (window.innerWidth <= 1100) {
+          closeSidebar();
+        }
+      });
+    });
+  }
+
+  function syncSidebarActiveNav() {
+    const path = window.location.pathname || "/";
+
+    qsa(".os-nav-item").forEach((a) => {
+      a.classList.remove("active");
+    });
+
+    const rules = [
+      { match: (p) => p === "/os/" || p === "/os", key: "nav-home" },
+      { match: (p) => p.startsWith("/work"), key: "nav-work" },
+      { match: (p) => p.startsWith("/os/shops"), key: "nav-shops" },
+      { match: (p) => p.startsWith("/os/contracts"), key: "nav-contracts" },
+      { match: (p) => p.startsWith("/os/team"), key: "nav-team" },
+      { match: (p) => p.startsWith("/os/founder"), key: "nav-ai" },
+    ];
+
+    for (const rule of rules) {
+      if (rule.match(path)) {
+        const el = document.getElementById(rule.key);
+        if (el) el.classList.add("active");
+        return;
+      }
+    }
+
+    const home = document.getElementById("nav-home");
+    if (home) home.classList.add("active");
+  }
+
+  function bootOsShellUi() {
+    ensureOsShellBehavior();
+    syncSidebarActiveNav();
+  }
+  bootOsShellUi();
 })();

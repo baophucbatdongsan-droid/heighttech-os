@@ -1,4 +1,4 @@
-# apps/work/service_move.py
+# apps/work/services_move.py
 from __future__ import annotations
 
 import time
@@ -9,6 +9,7 @@ from django.db import IntegrityError, transaction, connection
 from django.db.models import Case, When, Value, CharField
 
 from apps.work.models import WorkItem
+from apps.os.notifications_service import create_notification
 
 # =====================================================
 # Advisory locks (BACKWARD-COMPAT + stable hashing)
@@ -35,11 +36,6 @@ def _fnv1a_64(data: bytes) -> int:
 
 
 def _stable_i32(x: Any) -> int:
-    """
-    Convert arbitrary key to a stable 31-bit positive int.
-    - int/bool: use numeric value
-    - str/bytes/other: hash -> stable int
-    """
     if isinstance(x, bool):
         v = 1 if x else 0
     elif isinstance(x, int):
@@ -56,11 +52,6 @@ def _stable_i32(x: Any) -> int:
 
 
 def _advisory_xact_lock(*keys: Any) -> None:
-    """
-    PostgreSQL advisory transaction lock.
-    Works with mixed types: ints + strings ("todo"/"doing") safely.
-    MUST be called inside transaction.atomic().
-    """
     if getattr(connection, "vendor", "") != "postgresql":
         return
 
@@ -78,17 +69,10 @@ def _advisory_xact_lock(*keys: Any) -> None:
 
 
 def _company_lock_key(company_id: Optional[int]) -> int:
-    """
-    company_id=None phải map về 0 để lock và logic unique khớp company_key=0.
-    """
     return int(company_id or 0)
 
 
 def _lock_column(*, tenant_id: int, company_id: Optional[int], status: str) -> None:
-    """
-    Transaction-scoped lock per (tenant, company_key, status).
-    Must be called INSIDE atomic().
-    """
     status = (status or "").strip().lower()
     _advisory_xact_lock("workitem.column", tenant_id, _company_lock_key(company_id), status)
 
@@ -110,10 +94,6 @@ def _base36(n: int) -> str:
 
 
 def _rank_for_pos(pos_1based: int, width: int = 10) -> str:
-    """
-    pos_1based: 1..N
-    rank string fixed-length so lexical order matches numeric order.
-    """
     if pos_1based < 1:
         pos_1based = 1
     s = _base36(pos_1based)
@@ -121,11 +101,6 @@ def _rank_for_pos(pos_1based: int, width: int = 10) -> str:
 
 
 def _tmp_rank_for_id(_id: int, width: int = 10) -> str:
-    """
-    Temporary rank that will NEVER collide with normal ranks.
-    Normal ranks always start with "0" (zero-padded).
-    We'll use prefix "z" + base36(id) padded to (width-1).
-    """
     if _id < 0:
         _id = -_id
     s = _base36(_id).rjust(width - 1, "0")
@@ -133,11 +108,6 @@ def _tmp_rank_for_id(_id: int, width: int = 10) -> str:
 
 
 def _column_qs(*, tenant_id: int, company_id: Optional[int], status: str):
-    """
-    Queryset cột theo logic company_key:
-    - company_id is None => lọc company_id__isnull=True
-    - company_id có giá trị => lọc company_id=<id>
-    """
     qs = WorkItem.objects_all.filter(
         tenant_id=tenant_id,
         status=(status or "").strip().lower(),
@@ -154,14 +124,6 @@ def _rebuild_ranks_for_column(
     status: str,
     ordered_ids: List[int],
 ) -> None:
-    """
-    Update all items in (tenant, company, status) to have ranks 1..N
-    according to ordered_ids.
-
-    Avoid transient unique collisions by 2-phase update:
-      1) assign temp unique ranks based on id (prefix 'z')
-      2) assign final ranks using CASE
-    """
     if not ordered_ids:
         return
 
@@ -202,9 +164,6 @@ def create_work_item(
     created_by_id: int,
     requester_id: int,
 ) -> WorkItem:
-    """
-    Create item and assign rank safely under column lock.
-    """
     status = (status or "todo").strip().lower()
 
     max_retries = 15
@@ -264,22 +223,23 @@ def move_work_item(
     item_id: int,
     to_status: Optional[str] = None,
     to_position: Optional[int] = None,
+    actor_id: Optional[int] = None,
 ) -> MoveResult:
-    """
-    Move item to another status/position using rank ordering.
-
-    Fix chính:
-    - dùng objects_all để không bị manager ẩn dữ liệu
-    - nếu đổi cột thì gán rank tạm trước rồi mới đổi status
-    - xử lý đúng cột có company_id=None
-    """
     max_retries = 20
 
     for attempt in range(1, max_retries + 1):
         try:
             with transaction.atomic():
                 base = (
-                    WorkItem.objects_all.only("id", "tenant_id", "company_id", "status", "rank")
+                    WorkItem.objects_all.only(
+                        "id",
+                        "tenant_id",
+                        "company_id",
+                        "shop_id",
+                        "status",
+                        "rank",
+                        "title",
+                    )
                     .get(id=item_id, tenant_id=tenant_id)
                 )
 
@@ -313,7 +273,16 @@ def move_work_item(
 
                 wi = (
                     WorkItem.objects_all.select_for_update()
-                    .only("id", "tenant_id", "company_id", "status", "rank", "updated_at")
+                    .only(
+                        "id",
+                        "tenant_id",
+                        "company_id",
+                        "shop_id",
+                        "status",
+                        "rank",
+                        "title",
+                        "updated_at",
+                    )
                     .get(id=item_id, tenant_id=tenant_id)
                 )
 
@@ -332,7 +301,7 @@ def move_work_item(
                         status=target_status,
                     )
 
-                    wi.refresh_from_db(fields=["id", "tenant_id", "company_id", "status", "rank"])
+                    wi.refresh_from_db(fields=["id", "tenant_id", "company_id", "shop_id", "status", "rank", "title"])
 
                 ids = list(
                     _column_qs(
@@ -373,12 +342,49 @@ def move_work_item(
                         ordered_ids=old_ids,
                     )
 
-                return MoveResult(
+                result = MoveResult(
                     from_status=from_status,
                     to_status=target_status,
                     from_position=from_position if from_position > 0 else 1,
                     to_position=insert_idx + 1,
                 )
+
+                wi.refresh_from_db(fields=["id", "tenant_id", "company_id", "shop_id", "status", "rank", "title"])
+
+            try:
+                changed_column = result.from_status != result.to_status
+                changed_position = result.from_position != result.to_position
+
+                if changed_column or changed_position:
+                    create_notification(
+                        tenant_id=int(tenant_id),
+                        tieu_de="Task đã thay đổi",
+                        noi_dung=(
+                            f"{(wi.title or f'Task #{wi.id}')} • "
+                            f"{result.from_status} → {result.to_status} • "
+                            f"vị trí {result.from_position} → {result.to_position}"
+                        ),
+                        severity="info",
+                        status="new",
+                        entity_kind="work_item",
+                        entity_id=wi.id,
+                        company_id=wi.company_id,
+                        shop_id=getattr(wi, "shop_id", None),
+                        actor_id=actor_id,
+                        meta={
+                            "source": "work_move",
+                            "task_id": wi.id,
+                            "title": wi.title,
+                            "from_status": result.from_status,
+                            "to_status": result.to_status,
+                            "from_position": result.from_position,
+                            "to_position": result.to_position,
+                        },
+                    )
+            except Exception as e:
+                print("create_notification error:", e)
+
+            return result
 
         except WorkItem.DoesNotExist:
             raise ValueError(f"WorkItem {item_id} không tồn tại trong tenant {tenant_id}")
@@ -392,7 +398,7 @@ def move_work_item(
 
 
 # =====================================================
-# Backward-compat helpers (keep old imports alive)
+# Backward-compat helpers
 # =====================================================
 
 def _rank_to_int(rank: str) -> int:

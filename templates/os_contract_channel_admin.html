@@ -1,96 +1,408 @@
+{% extends "os/os_layout.html" %}
 {% load static %}
-<!doctype html>
-<html data-theme="dark">
-<head>
-<meta charset="utf-8">
-<title>Channel Content Studio</title>
-<link rel="stylesheet" href="{% static 'os/os.css' %}">
-</head>
 
-<body>
+{% block page_title %}Channel Content Studio • HeightTech OS{% endblock %}
+{% block body_page %}os-contract-channel-admin{% endblock %}
 
-<div class="page-wrap">
+{% block sidebar_brand_title %}Channel Content Studio{% endblock %}
+{% block sidebar_brand_sub %}Content admin workspace{% endblock %}
 
-<h2>Channel Content Studio</h2>
+{% block topbar_brand_title %}Channel Content Studio{% endblock %}
+{% block topbar_brand_sub %}Quản trị nội dung, kịch bản, air và metric theo hợp đồng{% endblock %}
 
-<div id="contentList"></div>
+{% block extra_head %}
+<style>
+  .hero-v2-compact{
+    padding:22px;
+  }
 
-<h3>Tạo nội dung</h3>
+  .hero-v2-right-mini{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
 
-<input id="title" placeholder="Tiêu đề video">
-<input id="pillar" placeholder="Trụ cột nội dung">
-<textarea id="script" placeholder="Kịch bản"></textarea>
+  .content-form-stack{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
 
-<button onclick="createContent()">Tạo nội dung</button>
+  .sync-actions-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
 
-</div>
+  .sync-status-box{
+    min-height:48px;
+    padding:12px 14px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.07);
+    background:rgba(255,255,255,.03);
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.6;
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
 
-<script>
+  .content-item-card{
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:16px;
+    background:rgba(255,255,255,.03);
+    padding:14px;
+  }
 
-const CONTRACT_ID = {{contract_id}}
+  .content-item-top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+  }
 
-async function loadContent(){
+  .content-item-title{
+    font-size:14px;
+    font-weight:900;
+    line-height:1.45;
+  }
 
- const r = await fetch(`/api/v1/contracts/${CONTRACT_ID}/channel-content/`)
- const d = await r.json()
+  .content-item-script{
+    margin-top:10px;
+    font-size:13px;
+    line-height:1.7;
+    color:var(--text-soft);
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
 
- document.getElementById("contentList").innerHTML =
-  d.items.map(x => `
-  <div style="border:1px solid #333;padding:12px;margin:8px 0">
-    <b>${x.title}</b> (${x.status})
-    <div>${x.script_text || ""}</div>
+  .content-item-meta{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:10px;
+  }
 
-    <button onclick="markAired(${x.id})">Đã air</button>
+  .content-item-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:12px;
+  }
 
-    <button onclick="addMetric(${x.id})">Nhập view</button>
+  .content-empty{
+    border:1px dashed rgba(255,255,255,.10);
+    border-radius:16px;
+    padding:18px;
+    text-align:center;
+    color:var(--muted);
+    background:rgba(255,255,255,.02);
+  }
+
+  @media (max-width: 768px){
+    .hero-v2-right-mini{
+      grid-template-columns:1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block main_content %}
+<section class="hero-v2 hero-v2-compact">
+  <div class="hero-v2-left">
+    <div class="hero-kicker">CHANNEL CONTENT STUDIO</div>
+    <h1 class="hero-v2-title">Quản trị nội dung theo hợp đồng</h1>
+
+    <p class="hero-v2-desc">
+      Tạo nội dung mới, theo dõi trạng thái video, đánh dấu đã air và nhập metric
+      ngay trong một workspace gọn, rõ và đồng bộ với HeightTech OS.
+    </p>
+
+    <div class="hero-actions">
+      <a class="btn" href="/os/">Về OS</a>
+      <a class="btn" href="/os/contracts/">Hợp đồng</a>
+      <a class="btn" href="/os/contracts/{{ contract_id }}/content/">Content Studio</a>
+    </div>
   </div>
-  `).join("")
-}
 
-async function createContent(){
+  <div class="hero-v2-right hero-v2-right-mini">
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Contract</div>
+      <div class="hero-stat-value">#{{ contract_id }}</div>
+    </div>
 
- const payload = {
-  title: document.getElementById("title").value,
-  script_text: document.getElementById("script").value,
-  content_pillar: document.getElementById("pillar").value
- }
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Content Items</div>
+      <div class="hero-stat-value" id="contentCount">0</div>
+    </div>
+  </div>
+</section>
 
- await fetch(`/api/v1/contracts/${CONTRACT_ID}/channel-content/create/`,{
-  method:"POST",
-  headers:{'Content-Type':'application/json'},
-  body:JSON.stringify(payload)
- })
+<section class="grid">
+  <div class="card span2">
+    <div class="card-h">
+      <div>
+        <div class="card-title">Danh sách nội dung</div>
+        <div class="brand-sub">Video / script / trạng thái / hành động nhanh</div>
+      </div>
+      <div class="card-meta">
+        <button class="btn mini" type="button" onclick="loadContent()">Làm mới</button>
+      </div>
+    </div>
 
- loadContent()
-}
+    <div class="card-b">
+      <div id="contentList" class="list"></div>
+    </div>
+  </div>
 
-async function markAired(id){
+  <div class="card">
+    <div class="card-h">
+      <div>
+        <div class="card-title">Tạo nội dung mới</div>
+        <div class="brand-sub">Khởi tạo video / idea / script cho hợp đồng này</div>
+      </div>
+    </div>
 
- await fetch(`/api/v1/channel-content/${id}/update/`,{
-  method:"POST",
-  headers:{'Content-Type':'application/json'},
-  body:JSON.stringify({aired:true})
- })
+    <div class="card-b">
+      <div class="content-form-stack">
+        <div class="task-field">
+          <label for="title">Tiêu đề video</label>
+          <input id="title" class="input" placeholder="VD: Hook 3 giây cho video ads" />
+        </div>
 
- loadContent()
-}
+        <div class="task-field">
+          <label for="pillar">Trụ cột nội dung</label>
+          <input id="pillar" class="input" placeholder="VD: review, pain point, chuyển đổi..." />
+        </div>
 
-async function addMetric(id){
+        <div class="task-field">
+          <label for="script">Kịch bản</label>
+          <textarea id="script" class="input" rows="8" placeholder="Nhập script nội dung..."></textarea>
+        </div>
 
- const view = prompt("Views hôm nay")
+        <div class="sync-actions-row">
+          <button class="btn primary" type="button" onclick="createContent()">Tạo nội dung</button>
+        </div>
 
- await fetch(`/api/v1/channel-content/${id}/metric/`,{
-  method:"POST",
-  headers:{'Content-Type':'application/json'},
-  body:JSON.stringify({views:view})
- })
+        <div id="channelStatus" class="sync-status-box"></div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
 
- alert("Đã lưu metric")
-}
+{% block extra_js %}
+<script>
+  const CONTRACT_ID = {{ contract_id }};
 
-loadContent()
+  function getCookie(name) {
+    const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
+    return m ? decodeURIComponent(m[2]) : "";
+  }
 
+  function authHeaders(extra = {}) {
+    const headers = Object.assign({}, extra || {});
+    const csrf = getCookie("csrftoken");
+    if (csrf) headers["X-CSRFToken"] = csrf;
+    return headers;
+  }
+
+  async function readJsonSafe(res) {
+    const ct = res.headers.get("content-type") || "";
+    if (ct.includes("application/json")) return await res.json();
+    const txt = await res.text();
+    throw new Error(txt || `HTTP ${res.status}`);
+  }
+
+  function esc(v){
+    return String(v ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function setStatus(msg, type = "info") {
+    const el = document.getElementById("channelStatus");
+    if (!el) return;
+
+    el.textContent = msg || "";
+    el.style.color =
+      type === "err" ? "#ff8f9c" :
+      type === "ok" ? "#8fe3a1" :
+      "#8ab4ff";
+  }
+
+  function statusClass(status) {
+    const s = String(status || "").toLowerCase();
+    if (["done", "aired", "published", "live"].includes(s)) return "priority-good";
+    if (["warning", "pending", "draft"].includes(s)) return "priority-warning";
+    if (["blocked", "cancelled", "failed"].includes(s)) return "priority-critical";
+    return "priority-info";
+  }
+
+  async function loadContent() {
+    try {
+      const r = await fetch(`/api/v1/contracts/${CONTRACT_ID}/channel-content/`, {
+        credentials: "include",
+        headers: authHeaders(),
+        cache: "no-store"
+      });
+
+      const d = await readJsonSafe(r);
+      const items = Array.isArray(d.items) ? d.items : [];
+      const box = document.getElementById("contentList");
+      const countEl = document.getElementById("contentCount");
+
+      if (countEl) countEl.textContent = String(items.length);
+
+      if (!items.length) {
+        box.innerHTML = `<div class="content-empty">Chưa có nội dung nào cho hợp đồng này.</div>`;
+        return;
+      }
+
+      box.innerHTML = items.map(x => `
+        <div class="content-item-card">
+          <div class="content-item-top">
+            <div>
+              <div class="content-item-title">${esc(x.title || "Untitled content")}</div>
+              <div class="content-item-meta">
+                <span class="task-badge ${statusClass(x.status)}">Status: ${esc(x.status || "-")}</span>
+                ${x.content_pillar ? `<span class="task-badge">Pillar: ${esc(x.content_pillar)}</span>` : ""}
+                <span class="task-badge">#${esc(x.id)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="content-item-script">${esc(x.script_text || "Chưa có script")}</div>
+
+          <div class="content-item-actions">
+            <button class="btn mini" type="button" onclick="markAired(${x.id})">Đã air</button>
+            <button class="btn mini" type="button" onclick="addMetric(${x.id})">Nhập view</button>
+          </div>
+        </div>
+      `).join("");
+    } catch (err) {
+      document.getElementById("contentList").innerHTML =
+        `<div class="content-empty">Load content lỗi: ${esc(err.message || err)}</div>`;
+    }
+  }
+
+  async function createContent() {
+    const title = document.getElementById("title").value.trim();
+    const script = document.getElementById("script").value.trim();
+    const pillar = document.getElementById("pillar").value.trim();
+
+    if (!title) {
+      setStatus("Thiếu tiêu đề video", "err");
+      return;
+    }
+
+    const payload = {
+      title: title,
+      script_text: script,
+      content_pillar: pillar
+    };
+
+    setStatus("Đang tạo nội dung...", "info");
+
+    try {
+      const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/channel-content/create/`, {
+        method: "POST",
+        credentials: "include",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(payload)
+      });
+
+      const data = await readJsonSafe(res);
+
+      if (!res.ok) {
+        setStatus(data.message || "Tạo nội dung lỗi", "err");
+        return;
+      }
+
+      document.getElementById("title").value = "";
+      document.getElementById("script").value = "";
+      document.getElementById("pillar").value = "";
+
+      setStatus("Đã tạo nội dung thành công", "ok");
+      await loadContent();
+    } catch (err) {
+      setStatus("Tạo nội dung lỗi: " + (err.message || err), "err");
+    }
+  }
+
+  async function markAired(id) {
+    setStatus(`Đang cập nhật nội dung #${id}...`, "info");
+
+    try {
+      const res = await fetch(`/api/v1/channel-content/${id}/update/`, {
+        method: "POST",
+        credentials: "include",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ aired: true })
+      });
+
+      const data = await readJsonSafe(res);
+
+      if (!res.ok) {
+        setStatus(data.message || "Cập nhật air lỗi", "err");
+        return;
+      }
+
+      setStatus(`Đã đánh dấu content #${id} là đã air`, "ok");
+      await loadContent();
+    } catch (err) {
+      setStatus("Lỗi update air: " + (err.message || err), "err");
+    }
+  }
+
+  async function addMetric(id) {
+    const view = prompt("Views hôm nay");
+    if (view === null) return;
+
+    setStatus(`Đang lưu metric cho content #${id}...`, "info");
+
+    try {
+      const res = await fetch(`/api/v1/channel-content/${id}/metric/`, {
+        method: "POST",
+        credentials: "include",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ views: view })
+      });
+
+      const data = await readJsonSafe(res);
+
+      if (!res.ok) {
+        setStatus(data.message || "Lưu metric lỗi", "err");
+        return;
+      }
+
+      setStatus(`Đã lưu metric cho content #${id}`, "ok");
+    } catch (err) {
+      setStatus("Lưu metric lỗi: " + (err.message || err), "err");
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const titleEl = document.getElementById("title");
+    const scriptEl = document.getElementById("script");
+
+    titleEl?.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        createContent();
+      }
+    });
+
+    scriptEl?.addEventListener("keydown", function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        createContent();
+      }
+    });
+
+    loadContent();
+  });
 </script>
-
-</body>
-</html>
+{% endblock %}

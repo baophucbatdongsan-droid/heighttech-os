@@ -1,186 +1,295 @@
+{% extends "os/os_layout.html" %}
 {% load static %}
-<!doctype html>
-<html lang="vi" data-theme="dark">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Content ↔ Work Sync</title>
-  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=28" />
-  <style>
-    .page-wrap{max-width:980px;margin:0 auto;padding:24px;}
-    .page-title{font-size:28px;font-weight:900;}
-    .page-sub{color:var(--muted);margin-top:6px;line-height:1.5;}
-    .cardx{
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:18px;
-      background:rgba(255,255,255,.03);
-      padding:18px;
-      margin-top:20px;
+
+{% block page_title %}Content ↔ Work Sync • HeightTech OS{% endblock %}
+{% block body_page %}os-content-work-sync{% endblock %}
+
+{% block sidebar_brand_title %}Content Work Sync{% endblock %}
+{% block sidebar_brand_sub %}Task ↔ Content sync{% endblock %}
+
+{% block topbar_brand_title %}Content Work Sync{% endblock %}
+{% block topbar_brand_sub %}Đồng bộ trạng thái task và content trong vòng vận hành khép kín{% endblock %}
+
+{% block extra_head %}
+<style>
+  .hero-v2-compact{
+    padding:22px;
+  }
+
+  .hero-v2-right-mini{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .sync-form-wrap{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+
+  .sync-actions-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .sync-status-box{
+    min-height:48px;
+    padding:12px 14px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.07);
+    background:rgba(255,255,255,.03);
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.6;
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
+
+  @media (max-width: 768px){
+    .hero-v2-right-mini{
+      grid-template-columns:1fr;
     }
-    .status-line{
-      margin-top:14px;
-      font-size:13px;
-      min-height:20px;
-      color:var(--muted);
-      line-height:1.5;
-      white-space:pre-wrap;
-      word-break:break-word;
-    }
-  </style>
-</head>
-<body>
-  <div class="page-wrap">
-    <div class="page-title">Content ↔ Work Sync</div>
-    <div class="page-sub">
-      Đồng bộ ngược từ task của team về trạng thái content để tạo vòng vận hành khép kín.
-    </div>
+  }
+</style>
+{% endblock %}
 
-    <div class="cardx">
-      <div class="muted" style="margin-bottom:8px;">WorkItem ID</div>
-      <input id="workitemId" class="input" placeholder="VD: 3 hoặc #3" />
+{% block main_content %}
+<section class="hero-v2 hero-v2-compact">
+  <div class="hero-v2-left">
+    <div class="hero-kicker">CONTENT ↔ WORK SYNC</div>
+    <h1 class="hero-v2-title">Đồng bộ task về Content Studio</h1>
 
-      <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
-        <button class="btn primary" type="button" onclick="syncContent()">Sync content từ task</button>
+    <p class="hero-v2-desc">
+      Dùng màn này để sync ngược từ task của team về trạng thái content,
+      giúp vòng vận hành giữa sản xuất nội dung và khu làm việc luôn khép kín, rõ trạng thái và đúng luồng.
+    </p>
 
-        {% if contract_id %}
-          <a class="btn" href="/os/contracts/{{ contract_id }}/content/">Về Content Studio</a>
-        {% endif %}
-      </div>
+    <div class="hero-actions">
+      <a class="btn" href="/os/">Về OS</a>
 
-      <div id="syncStatus" class="status-line"></div>
+      {% if contract_id %}
+        <a class="btn" href="/os/contracts/{{ contract_id }}/content/">Về Content Studio</a>
+      {% endif %}
     </div>
   </div>
 
-  <script>
-    const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
-    const CONTRACT_ID = "{{ contract_id|default:''|escapejs }}".trim();
-    const PRESET_CONTENT_ID = "{{ request.GET.content_id|default:''|escapejs }}".trim();
+  <div class="hero-v2-right hero-v2-right-mini">
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Module</div>
+      <div class="hero-stat-value">Sync</div>
+    </div>
 
-    function getCookie(name) {
-      const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
-      return m ? decodeURIComponent(m[2]) : "";
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Contract</div>
+      <div class="hero-stat-value">
+        {% if contract_id %}#{{ contract_id }}{% else %}-{% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="grid">
+  <div class="card span2">
+    <div class="card-h">
+      <div>
+        <div class="card-title">Content ↔ Work Sync</div>
+        <div class="brand-sub">
+          Đồng bộ ngược từ task của team về trạng thái content để tạo vòng vận hành khép kín.
+        </div>
+      </div>
+    </div>
+
+    <div class="card-b">
+      <div class="sync-form-wrap">
+        <div class="task-field">
+          <label for="workitemId">WorkItem ID</label>
+          <input id="workitemId" class="input" placeholder="VD: 3 hoặc #3" />
+        </div>
+
+        <div class="sync-actions-row">
+          <button class="btn primary" type="button" onclick="syncContent()">Sync content từ task</button>
+
+          {% if contract_id %}
+            <a class="btn" href="/os/contracts/{{ contract_id }}/content/">Về Content Studio</a>
+          {% endif %}
+        </div>
+
+        <div class="sync-status-box" id="syncStatus"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">
+      <div class="card-title">Hướng dẫn nhanh</div>
+    </div>
+
+    <div class="card-b">
+      <div class="task-activity-list">
+        <div class="task-activity-item">
+          <div class="t">Bước 1</div>
+          <div class="d">Nhập WorkItem ID hợp lệ từ Work OS.</div>
+        </div>
+
+        <div class="task-activity-item">
+          <div class="t">Bước 2</div>
+          <div class="d">Bấm sync để hệ thống cập nhật ngược trạng thái content.</div>
+        </div>
+
+        <div class="task-activity-item">
+          <div class="t">Bước 3</div>
+          <div class="d">Nếu xác định được contract/content đích, hệ thống sẽ tự chuyển sang Content Studio.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
+  const CONTRACT_ID = "{{ contract_id|default:''|escapejs }}".trim();
+  const PRESET_CONTENT_ID = "{{ request.GET.content_id|default:''|escapejs }}".trim();
+
+  function getCookie(name) {
+    const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
+    return m ? decodeURIComponent(m[2]) : "";
+  }
+
+  function authHeaders(extra = {}) {
+    const headers = Object.assign({}, extra || {});
+    if (CURRENT_TENANT_ID) headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
+    const csrf = getCookie("csrftoken");
+    if (csrf) headers["X-CSRFToken"] = csrf;
+    return headers;
+  }
+
+  async function readJsonSafe(res) {
+    const ct = res.headers.get("content-type") || "";
+
+    if (ct.includes("application/json")) {
+      return await res.json();
     }
 
-    function authHeaders(extra = {}) {
-      const headers = Object.assign({}, extra || {});
-      if (CURRENT_TENANT_ID) headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
-      const csrf = getCookie("csrftoken");
-      if (csrf) headers["X-CSRFToken"] = csrf;
-      return headers;
+    const txt = await res.text();
+    throw new Error(txt || `HTTP ${res.status}`);
+  }
+
+  function setStatus(msg, type = "info") {
+    const el = document.getElementById("syncStatus");
+    if (!el) return;
+
+    el.textContent = msg || "";
+    el.style.color =
+      type === "err" ? "#ff8f9c" :
+      type === "ok" ? "#8fe3a1" :
+      "#8ab4ff";
+  }
+
+  function normalizeWorkItemId(raw) {
+    return String(raw || "").trim().replace(/\D/g, "");
+  }
+
+  function resolveContentId(data) {
+    return String(
+      data?.content_id ||
+      data?.content?.id ||
+      data?.item?.content_id ||
+      data?.item?.id ||
+      PRESET_CONTENT_ID ||
+      ""
+    ).trim();
+  }
+
+  function resolveContractId(data) {
+    return String(
+      CONTRACT_ID ||
+      data?.contract_id ||
+      data?.content?.contract_id ||
+      data?.item?.contract_id ||
+      ""
+    ).trim();
+  }
+
+  function nextStudioUrl(contractId, contentId) {
+    if (!contractId) return "";
+    const p = new URLSearchParams();
+    if (contentId) p.set("content_id", contentId);
+    const qs = p.toString();
+    return `/os/contracts/${encodeURIComponent(contractId)}/content/${qs ? `?${qs}` : ""}`;
+  }
+
+  async function syncContent() {
+    const rawInput = document.getElementById("workitemId")?.value || "";
+    const workitemId = normalizeWorkItemId(rawInput);
+
+    if (!workitemId) {
+      setStatus("Thiếu WorkItem ID hợp lệ", "err");
+      return;
     }
 
-    async function readJsonSafe(res) {
-      const ct = res.headers.get("content-type") || "";
+    setStatus("Đang sync content từ task...", "info");
 
-      if (ct.includes("application/json")) {
-        return await res.json();
-      }
+    try {
+      const res = await fetch(`/api/v1/work-items/${workitemId}/sync-content/`, {
+        method: "POST",
+        credentials: "include",
+        headers: authHeaders({
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest"
+        }),
+        body: JSON.stringify({})
+      });
 
-      const txt = await res.text();
-      throw new Error(txt || `HTTP ${res.status}`);
-    }
+      const data = await readJsonSafe(res);
 
-    function setStatus(msg, type = "info") {
-      const el = document.getElementById("syncStatus");
-      el.textContent = msg || "";
-      el.style.color =
-        type === "err" ? "#ff8f9c" :
-        type === "ok" ? "#8fe3a1" :
-        "#8ab4ff";
-    }
-
-    function normalizeWorkItemId(raw) {
-      return String(raw || "").trim().replace(/\D/g, "");
-    }
-
-    function resolveContentId(data) {
-      return String(
-        data?.content_id ||
-        data?.content?.id ||
-        data?.item?.content_id ||
-        data?.item?.id ||
-        PRESET_CONTENT_ID ||
-        ""
-      ).trim();
-    }
-
-    function resolveContractId(data) {
-      return String(
-        CONTRACT_ID ||
-        data?.contract_id ||
-        data?.content?.contract_id ||
-        data?.item?.contract_id ||
-        ""
-      ).trim();
-    }
-
-    function nextStudioUrl(contractId, contentId) {
-      if (!contractId) return "";
-      const p = new URLSearchParams();
-      if (contentId) p.set("content_id", contentId);
-      const qs = p.toString();
-      return `/os/contracts/${encodeURIComponent(contractId)}/content/${qs ? `?${qs}` : ""}`;
-    }
-
-    async function syncContent() {
-      const rawInput = document.getElementById("workitemId").value || "";
-      const workitemId = normalizeWorkItemId(rawInput);
-
-      if (!workitemId) {
-        setStatus("Thiếu WorkItem ID hợp lệ", "err");
+      if (!res.ok || !data.ok) {
+        setStatus(data.message || "Sync thất bại", "err");
         return;
       }
 
-      setStatus("Đang sync content từ task...", "info");
+      const contentId = resolveContentId(data);
+      const contractId = resolveContractId(data);
+      const studioUrl = nextStudioUrl(contractId, contentId);
 
-      try {
-        const res = await fetch(`/api/v1/work-items/${workitemId}/sync-content/`, {
-          method: "POST",
-          credentials: "include",
-          headers: authHeaders({
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "X-Requested-With": "XMLHttpRequest"
-          }),
-          body: JSON.stringify({})
-        });
+      console.log("SYNC RESULT", {
+        contractId,
+        contentId,
+        studioUrl,
+        data
+      });
 
-        const data = await readJsonSafe(res);
+      setStatus(
+        `Đã sync thành công. Content #${contentId || "?"} → status = ${data.content_status || "-"}. Đang chuyển sang Content Studio...`,
+        "ok"
+      );
 
-        if (!res.ok || !data.ok) {
-          setStatus(data.message || "Sync thất bại", "err");
-          return;
-        }
-
-        const contentId = resolveContentId(data);
-        const contractId = resolveContractId(data);
-        const studioUrl = nextStudioUrl(contractId, contentId);
-
-        console.log("SYNC RESULT", {
-          contractId,
-          contentId,
-          studioUrl,
-          data
-        });
-
-        setStatus(
-          `Đã sync thành công. Content #${contentId || "?"} → status = ${data.content_status || "-"}. Đang chuyển sang Content Studio...`,
-          "ok"
-        );
-
-        if (studioUrl) {
-          window.location.href = studioUrl;
-          return;
-        }
-
-        setStatus(
-          `Đã sync thành công nhưng chưa xác định được trang đích. contract_id=${contractId || "-"} • content_id=${contentId || "-"}`,
-          "err"
-        );
-      } catch (err) {
-        setStatus("Lỗi sync: " + (err.message || err), "err");
+      if (studioUrl) {
+        window.location.href = studioUrl;
+        return;
       }
+
+      setStatus(
+        `Đã sync thành công nhưng chưa xác định được trang đích. contract_id=${contractId || "-"} • content_id=${contentId || "-"}`,
+        "err"
+      );
+    } catch (err) {
+      setStatus("Lỗi sync: " + (err.message || err), "err");
     }
-  </script>
-</body>
-</html>
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("workitemId");
+    if (!input) return;
+
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        syncContent();
+      }
+    });
+  });
+</script>
+{% endblock %}

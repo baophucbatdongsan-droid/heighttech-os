@@ -1,45 +1,175 @@
+{% extends "os/os_layout.html" %}
 {% load static %}
-<!doctype html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{% if company %}{{ company.name }}{% else %}Company{% endif %} • HeightTech OS</title>
-  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=50">
-  <style>
-    .page-wrap{max-width:1200px;margin:0 auto;padding:24px}
-    .page-title{font-size:28px;font-weight:900}
-    .page-sub{color:var(--muted);margin-top:6px;line-height:1.6}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:20px}
-    .card-link{
-      display:block;
-      padding:18px;
-      border-radius:16px;
-      border:1px solid rgba(255,255,255,.08);
-      background:rgba(255,255,255,.03);
-      text-decoration:none;
-      color:inherit;
+
+{% block page_title %}
+  {% if company %}{{ company.name }}{% else %}Company{% endif %} • HeightTech OS
+{% endblock %}
+
+{% block body_page %}os-company-workspace{% endblock %}
+
+{% block sidebar_brand_title %}Company Workspace{% endblock %}
+{% block sidebar_brand_sub %}Company / Partner hub{% endblock %}
+
+{% block topbar_brand_title %}Company Workspace{% endblock %}
+{% block topbar_brand_sub %}Company / Partner hub • Shops • SKU • Contracts • Work OS{% endblock %}
+
+{% block extra_head %}
+<style>
+  .hero-v2-compact{
+    padding:22px;
+  }
+
+  .hero-v2-right-mini{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .workspace-link-grid{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:14px;
+  }
+
+  .workspace-link-card{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    min-height:180px;
+    padding:18px;
+    border-radius:18px;
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(255,255,255,.03);
+    transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease;
+  }
+
+  .workspace-link-card:hover{
+    transform:translateY(-2px);
+    border-color:var(--line-strong);
+    box-shadow:var(--shadow-soft);
+    background:rgba(255,255,255,.045);
+  }
+
+  .workspace-link-icon{
+    font-size:28px;
+    line-height:1;
+  }
+
+  .workspace-link-title{
+    font-size:18px;
+    font-weight:900;
+    line-height:1.2;
+  }
+
+  .workspace-link-sub{
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.65;
+  }
+
+  @media (max-width: 1200px){
+    .workspace-link-grid{
+      grid-template-columns:repeat(2,minmax(0,1fr));
     }
-    .card-link:hover{transform:translateY(-1px)}
-  </style>
-</head>
-<body>
-  <div class="page-wrap">
-    <div class="page-title">
-      {% if company %}{{ company.name }}{% else %}Không tìm thấy Công Ty / Đối Tác{% endif %}
+  }
+
+  @media (max-width: 768px){
+    .hero-v2-right-mini{
+      grid-template-columns:1fr;
+    }
+
+    .workspace-link-grid{
+      grid-template-columns:1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block main_content %}
+<section class="hero-v2 hero-v2-compact">
+  <div class="hero-v2-left">
+    <div class="hero-kicker">COMPANY WORKSPACE</div>
+
+    <h1 class="hero-v2-title">
+      {% if company %}
+        {{ company.name }}
+      {% else %}
+        Không tìm thấy Công Ty / Đối Tác
+      {% endif %}
+    </h1>
+
+    <p class="hero-v2-desc">
+      Workspace của Công Ty / Đối Tác trong HeightTech OS —
+      nơi gom shop, SKU, hợp đồng và khu làm việc theo cùng một ngữ cảnh vận hành.
+    </p>
+
+    <div class="hero-actions">
+      <a class="btn" href="/os/">Về OS</a>
+      {% if company %}
+        <a class="btn primary" href="/work/?scope=company&company_id={{ company.id }}">Vào Khu làm việc</a>
+        <a class="btn" href="/os/contracts/?company_id={{ company.id }}">Hợp đồng</a>
+      {% endif %}
     </div>
-    <div class="page-sub">
-      Workspace của Công Ty / Đối Tác trong HeightTech OS.
+  </div>
+
+  <div class="hero-v2-right hero-v2-right-mini">
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Scope</div>
+      <div class="hero-stat-value">Company</div>
     </div>
 
-    {% if company %}
-    <div class="grid">
-    <a class="card-link" href="/os/shops/?company_id={{ company.id }}">Shop</a>
-    <a class="card-link" href="/os/sku/?company_id={{ company.id }}">SKU</a>
-    <a class="card-link" href="/os/contracts/?company_id={{ company.id }}">Hợp đồng</a>
-    <a class="card-link" href="/work/?scope=company&company_id={{ company.id }}">Khu làm việc</a>
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Company ID</div>
+      <div class="hero-stat-value">
+        {% if company %}{{ company.id }}{% else %}-{% endif %}
+      </div>
     </div>
-    {% endif %}
   </div>
-</body>
-</html>
+</section>
+
+<section class="grid">
+  <div class="card span3">
+    <div class="card-h">
+      <div>
+        <div class="card-title">Company Workspace</div>
+        <div class="brand-sub">
+          Các lối vào chính cho toàn bộ vận hành của công ty / đối tác này
+        </div>
+      </div>
+    </div>
+
+    <div class="card-b">
+      {% if company %}
+        <div class="workspace-link-grid">
+          <a class="workspace-link-card" href="/os/shops/?company_id={{ company.id }}">
+            <div class="workspace-link-icon">🏪</div>
+            <div class="workspace-link-title">Shop</div>
+            <div class="workspace-link-sub">Quản lý toàn bộ shop thuộc công ty này</div>
+          </a>
+
+          <a class="workspace-link-card" href="/os/sku/?company_id={{ company.id }}">
+            <div class="workspace-link-icon">📦</div>
+            <div class="workspace-link-title">SKU</div>
+            <div class="workspace-link-sub">Theo dõi SKU, sản phẩm và vận hành bán hàng</div>
+          </a>
+
+          <a class="workspace-link-card" href="/os/contracts/?company_id={{ company.id }}">
+            <div class="workspace-link-icon">📄</div>
+            <div class="workspace-link-title">Hợp đồng</div>
+            <div class="workspace-link-sub">Xem hợp đồng, milestone, payment và timeline</div>
+          </a>
+
+          <a class="workspace-link-card" href="/work/?scope=company&company_id={{ company.id }}">
+            <div class="workspace-link-icon">🧩</div>
+            <div class="workspace-link-title">Khu làm việc</div>
+            <div class="workspace-link-sub">Task, kanban, comment và daily execution theo company</div>
+          </a>
+        </div>
+      {% else %}
+        <div class="item">
+          <div class="t">Không tìm thấy công ty / đối tác</div>
+          <div class="d">Kiểm tra lại dữ liệu hoặc đường dẫn truy cập.</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,34 +1,134 @@
+{% extends "os/os_layout.html" %}
 {% load static %}
-<!doctype html>
-<html lang="vi" data-theme="dark">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>HeightTech Work</title>
-  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=26" />
-</head>
-<body>
-  <div id="os-root"></div>
 
-  <script>
-    window.HT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}";
+{% block page_title %}HeightTech Work{% endblock %}
+{% block body_page %}os-work-page{% endblock %}
 
-    window.HT_OS = {
-      workInbox: "/api/v1/os/work/inbox/",
-      workCreate: "/api/v1/os/work/create/",
-      workAssignBase: "/api/v1/os/work/",
-      workUpdateBase: "/api/v1/os/work/",
-      workCommentsBase: "/api/v1/os/work/",
-      workAssignBy: "/api/v1/os/work/assign-by/",
-      notifications: "/api/v1/os/notifications/",
-      timeline: "/api/v1/os/timeline/",
-      home: "/api/v1/os/home/",
-      controlCenter: "/api/v1/os/control-center/",
-      stream: "/api/v1/os/stream/",
-      commandCenter: "/api/v1/os/command/"
-    };
-  </script>
+{% block sidebar_brand_title %}HeightTech OS{% endblock %}
+{% block sidebar_brand_sub %}Commerce Control Center{% endblock %}
 
-  <script src="{% static 'os/work.js' %}?v=26"></script>
-</body>
-</html>
+{% block topbar_brand_title %}HeightTech Work{% endblock %}
+{% block topbar_brand_sub %}Daily workspace • Kanban • Timeline • Notifications{% endblock %}
+
+{% block search_placeholder %}Tìm task / comment / assignee / shop / project{% endblock %}
+
+{% block extra_head %}
+<style>
+  .hero-v2-compact{
+    padding:22px;
+  }
+
+  .hero-v2-right-mini{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .work-shell-host-wrap{
+    padding:0;
+    overflow:hidden;
+  }
+
+  #os-root{
+    min-height:70vh;
+  }
+
+  @media (max-width: 920px){
+    .hero-v2-right-mini{
+      grid-template-columns:1fr;
+    }
+  }
+
+  @media (max-width: 768px){
+    #os-root{
+      min-height:60vh;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block main_content %}
+<section class="hero-v2 hero-v2-compact">
+  <div class="hero-v2-left">
+    <div class="hero-kicker">WORKSPACE OS</div>
+    <h1 class="hero-v2-title">Khu làm việc điều hành</h1>
+    <p class="hero-v2-desc">
+      Một nơi để team theo dõi task, giao việc, comment, chuyển bước, xem timeline
+      và xử lý thông báo trong cùng một luồng vận hành thống nhất.
+    </p>
+
+    <div class="hero-actions">
+      <a class="btn" href="/os/">← Về OS</a>
+      <button class="btn primary" type="button" id="workShellMountBtn">Mở workspace</button>
+    </div>
+  </div>
+
+  <div class="hero-v2-right hero-v2-right-mini">
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Tenant</div>
+      <div class="hero-stat-value" id="workHeroTenant">{{ current_tenant_id|default:"-" }}</div>
+    </div>
+
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Realtime</div>
+      <div class="hero-stat-value">on</div>
+    </div>
+
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Work Mode</div>
+      <div class="hero-stat-value">Kanban</div>
+    </div>
+
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">OS Sync</div>
+      <div class="hero-stat-value">live</div>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-h">
+    <div>
+      <div class="card-title">Workspace Shell</div>
+      <div class="brand-sub">
+        Toàn bộ giao diện động của Work OS sẽ mount vào đây bằng <code>work.js</code>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-b work-shell-host-wrap">
+    <div id="os-root"></div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  window.HT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}";
+
+  window.HT_OS = {
+    workInbox: "/api/v1/os/work/inbox/",
+    workCreate: "/api/v1/os/work/create/",
+    workAssignBase: "/api/v1/os/work/",
+    workUpdateBase: "/api/v1/os/work/",
+    workCommentsBase: "/api/v1/os/work/",
+    workAssignBy: "/api/v1/os/work/assign-by/",
+    notifications: "/api/v1/os/notifications/",
+    timeline: "/api/v1/os/timeline/",
+    home: "/api/v1/os/home/",
+    controlCenter: "/api/v1/os/control-center/",
+    stream: "/api/v1/os/stream/",
+    commandCenter: "/api/v1/os/command/"
+  };
+
+  (function(){
+    var btn = document.getElementById("workShellMountBtn");
+    var root = document.getElementById("os-root");
+    if (btn && root) {
+      btn.addEventListener("click", function(){
+        root.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  })();
+</script>
+
+<script src="{% static 'os/work.js' %}?v=26"></script>
+{% endblock %}

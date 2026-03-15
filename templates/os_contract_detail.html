@@ -1,1071 +1,1177 @@
+{% extends "os/os_layout.html" %}
 {% load static %}
-<!doctype html>
-<html lang="vi" data-theme="dark">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>HeightTech OS • Chi tiết hợp đồng</title>
-  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=20" />
-  <style>
-    .page-wrap{max-width:1280px;margin:0 auto;padding:24px;}
-    .page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
-    .page-title{font-size:28px;font-weight:900;}
-    .page-sub{color:var(--muted);margin-top:6px;line-height:1.5;}
-    .tenant-pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:8px 12px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.08);
-      background:rgba(255,255,255,.04);
-      font-size:12px;
-      color:var(--muted);
-      margin-top:8px;
+
+{% block page_title %}Chi tiết hợp đồng • HeightTech OS{% endblock %}
+{% block body_page %}os-contract-detail{% endblock %}
+
+{% block sidebar_brand_title %}Contract Control Center{% endblock %}
+{% block sidebar_brand_sub %}Theo dõi milestone, payment, booking, air / payout và tài nguyên gắn với hợp đồng{% endblock %}
+
+{% block topbar_brand_title %}Contract Control Center{% endblock %}
+{% block topbar_brand_sub %}Theo dõi milestone, payment, booking, air / payout và tài nguyên gắn với hợp đồng{% endblock %}
+
+{% block extra_head %}
+<style>
+  .hero-v2-compact{
+    padding:22px;
+  }
+
+  .hero-v2-right-mini{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .tenant-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 12px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(255,255,255,.04);
+    font-size:12px;
+    color:var(--muted);
+    margin-top:12px;
+    flex-wrap:wrap;
+  }
+
+  .contract-kpis{
+    grid-template-columns:repeat(6,minmax(0,1fr));
+  }
+
+  .contract-main-grid{
+    display:grid;
+    grid-template-columns:1.15fr .85fr;
+    gap:18px;
+  }
+
+  .stack{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+
+  .item{
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;
+    padding:12px;
+    background:rgba(255,255,255,.025);
+  }
+
+  .item-t{
+    font-weight:800;
+  }
+
+  .item-d{
+    font-size:13px;
+    color:var(--muted);
+    margin-top:4px;
+    line-height:1.6;
+  }
+
+  .row{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:8px;
+  }
+
+  .tag2{
+    padding:4px 10px;
+    border-radius:999px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.08);
+    font-size:12px;
+    display:inline-flex;
+    align-items:center;
+  }
+
+  .form-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+  }
+
+  .full{
+    grid-column:1 / -1;
+  }
+
+  .actions-row{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:12px;
+  }
+
+  .actions-row.align-start{
+    justify-content:flex-start;
+  }
+
+  .state-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:10px;
+  }
+
+  .soft-btn{
+    appearance:none;
+    border:none;
+    cursor:pointer;
+    padding:6px 10px;
+    border-radius:999px;
+    background:rgba(255,255,255,.07);
+    color:#fff;
+    border:1px solid rgba(255,255,255,.08);
+    font-size:12px;
+  }
+
+  .soft-btn:hover{
+    background:rgba(255,255,255,.12);
+  }
+
+  .status-box{
+    min-height:22px;
+    margin-top:12px;
+    font-size:13px;
+    line-height:1.5;
+    color:var(--muted);
+  }
+
+  .empty-box{
+    border:1px dashed rgba(255,255,255,.10);
+    border-radius:14px;
+    padding:14px;
+    color:var(--muted);
+    font-size:13px;
+    background:rgba(255,255,255,.02);
+  }
+
+  .attach-box{
+    margin-top:14px;
+    padding-top:14px;
+    border-top:1px dashed rgba(255,255,255,.10);
+  }
+
+  .attach-title{
+    font-size:14px;
+    font-weight:800;
+    margin-bottom:10px;
+  }
+
+  .attach-list{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-top:10px;
+  }
+
+  .attach-item{
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:12px;
+    padding:10px 12px;
+    background:rgba(255,255,255,.02);
+  }
+
+  .attach-name{
+    font-weight:700;
+  }
+
+  .attach-meta{
+    color:var(--muted);
+    font-size:12px;
+    margin-top:4px;
+  }
+
+  .attach-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:8px;
+  }
+
+  .attach-empty{
+    color:var(--muted);
+    font-size:13px;
+  }
+
+  .mt-12{
+    margin-top:12px;
+  }
+
+  .mt-14{
+    margin-top:14px;
+  }
+
+  @media (max-width: 1100px){
+    .contract-kpis{
+      grid-template-columns:repeat(2,minmax(0,1fr));
     }
 
-    .kpi-row{
-      display:grid;
-      grid-template-columns:repeat(6,minmax(0,1fr));
-      gap:12px;
-      margin-bottom:18px;
-    }
-    .kpi-card{
-      padding:14px;
-      border-radius:16px;
-      border:1px solid rgba(255,255,255,.08);
-      background:rgba(255,255,255,.03);
-    }
-    .kpi-k{font-size:12px;color:var(--muted);}
-    .kpi-v{font-size:24px;font-weight:900;margin-top:6px;}
-
-    .main-grid{
-      display:grid;
-      grid-template-columns:1.15fr .85fr;
-      gap:18px;
-    }
-
-    .section-card{
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:18px;
-      background:rgba(255,255,255,.03);
-    }
-    .section-head{
-      padding:14px 16px;
-      border-bottom:1px solid rgba(255,255,255,.06);
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-    }
-    .section-body{padding:16px;}
-    .stack{display:flex;flex-direction:column;gap:12px;}
-
-    .item{
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:14px;
-      padding:12px;
-      background:rgba(255,255,255,.025);
-    }
-    .item-t{font-weight:800;}
-    .item-d{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.5;}
-    .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
-
-    .tag2{
-      padding:4px 10px;
-      border-radius:999px;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.08);
-      font-size:12px;
+    .contract-main-grid{
+      grid-template-columns:1fr;
     }
 
     .form-grid{
-      display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
-      gap:10px;
+      grid-template-columns:1fr;
     }
-    .full{grid-column:1 / -1;}
+  }
 
-    .actions-row{
-      display:flex;
-      justify-content:flex-end;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-top:12px;
+  @media (max-width: 768px){
+    .hero-v2-right-mini{
+      grid-template-columns:1fr;
     }
 
-    .state-actions{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-top:10px;
+    .contract-kpis{
+      grid-template-columns:1fr;
     }
+  }
+</style>
+{% endblock %}
 
-    .soft-btn{
-      appearance:none;
-      border:none;
-      cursor:pointer;
-      padding:6px 10px;
-      border-radius:999px;
-      background:rgba(255,255,255,.07);
-      color:#fff;
-      border:1px solid rgba(255,255,255,.08);
-      font-size:12px;
-    }
-    .soft-btn:hover{background:rgba(255,255,255,.12);}
+{% block main_content %}
+<section class="hero-v2 hero-v2-compact">
+  <div class="hero-v2-left">
+    <div class="hero-kicker">CONTRACT CONTROL</div>
+    <h1 class="hero-v2-title">Contract Control Center</h1>
 
-    .status-box{
-      min-height:22px;
-      margin-top:12px;
-      font-size:13px;
-      line-height:1.5;
-      color:var(--muted);
-    }
+    <p class="hero-v2-desc">
+      Theo dõi milestone, payment, booking, air / chưa air, payout và toàn bộ tài nguyên
+      gắn với hợp đồng trong một giao diện điều hành thống nhất.
+    </p>
 
-    .empty-box{
-      border:1px dashed rgba(255,255,255,.10);
-      border-radius:14px;
-      padding:14px;
-      color:var(--muted);
-      font-size:13px;
-    }
+    <div class="hero-actions">
+      <a href="/os/contracts/" class="btn">← Danh sách hợp đồng</a>
+      <button class="btn primary" type="button" onclick="loadCenter()">Làm mới</button>
+      <a class="btn" href="/os/contracts/{{ contract_id }}/content/">Content Studio</a>
+    </div>
 
-    .attach-box{
-      margin-top:14px;
-      padding-top:14px;
-      border-top:1px dashed rgba(255,255,255,.10);
-    }
-    .attach-title{
-      font-size:14px;
-      font-weight:800;
-      margin-bottom:10px;
-    }
-    .attach-list{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      margin-top:10px;
-    }
-    .attach-item{
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:12px;
-      padding:10px 12px;
-      background:rgba(255,255,255,.02);
-    }
-    .attach-name{
-      font-weight:700;
-    }
-    .attach-meta{
-      color:var(--muted);
-      font-size:12px;
-      margin-top:4px;
-    }
-    .attach-actions{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-top:8px;
-    }
-    .attach-empty{
-      color:var(--muted);
-      font-size:13px;
-    }
+    <div class="tenant-pill">
+      Tenant hiện tại: <b id="tenantBadge">{{ current_tenant_id|default:"?" }}</b>
+      <span>•</span>
+      <span>Contract ID: <b>{{ contract_id }}</b></span>
+    </div>
+  </div>
 
-    @media (max-width: 1100px){
-      .kpi-row{grid-template-columns:repeat(2,minmax(0,1fr));}
-      .main-grid{grid-template-columns:1fr;}
-      .form-grid{grid-template-columns:1fr;}
-    }
-  </style>
-</head>
-<body>
-  <div class="page-wrap">
-    <div class="page-head">
-      <div>
-        <div class="page-title">Contract Control Center</div>
-        <div class="page-sub">
-          Theo dõi milestone, payment, booking, air / chưa air và payout của hợp đồng.
-        </div>
-        <div class="tenant-pill">
-          Tenant hiện tại: <b id="tenantBadge">{{ current_tenant_id|default:"?" }}</b>
-          <span>•</span>
-          <span>Contract ID: <b>{{ contract_id }}</b></span>
+  <div class="hero-v2-right hero-v2-right-mini">
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Milestones</div>
+      <div class="hero-stat-value" id="heroMilestones">0</div>
+    </div>
+
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Payments</div>
+      <div class="hero-stat-value" id="heroPayments">0</div>
+    </div>
+
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Bookings</div>
+      <div class="hero-stat-value" id="heroBookings">0</div>
+    </div>
+
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Aired</div>
+      <div class="hero-stat-value" id="heroAired">0</div>
+    </div>
+  </div>
+</section>
+
+<section class="work-kpis contract-kpis" id="headlineRow">
+  <div class="wkpi"><div class="wkpi-label">Milestone</div><div class="wkpi-value">0</div></div>
+  <div class="wkpi"><div class="wkpi-label">Đã xong</div><div class="wkpi-value">0</div></div>
+  <div class="wkpi"><div class="wkpi-label">Payment</div><div class="wkpi-value">0</div></div>
+  <div class="wkpi"><div class="wkpi-label">Đã thanh toán</div><div class="wkpi-value">0</div></div>
+  <div class="wkpi"><div class="wkpi-label">Booking</div><div class="wkpi-value">0</div></div>
+  <div class="wkpi"><div class="wkpi-label">Đã air</div><div class="wkpi-value">0</div></div>
+</section>
+
+<section class="contract-main-grid">
+  <div class="stack">
+    <div class="card">
+      <div class="card-h">
+        <div>
+          <div class="card-title">Tổng quan hợp đồng</div>
+          <div class="brand-sub">Thông tin core của hợp đồng</div>
         </div>
       </div>
 
-      <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <a href="/os/contracts/" class="btn">← Danh sách hợp đồng</a>
-        <button class="btn primary" type="button" onclick="loadCenter()">Làm mới</button>
+      <div class="card-b">
+        <div id="contractOverview"></div>
+
+        <div class="attach-box">
+          <div class="attach-title">File hợp đồng / phụ lục / báo giá</div>
+          <div class="actions-row align-start">
+            <input id="contractAttachmentInput" class="input" type="file" />
+            <button
+              class="btn primary"
+              type="button"
+              onclick="uploadEntityAttachment('contract', CONTRACT_ID, 'contractAttachmentInput', 'contractAttachmentList')"
+            >
+              Upload file
+            </button>
+          </div>
+          <div id="contractAttachmentList" class="attach-list"></div>
+        </div>
       </div>
     </div>
 
-    <div class="kpi-row" id="headlineRow"></div>
-
-    <div class="main-grid">
-      <div class="stack">
-        <div class="section-card">
-          <div class="section-head">
-            <div>
-              <div class="card-title">Tổng quan hợp đồng</div>
-              <div class="brand-sub">Thông tin core của hợp đồng</div>
-            </div>
-          </div>
-          <div class="section-body">
-            <div id="contractOverview"></div>
-
-            <div class="attach-box">
-              <div class="attach-title">File hợp đồng / phụ lục / báo giá</div>
-              <div class="actions-row" style="justify-content:flex-start;">
-                <input id="contractAttachmentInput" class="input" type="file" />
-                <button class="btn primary" type="button" onclick="uploadEntityAttachment('contract', CONTRACT_ID, 'contractAttachmentInput', 'contractAttachmentList')">
-                  Upload file
-                </button>
-              </div>
-              <div id="contractAttachmentList" class="attach-list"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="section-card">
-          <div class="section-head">
-            <div>
-              <div class="card-title">Milestone</div>
-              <div class="brand-sub">KPI / nghiệm thu / bàn giao / điều kiện thanh toán</div>
-            </div>
-          </div>
-          <div class="section-body">
-            <div class="form-grid">
-              <input id="ms_title" class="input" placeholder="Tiêu đề milestone" />
-              <select id="ms_kind" class="input">
-                <option value="kpi">KPI</option>
-                <option value="acceptance">Nghiệm thu</option>
-                <option value="delivery">Bàn giao</option>
-                <option value="payment_condition">Điều kiện thanh toán</option>
-                <option value="other">Khác</option>
-              </select>
-              <input id="ms_shop_id" class="input" placeholder="Shop ID (nếu có)" />
-              <input id="ms_sort_order" class="input" placeholder="Thứ tự" value="1" />
-              <input id="ms_due_at" class="input" type="datetime-local" />
-              <textarea id="ms_description" class="input full" style="min-height:80px;" placeholder="Mô tả milestone"></textarea>
-            </div>
-            <div class="actions-row">
-              <button class="btn primary" type="button" onclick="createMilestone()">Tạo milestone</button>
-            </div>
-            <div id="milestoneCreateStatus" class="status-box"></div>
-            <div id="milestoneList" class="stack" style="margin-top:14px;"></div>
-          </div>
-        </div>
-
-        <div class="section-card">
-          <div class="section-head">
-            <div>
-              <div class="card-title">Payment</div>
-              <div class="brand-sub">Dòng thanh toán theo milestone hoặc theo kỳ</div>
-            </div>
-          </div>
-          <div class="section-body">
-            <div class="form-grid">
-              <input id="pay_title" class="input" placeholder="Tiêu đề payment" />
-              <input id="pay_amount" class="input" placeholder="Số tiền trước VAT" />
-              <input id="pay_vat_percent" class="input" placeholder="VAT %" value="0" />
-              <input id="pay_milestone_id" class="input" placeholder="Milestone ID (nếu có)" />
-              <input id="pay_due_at" class="input" type="datetime-local" />
-              <textarea id="pay_note" class="input full" style="min-height:80px;" placeholder="Ghi chú payment"></textarea>
-            </div>
-            <div class="actions-row">
-              <button class="btn primary" type="button" onclick="createPayment()">Tạo payment</button>
-            </div>
-            <div id="paymentCreateStatus" class="status-box"></div>
-            <div id="paymentList" class="stack" style="margin-top:14px;"></div>
-          </div>
+    <div class="card">
+      <div class="card-h">
+        <div>
+          <div class="card-title">Milestone</div>
+          <div class="brand-sub">KPI / nghiệm thu / bàn giao / điều kiện thanh toán</div>
         </div>
       </div>
-      <div class="section-card">
-        <div class="section-head">
-          <div>
-            <div class="card-title">Docs / Sheets / Files</div>
-            <div class="brand-sub">Tài nguyên gắn với hợp đồng này</div>
-          </div>
+
+      <div class="card-b">
+        <div class="form-grid">
+          <input id="ms_title" class="input" placeholder="Tiêu đề milestone" />
+          <select id="ms_kind" class="input">
+            <option value="kpi">KPI</option>
+            <option value="acceptance">Nghiệm thu</option>
+            <option value="delivery">Bàn giao</option>
+            <option value="payment_condition">Điều kiện thanh toán</option>
+            <option value="other">Khác</option>
+          </select>
+          <input id="ms_shop_id" class="input" placeholder="Shop ID (nếu có)" />
+          <input id="ms_sort_order" class="input" placeholder="Thứ tự" value="1" />
+          <input id="ms_due_at" class="input" type="datetime-local" />
+          <textarea id="ms_description" class="input full" style="min-height:80px;" placeholder="Mô tả milestone"></textarea>
         </div>
 
-        <div class="section-body">
-          <div class="row" style="margin-top:0;">
-            <a class="btn primary" href="/os/docs/?linked_target_type=contract&linked_target_id={{ contract_id }}">Docs</a>
-            <a class="btn" href="/os/sheets/?linked_target_type=contract&linked_target_id={{ contract_id }}">Sheets</a>
-            <a class="btn" href="/os/files/">Files</a>
-          </div>
+        <div class="actions-row">
+          <button class="btn primary" type="button" onclick="createMilestone()">Tạo milestone</button>
+        </div>
 
-          <div style="height:14px;"></div>
+        <div id="milestoneCreateStatus" class="status-box"></div>
+        <div id="milestoneList" class="stack mt-14"></div>
+      </div>
+    </div>
 
-          <div class="stack">
-            <div class="item">
-              <div class="item-t">Document liên quan</div>
-              <div class="item-d">Tạo báo giá, proposal, hợp đồng online cho contract này.</div>
-              <div class="state-actions">
-                <button class="soft-btn" type="button" onclick="createQuickDoc()">+ Tạo doc nhanh</button>
-                <button class="soft-btn" type="button" onclick="loadLinkedDocs()">Làm mới docs</button>
-              </div>
-              <div id="linkedDocsBox" class="stack" style="margin-top:12px;"></div>
-            </div>
-
-            <div class="item">
-              <div class="item-t">Sheet liên quan</div>
-              <div class="item-d">Tạo KPI sheet, booking sheet, pricing sheet cho contract này.</div>
-              <div class="state-actions">
-                <button class="soft-btn" type="button" onclick="createQuickSheet()">+ Tạo sheet nhanh</button>
-                <button class="soft-btn" type="button" onclick="loadLinkedSheets()">Làm mới sheets</button>
-              </div>
-              <div id="linkedSheetsBox" class="stack" style="margin-top:12px;"></div>
-            </div>
-          </div>
+    <div class="card">
+      <div class="card-h">
+        <div>
+          <div class="card-title">Payment</div>
+          <div class="brand-sub">Dòng thanh toán theo milestone hoặc theo kỳ</div>
         </div>
       </div>
-      <div class="stack">
-        <div class="section-card">
-          <div class="section-head">
-            <div>
-              <div class="card-title">Booking / KOC / KOL</div>
-              <div class="brand-sub">Theo dõi đã air, chưa air, link video, contact</div>
-            </div>
-          </div>
-          <div class="section-body">
-            <div class="form-grid">
-              <input id="bk_koc_name" class="input" placeholder="Tên KOC / KOL" />
-              <input id="bk_shop_id" class="input" placeholder="Shop ID (nếu có)" />
-              <input id="bk_channel_name" class="input" placeholder="Tên kênh" />
-              <input id="bk_channel_link" class="input" placeholder="Link kênh" />
-              <select id="bk_booking_type" class="input">
-                <option value="free_cast">Free cast / đơn giá cố định</option>
-                <option value="percent_deal">% giá trị deal</option>
-              </select>
-              <input id="bk_unit_price" class="input" placeholder="Đơn giá" />
-              <input id="bk_commission_percent" class="input" placeholder="% commission" />
-              <input id="bk_expected_post_count" class="input" placeholder="Số bài dự kiến" value="1" />
-              <input id="bk_brand_amount" class="input" placeholder="Tiền brand trả" />
-              <input id="bk_payout_amount" class="input" placeholder="Tiền payout KOC" />
-              <input id="bk_air_date" class="input" type="datetime-local" />
-              <input id="bk_payout_due_at" class="input" type="datetime-local" />
-              <input id="bk_video_link" class="input full" placeholder="Link video đã air (nếu có)" />
-              <input id="bk_phone" class="input" placeholder="Số điện thoại" />
-              <textarea id="bk_contact_note" class="input" style="min-height:80px;" placeholder="Ghi chú contact / chốt deal"></textarea>
-            </div>
-            <div class="actions-row">
-              <button class="btn primary" type="button" onclick="createBooking()">Tạo booking</button>
-            </div>
-            <div id="bookingCreateStatus" class="status-box"></div>
-            <div id="bookingList" class="stack" style="margin-top:14px;"></div>
-          </div>
+
+      <div class="card-b">
+        <div class="form-grid">
+          <input id="pay_title" class="input" placeholder="Tiêu đề payment" />
+          <input id="pay_amount" class="input" placeholder="Số tiền trước VAT" />
+          <input id="pay_vat_percent" class="input" placeholder="VAT %" value="0" />
+          <input id="pay_milestone_id" class="input" placeholder="Milestone ID (nếu có)" />
+          <input id="pay_due_at" class="input" type="datetime-local" />
+          <textarea id="pay_note" class="input full" style="min-height:80px;" placeholder="Ghi chú payment"></textarea>
         </div>
+
+        <div class="actions-row">
+          <button class="btn primary" type="button" onclick="createPayment()">Tạo payment</button>
+        </div>
+
+        <div id="paymentCreateStatus" class="status-box"></div>
+        <div id="paymentList" class="stack mt-14"></div>
       </div>
     </div>
   </div>
 
-  <script>
-    const CONTRACT_ID = {{ contract_id }};
-    const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
-
-    function getCookie(name) {
-      const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
-      return m ? decodeURIComponent(m[2]) : "";
-    }
-
-    function authHeaders(extra = {}) {
-      const headers = Object.assign({}, extra || {});
-      if (CURRENT_TENANT_ID) {
-        headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
-      }
-      const csrf = getCookie("csrftoken");
-      if (csrf) {
-        headers["X-CSRFToken"] = csrf;
-      }
-      return headers;
-    }
-
-    function entityHeaders(extra = {}) {
-      const headers = Object.assign({}, extra || {});
-      const csrf = getCookie("csrftoken");
-      if (csrf) headers["X-CSRFToken"] = csrf;
-      if (CURRENT_TENANT_ID) headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
-      return headers;
-    }
-
-    function setBox(id, msg, type="info"){
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.textContent = msg || "";
-      el.style.color = type === "err" ? "#ff8f9c" : type === "ok" ? "#8fe3a1" : "#8ab4ff";
-    }
-
-    function escapeHtml(v){
-      return String(v ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-
-    function kpiCard(label, value){
-      return `
-        <div class="kpi-card">
-          <div class="kpi-k">${escapeHtml(label)}</div>
-          <div class="kpi-v">${escapeHtml(value)}</div>
+  <div class="stack">
+    <div class="card">
+      <div class="card-h">
+        <div>
+          <div class="card-title">Docs / Sheets / Files</div>
+          <div class="brand-sub">Tài nguyên gắn với hợp đồng này</div>
         </div>
-      `;
+      </div>
+
+      <div class="card-b">
+        <div class="row" style="margin-top:0;">
+          <a class="btn primary" href="/os/docs/?linked_target_type=contract&linked_target_id={{ contract_id }}">Docs</a>
+          <a class="btn" href="/os/sheets/?linked_target_type=contract&linked_target_id={{ contract_id }}">Sheets</a>
+          <a class="btn" href="/os/files/">Files</a>
+        </div>
+
+        <div style="height:14px;"></div>
+
+        <div class="stack">
+          <div class="item">
+            <div class="item-t">Document liên quan</div>
+            <div class="item-d">Tạo báo giá, proposal, hợp đồng online cho contract này.</div>
+            <div class="state-actions">
+              <button class="soft-btn" type="button" onclick="createQuickDoc()">+ Tạo doc nhanh</button>
+              <button class="soft-btn" type="button" onclick="loadLinkedDocs()">Làm mới docs</button>
+            </div>
+            <div id="linkedDocsBox" class="stack mt-12"></div>
+          </div>
+
+          <div class="item">
+            <div class="item-t">Sheet liên quan</div>
+            <div class="item-d">Tạo KPI sheet, booking sheet, pricing sheet cho contract này.</div>
+            <div class="state-actions">
+              <button class="soft-btn" type="button" onclick="createQuickSheet()">+ Tạo sheet nhanh</button>
+              <button class="soft-btn" type="button" onclick="loadLinkedSheets()">Làm mới sheets</button>
+            </div>
+            <div id="linkedSheetsBox" class="stack mt-12"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h">
+        <div>
+          <div class="card-title">Booking / KOC / KOL</div>
+          <div class="brand-sub">Theo dõi đã air, chưa air, link video, contact</div>
+        </div>
+      </div>
+
+      <div class="card-b">
+        <div class="form-grid">
+          <input id="bk_koc_name" class="input" placeholder="Tên KOC / KOL" />
+          <input id="bk_shop_id" class="input" placeholder="Shop ID (nếu có)" />
+          <input id="bk_channel_name" class="input" placeholder="Tên kênh" />
+          <input id="bk_channel_link" class="input" placeholder="Link kênh" />
+          <select id="bk_booking_type" class="input">
+            <option value="free_cast">Free cast / đơn giá cố định</option>
+            <option value="percent_deal">% giá trị deal</option>
+          </select>
+          <input id="bk_unit_price" class="input" placeholder="Đơn giá" />
+          <input id="bk_commission_percent" class="input" placeholder="% commission" />
+          <input id="bk_expected_post_count" class="input" placeholder="Số bài dự kiến" value="1" />
+          <input id="bk_brand_amount" class="input" placeholder="Tiền brand trả" />
+          <input id="bk_payout_amount" class="input" placeholder="Tiền payout KOC" />
+          <input id="bk_air_date" class="input" type="datetime-local" />
+          <input id="bk_payout_due_at" class="input" type="datetime-local" />
+          <input id="bk_video_link" class="input full" placeholder="Link video đã air (nếu có)" />
+          <input id="bk_phone" class="input" placeholder="Số điện thoại" />
+          <textarea id="bk_contact_note" class="input" style="min-height:80px;" placeholder="Ghi chú contact / chốt deal"></textarea>
+        </div>
+
+        <div class="actions-row">
+          <button class="btn primary" type="button" onclick="createBooking()">Tạo booking</button>
+        </div>
+
+        <div id="bookingCreateStatus" class="status-box"></div>
+        <div id="bookingList" class="stack mt-14"></div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const CONTRACT_ID = {{ contract_id }};
+  const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
+
+  function getCookie(name) {
+    const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
+    return m ? decodeURIComponent(m[2]) : "";
+  }
+
+  function authHeaders(extra = {}) {
+    const headers = Object.assign({}, extra || {});
+    if (CURRENT_TENANT_ID) {
+      headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
+    }
+    const csrf = getCookie("csrftoken");
+    if (csrf) {
+      headers["X-CSRFToken"] = csrf;
+    }
+    return headers;
+  }
+
+  function entityHeaders(extra = {}) {
+    const headers = Object.assign({}, extra || {});
+    const csrf = getCookie("csrftoken");
+    if (csrf) headers["X-CSRFToken"] = csrf;
+    if (CURRENT_TENANT_ID) headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
+    return headers;
+  }
+
+  function setBox(id, msg, type="info"){
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg || "";
+    el.style.color = type === "err" ? "#ff8f9c" : type === "ok" ? "#8fe3a1" : "#8ab4ff";
+  }
+
+  function escapeHtml(v){
+    return String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function kpiCard(label, value){
+    return `
+      <div class="wkpi">
+        <div class="wkpi-label">${escapeHtml(label)}</div>
+        <div class="wkpi-value">${escapeHtml(value)}</div>
+      </div>
+    `;
+  }
+
+  async function readJsonSafe(res) {
+    const ct = res.headers.get("content-type") || "";
+    if (ct.includes("application/json")) {
+      return await res.json();
+    }
+    const txt = await res.text();
+    throw new Error(txt || `HTTP ${res.status}`);
+  }
+
+  function renderAttachmentList(boxId, items){
+    const box = document.getElementById(boxId);
+    if (!box) return;
+
+    if (!items.length) {
+      box.innerHTML = `<div class="attach-empty">Chưa có file</div>`;
+      return;
     }
 
-    async function readJsonSafe(res) {
-      const ct = res.headers.get("content-type") || "";
-      if (ct.includes("application/json")) {
-        return await res.json();
+    box.innerHTML = items.map(x => `
+      <div class="attach-item">
+        <div class="attach-name">${escapeHtml(x.original_name || x.file_name || ("File #" + x.id))}</div>
+        <div class="attach-meta">${escapeHtml(x.content_type || "-")} • ${Number(x.file_size || 0).toLocaleString("vi-VN")} bytes</div>
+        <div class="attach-actions">
+          <a class="btn" href="${x.viewer_url}" target="_blank" rel="noopener">Mở trong OS</a>
+          <a class="btn" href="${x.preview_url}" target="_blank" rel="noopener">Preview</a>
+          <a class="btn" href="${x.download_url}" target="_blank" rel="noopener">Tải file</a>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  async function loadEntityAttachments(targetType, targetId, boxId) {
+    const res = await fetch(`/api/v1/os/attachments/${targetType}/${targetId}/`, {
+      credentials: "include",
+      headers: entityHeaders(),
+      cache: "no-store",
+    });
+
+    const data = await readJsonSafe(res);
+    const box = document.getElementById(boxId);
+    if (!box) return;
+
+    if (!res.ok || !data.ok) {
+      box.innerHTML = `<div class="attach-empty">Không tải được file</div>`;
+      return;
+    }
+
+    renderAttachmentList(boxId, data.items || []);
+  }
+
+  async function uploadEntityAttachment(targetType, targetId, inputId, boxId) {
+    const input = document.getElementById(inputId);
+    const file = input?.files?.[0];
+    if (!file) {
+      alert("Chọn file trước đã anh");
+      return;
+    }
+
+    const form = new FormData();
+    form.append("file", file);
+
+    const res = await fetch(`/api/v1/os/attachments/${targetType}/${targetId}/upload/`, {
+      method: "POST",
+      credentials: "include",
+      headers: entityHeaders(),
+      body: form,
+    });
+
+    const ct = res.headers.get("content-type") || "";
+    const data = ct.includes("application/json") ? await res.json() : await res.text();
+
+    if (!res.ok || !data.ok) {
+      alert(data.message || "Upload file lỗi");
+      return;
+    }
+
+    input.value = "";
+    await loadEntityAttachments(targetType, targetId, boxId);
+  }
+
+  function renderHeadline(h){
+    const el = document.getElementById("headlineRow");
+    el.innerHTML = `
+      ${kpiCard("Milestone", h.milestones_total || 0)}
+      ${kpiCard("Đã xong", h.milestones_done || 0)}
+      ${kpiCard("Payment", h.payments_total || 0)}
+      ${kpiCard("Đã thanh toán", h.payments_paid || 0)}
+      ${kpiCard("Booking", h.bookings_total || 0)}
+      ${kpiCard("Đã air", h.booking_aired || 0)}
+    `;
+
+    const heroMilestones = document.getElementById("heroMilestones");
+    const heroPayments = document.getElementById("heroPayments");
+    const heroBookings = document.getElementById("heroBookings");
+    const heroAired = document.getElementById("heroAired");
+
+    if (heroMilestones) heroMilestones.textContent = String(h.milestones_total || 0);
+    if (heroPayments) heroPayments.textContent = String(h.payments_total || 0);
+    if (heroBookings) heroBookings.textContent = String(h.bookings_total || 0);
+    if (heroAired) heroAired.textContent = String(h.booking_aired || 0);
+  }
+
+  function renderContract(x){
+    const shops = Array.isArray(x.shops) ? x.shops : [];
+    const shopText = shops.length ? shops.map(s => s.name || ("#" + s.id)).join(", ") : "Chưa gắn shop";
+    const meta = x.meta || {};
+    const kind = x.contract_kind || meta.contract_kind || "-";
+
+    document.getElementById("contractOverview").innerHTML = `
+      <div class="item">
+        <div class="item-t">${escapeHtml(x.code)} • ${escapeHtml(x.name)}</div>
+        <div class="item-d">${escapeHtml(x.partner_name || "Chưa có đối tác")}</div>
+        <div class="row">
+          <span class="tag2">Type: ${escapeHtml(x.contract_type)}</span>
+          <span class="tag2">Kind: ${escapeHtml(kind)}</span>
+          <span class="tag2">Status: ${escapeHtml(x.status)}</span>
+          <span class="tag2">Value: ${escapeHtml(x.total_value)}</span>
+          <span class="tag2">VAT: ${escapeHtml(x.vat_percent)}%</span>
+        </div>
+        <div class="item-d" style="margin-top:8px;">
+          Company ID: ${escapeHtml(x.company_id ?? "-")} • Shop: ${escapeHtml(shopText)}
+        </div>
+        <div class="item-d" style="margin-top:6px;">
+          Note: ${escapeHtml(x.note || "-")}
+        </div>
+
+        <div class="actions-row align-start" style="margin-top:14px;">
+          <a class="btn primary" href="/os/contracts/${x.id}/content/">Vào Content Studio</a>
+          <a class="btn" href="/os/content-work-sync/?contract_id=${x.id}">Viết content</a>
+          <a class="btn" href="/os/founder/content-ai/">AI Content</a>
+          <a class="btn" href="/os/founder/content-priority/">Ưu tiên content</a>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderMilestones(items){
+    const el = document.getElementById("milestoneList");
+    if (!items.length){
+      el.innerHTML = `<div class="empty-box">Chưa có milestone</div>`;
+      return;
+    }
+
+    el.innerHTML = items.map(x => `
+      <div class="item">
+        <div class="item-t">${escapeHtml(x.title)}</div>
+        <div class="item-d">${escapeHtml(x.description || "")}</div>
+        <div class="row">
+          <span class="tag2">ID: ${escapeHtml(x.id)}</span>
+          <span class="tag2">Kind: ${escapeHtml(x.kind)}</span>
+          <span class="tag2">Status: ${escapeHtml(x.status)}</span>
+          <span class="tag2">Sort: ${escapeHtml(x.sort_order)}</span>
+          ${x.shop_id ? `<span class="tag2">Shop ID: ${escapeHtml(x.shop_id)}</span>` : ``}
+          ${x.due_at ? `<span class="tag2">Due: ${escapeHtml(x.due_at)}</span>` : ``}
+        </div>
+        <div class="state-actions">
+          ${x.status !== "done" ? `<button class="soft-btn" type="button" onclick="markMilestoneDone(${x.id})">Đánh dấu xong</button>` : ``}
+        </div>
+      </div>
+    `).join("");
+  }
+
+  function renderPayments(items){
+    const el = document.getElementById("paymentList");
+    if (!items.length){
+      el.innerHTML = `<div class="empty-box">Chưa có payment</div>`;
+      return;
+    }
+
+    el.innerHTML = items.map(x => `
+      <div class="item">
+        <div class="item-t">${escapeHtml(x.title)}</div>
+        <div class="row">
+          <span class="tag2">ID: ${escapeHtml(x.id)}</span>
+          <span class="tag2">Amount: ${escapeHtml(x.amount)}</span>
+          <span class="tag2">VAT: ${escapeHtml(x.vat_percent)}%</span>
+          <span class="tag2">Total: ${escapeHtml(x.total_amount)}</span>
+          <span class="tag2">Paid: ${escapeHtml(x.paid_amount)}</span>
+          <span class="tag2">Status: ${escapeHtml(x.status)}</span>
+          ${x.milestone_id ? `<span class="tag2">Milestone ID: ${escapeHtml(x.milestone_id)}</span>` : ``}
+        </div>
+        <div class="item-d">${escapeHtml(x.note || "")}</div>
+        <div class="state-actions">
+          ${x.status !== "paid" ? `<button class="soft-btn" type="button" onclick="markPaymentPaid(${x.id})">Đánh dấu đã thanh toán</button>` : ``}
+        </div>
+      </div>
+    `).join("");
+  }
+
+  function renderBookings(items){
+    const el = document.getElementById("bookingList");
+    if (!items.length){
+      el.innerHTML = `<div class="empty-box">Chưa có booking</div>`;
+      return;
+    }
+
+    el.innerHTML = items.map(x => `
+      <div class="item">
+        <div class="item-t">${escapeHtml(x.koc_name)}</div>
+        <div class="item-d">${escapeHtml(x.koc_channel_name || "")}</div>
+        <div class="row">
+          <span class="tag2">ID: ${escapeHtml(x.id)}</span>
+          <span class="tag2">Type: ${escapeHtml(x.booking_type)}</span>
+          <span class="tag2">Air: ${x.is_aired ? "Đã air" : "Chưa air"}</span>
+          <span class="tag2">Payout: ${escapeHtml(x.payout_status)}</span>
+          <span class="tag2">Brand: ${escapeHtml(x.brand_amount)}</span>
+          <span class="tag2">Payout amount: ${escapeHtml(x.payout_amount)}</span>
+          ${x.shop_id ? `<span class="tag2">Shop ID: ${escapeHtml(x.shop_id)}</span>` : ``}
+        </div>
+        <div class="item-d" style="margin-top:8px;">
+          Video: ${escapeHtml(x.video_link || "-")}
+        </div>
+        <div class="item-d">
+          Phone: ${escapeHtml((x.meta || {}).phone || "-")}
+        </div>
+        <div class="state-actions">
+          ${!x.is_aired ? `<button class="soft-btn" type="button" onclick="markBookingAired(${x.id})">Đánh dấu đã air</button>` : ``}
+          ${x.payout_status !== "paid" ? `<button class="soft-btn" type="button" onclick="markBookingPayoutPaid(${x.id})">Đánh dấu đã trả payout</button>` : ``}
+        </div>
+      </div>
+    `).join("");
+  }
+
+  async function loadCenter(){
+    if (!CURRENT_TENANT_ID) {
+      alert("Thiếu tenant hiện tại.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/center/`, {
+        credentials: "include",
+        cache: "no-store",
+        headers: authHeaders()
+      });
+
+      const data = await readJsonSafe(res);
+
+      if (!res.ok || !data.ok){
+        alert(data.message || "Không tải được contract center");
+        return;
       }
-      const txt = await res.text();
-      throw new Error(txt || `HTTP ${res.status}`);
+
+      renderHeadline(data.headline || {});
+      renderContract(data.contract || {});
+      renderMilestones(Array.isArray(data.milestones) ? data.milestones : []);
+      renderPayments(Array.isArray(data.payments) ? data.payments : []);
+      renderBookings(Array.isArray(data.bookings) ? data.bookings : []);
+
+      await loadEntityAttachments("contract", CONTRACT_ID, "contractAttachmentList");
+      await loadLinkedDocs();
+      await loadLinkedSheets();
+    } catch (err) {
+      alert("Lỗi tải dữ liệu: " + err.message);
+    }
+  }
+
+  async function createMilestone(){
+    const payload = {
+      title: document.getElementById("ms_title").value.trim(),
+      kind: document.getElementById("ms_kind").value,
+      shop_id: document.getElementById("ms_shop_id").value.trim(),
+      sort_order: document.getElementById("ms_sort_order").value.trim(),
+      due_at: document.getElementById("ms_due_at").value,
+      description: document.getElementById("ms_description").value.trim(),
+    };
+
+    setBox("milestoneCreateStatus", "Đang tạo milestone...", "info");
+
+    try {
+      const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/milestones/create/`, {
+        method: "POST",
+        credentials: "include",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(payload)
+      });
+
+      const data = await readJsonSafe(res);
+      if (!res.ok || !data.ok){
+        setBox("milestoneCreateStatus", data.message || "Tạo milestone thất bại", "err");
+        return;
+      }
+
+      document.getElementById("ms_title").value = "";
+      document.getElementById("ms_description").value = "";
+      document.getElementById("ms_shop_id").value = "";
+      document.getElementById("ms_sort_order").value = "1";
+      document.getElementById("ms_due_at").value = "";
+      setBox("milestoneCreateStatus", "Tạo milestone thành công", "ok");
+      await loadCenter();
+    } catch (err) {
+      setBox("milestoneCreateStatus", "Lỗi tạo milestone: " + err.message, "err");
+    }
+  }
+
+  async function markMilestoneDone(milestoneId){
+    try {
+      const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/milestones/${milestoneId}/done/`, {
+        method: "POST",
+        credentials: "include",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({})
+      });
+      const data = await readJsonSafe(res);
+      if (!res.ok || !data.ok){
+        alert(data.message || "Không cập nhật được milestone");
+        return;
+      }
+      await loadCenter();
+    } catch (err) {
+      alert("Lỗi cập nhật milestone: " + err.message);
+    }
+  }
+
+  async function createPayment(){
+    const payload = {
+      title: document.getElementById("pay_title").value.trim(),
+      amount: document.getElementById("pay_amount").value.trim(),
+      vat_percent: document.getElementById("pay_vat_percent").value.trim(),
+      milestone_id: document.getElementById("pay_milestone_id").value.trim(),
+      due_at: document.getElementById("pay_due_at").value,
+      note: document.getElementById("pay_note").value.trim(),
+    };
+
+    setBox("paymentCreateStatus", "Đang tạo payment...", "info");
+
+    try {
+      const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/payments/create/`, {
+        method: "POST",
+        credentials: "include",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(payload)
+      });
+
+      const data = await readJsonSafe(res);
+      if (!res.ok || !data.ok){
+        setBox("paymentCreateStatus", data.message || "Tạo payment thất bại", "err");
+        return;
+      }
+
+      document.getElementById("pay_title").value = "";
+      document.getElementById("pay_amount").value = "";
+      document.getElementById("pay_vat_percent").value = "0";
+      document.getElementById("pay_milestone_id").value = "";
+      document.getElementById("pay_due_at").value = "";
+      document.getElementById("pay_note").value = "";
+      setBox("paymentCreateStatus", "Tạo payment thành công", "ok");
+      await loadCenter();
+    } catch (err) {
+      setBox("paymentCreateStatus", "Lỗi tạo payment: " + err.message, "err");
+    }
+  }
+
+  async function markPaymentPaid(paymentId){
+    const paidAmount = window.prompt("Nhập số tiền đã thanh toán. Để trống = thanh toán đủ.");
+    const payload = {};
+    if (paidAmount !== null && String(paidAmount).trim() !== "") {
+      payload.paid_amount = String(paidAmount).trim();
     }
 
-    function renderAttachmentList(boxId, items){
-      const box = document.getElementById(boxId);
-      if (!box) return;
+    try {
+      const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/payments/${paymentId}/mark-paid/`, {
+        method: "POST",
+        credentials: "include",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(payload)
+      });
+      const data = await readJsonSafe(res);
+      if (!res.ok || !data.ok){
+        alert(data.message || "Không cập nhật được payment");
+        return;
+      }
+      await loadCenter();
+    } catch (err) {
+      alert("Lỗi cập nhật payment: " + err.message);
+    }
+  }
 
+  async function createBooking(){
+    const payload = {
+      koc_name: document.getElementById("bk_koc_name").value.trim(),
+      shop_id: document.getElementById("bk_shop_id").value.trim(),
+      koc_channel_name: document.getElementById("bk_channel_name").value.trim(),
+      koc_channel_link: document.getElementById("bk_channel_link").value.trim(),
+      booking_type: document.getElementById("bk_booking_type").value,
+      unit_price: document.getElementById("bk_unit_price").value.trim(),
+      commission_percent: document.getElementById("bk_commission_percent").value.trim(),
+      expected_post_count: document.getElementById("bk_expected_post_count").value.trim(),
+      brand_amount: document.getElementById("bk_brand_amount").value.trim(),
+      payout_amount: document.getElementById("bk_payout_amount").value.trim(),
+      air_date: document.getElementById("bk_air_date").value,
+      payout_due_at: document.getElementById("bk_payout_due_at").value,
+      video_link: document.getElementById("bk_video_link").value.trim(),
+      phone: document.getElementById("bk_phone").value.trim(),
+      contact_note: document.getElementById("bk_contact_note").value.trim(),
+    };
+
+    setBox("bookingCreateStatus", "Đang tạo booking...", "info");
+
+    try {
+      const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/bookings/create/`, {
+        method: "POST",
+        credentials: "include",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(payload)
+      });
+
+      const data = await readJsonSafe(res);
+      if (!res.ok || !data.ok){
+        setBox("bookingCreateStatus", data.message || "Tạo booking thất bại", "err");
+        return;
+      }
+
+      document.getElementById("bk_koc_name").value = "";
+      document.getElementById("bk_shop_id").value = "";
+      document.getElementById("bk_channel_name").value = "";
+      document.getElementById("bk_channel_link").value = "";
+      document.getElementById("bk_unit_price").value = "";
+      document.getElementById("bk_commission_percent").value = "";
+      document.getElementById("bk_expected_post_count").value = "1";
+      document.getElementById("bk_brand_amount").value = "";
+      document.getElementById("bk_payout_amount").value = "";
+      document.getElementById("bk_air_date").value = "";
+      document.getElementById("bk_payout_due_at").value = "";
+      document.getElementById("bk_video_link").value = "";
+      document.getElementById("bk_phone").value = "";
+      document.getElementById("bk_contact_note").value = "";
+      setBox("bookingCreateStatus", "Tạo booking thành công", "ok");
+      await loadCenter();
+    } catch (err) {
+      setBox("bookingCreateStatus", "Lỗi tạo booking: " + err.message, "err");
+    }
+  }
+
+  async function markBookingAired(bookingId){
+    const videoLink = window.prompt("Nhập link video đã air:");
+    if (!videoLink) return;
+
+    try {
+      const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/bookings/${bookingId}/mark-aired/`, {
+        method: "POST",
+        credentials: "include",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          video_link: videoLink,
+          delivered_post_count: 1
+        })
+      });
+      const data = await readJsonSafe(res);
+      if (!res.ok || !data.ok){
+        alert(data.message || "Không cập nhật được booking air");
+        return;
+      }
+      await loadCenter();
+    } catch (err) {
+      alert("Lỗi cập nhật booking air: " + err.message);
+    }
+  }
+
+  async function markBookingPayoutPaid(bookingId){
+    try {
+      const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/bookings/${bookingId}/mark-payout-paid/`, {
+        method: "POST",
+        credentials: "include",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({})
+      });
+      const data = await readJsonSafe(res);
+      if (!res.ok || !data.ok){
+        alert(data.message || "Không cập nhật được payout");
+        return;
+      }
+      await loadCenter();
+    } catch (err) {
+      alert("Lỗi cập nhật payout: " + err.message);
+    }
+  }
+
+  async function loadLinkedDocs(){
+    const box = document.getElementById("linkedDocsBox");
+    if (!box) return;
+
+    box.innerHTML = `<div class="item-d">Đang tải docs...</div>`;
+
+    try {
+      const res = await fetch(
+        `/api/v1/docs/?linked_target_type=contract&linked_target_id=${CONTRACT_ID}`,
+        {
+          credentials: "include",
+          headers: authHeaders(),
+          cache: "no-store",
+        }
+      );
+
+      const data = await readJsonSafe(res);
+
+      if (!res.ok || !data.ok) {
+        box.innerHTML = `<div class="item-d">Không tải được docs</div>`;
+        return;
+      }
+
+      const items = data.items || [];
       if (!items.length) {
-        box.innerHTML = `<div class="attach-empty">Chưa có file</div>`;
+        box.innerHTML = `<div class="empty-box">Chưa có document nào</div>`;
         return;
       }
 
       box.innerHTML = items.map(x => `
-        <div class="attach-item">
-          <div class="attach-name">${escapeHtml(x.original_name || x.file_name || ("File #" + x.id))}</div>
-          <div class="attach-meta">${escapeHtml(x.content_type || "-")} • ${Number(x.file_size || 0).toLocaleString("vi-VN")} bytes</div>
-          <div class="attach-actions">
-            <a class="btn" href="${x.viewer_url}" target="_blank" rel="noopener">Mở trong OS</a>
-            <a class="btn" href="${x.preview_url}" target="_blank" rel="noopener">Preview</a>
-            <a class="btn" href="${x.download_url}" target="_blank" rel="noopener">Tải file</a>
+        <div class="item">
+          <div class="item-t">${escapeHtml(x.title || ("Doc #" + x.id))}</div>
+          <div class="item-d">
+            Type: ${escapeHtml(x.doc_type || "-")}
+          </div>
+          <div class="state-actions">
+            <a class="soft-btn" href="/os/docs/${x.id}/">Mở doc</a>
           </div>
         </div>
       `).join("");
+    } catch (err) {
+      box.innerHTML = `<div class="item-d">Lỗi tải docs: ${escapeHtml(err.message || err)}</div>`;
     }
+  }
 
-    async function loadEntityAttachments(targetType, targetId, boxId) {
-      const res = await fetch(`/api/v1/os/attachments/${targetType}/${targetId}/`, {
+  async function loadLinkedSheets(){
+    const box = document.getElementById("linkedSheetsBox");
+    if (!box) return;
+
+    box.innerHTML = `<div class="item-d">Đang tải sheets...</div>`;
+
+    try {
+      const res = await fetch(
+        `/api/v1/sheets/?linked_target_type=contract&linked_target_id=${CONTRACT_ID}`,
+        {
+          credentials: "include",
+          headers: authHeaders(),
+          cache: "no-store",
+        }
+      );
+
+      const data = await readJsonSafe(res);
+
+      if (!res.ok || !data.ok) {
+        box.innerHTML = `<div class="item-d">Không tải được sheets</div>`;
+        return;
+      }
+
+      const items = data.items || [];
+      if (!items.length) {
+        box.innerHTML = `<div class="empty-box">Chưa có sheet nào</div>`;
+        return;
+      }
+
+      box.innerHTML = items.map(x => `
+        <div class="item">
+          <div class="item-t">${escapeHtml(x.name || ("Sheet #" + x.id))}</div>
+          <div class="item-d">
+            Module: ${escapeHtml(x.module_code || "-")}
+          </div>
+          <div class="state-actions">
+            <a class="soft-btn" href="/os/sheets/${x.id}/">Mở sheet</a>
+            <a class="soft-btn" href="/api/v1/sheets/${x.id}/export.xlsx">Export Excel</a>
+          </div>
+        </div>
+      `).join("");
+    } catch (err) {
+      box.innerHTML = `<div class="item-d">Lỗi tải sheets: ${escapeHtml(err.message || err)}</div>`;
+    }
+  }
+
+  async function createQuickDoc(){
+    try {
+      const payload = {
+        title: `Document contract #${CONTRACT_ID}`,
+        doc_type: "doc",
+        linked_target_type: "contract",
+        linked_target_id: CONTRACT_ID,
+        content_blocks: [
+          {
+            type: "header",
+            data: {
+              text: `Document contract #${CONTRACT_ID}`,
+              level: 2
+            }
+          },
+          {
+            type: "paragraph",
+            data: {
+              text: "Nội dung tài liệu online cho hợp đồng này."
+            }
+          },
+          {
+            type: "paragraph",
+            data: {
+              text: "Có thể dùng cho báo giá / proposal / phụ lục."
+            }
+          }
+        ]
+      };
+
+      const res = await fetch(`/api/v1/docs/create/`, {
+        method: "POST",
         credentials: "include",
-        headers: entityHeaders(),
-        cache: "no-store",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(payload)
       });
 
       const data = await readJsonSafe(res);
-      const box = document.getElementById(boxId);
-      if (!box) return;
 
       if (!res.ok || !data.ok) {
-        box.innerHTML = `<div class="attach-empty">Không tải được file</div>`;
+        alert(data.message || "Tạo doc lỗi");
         return;
       }
 
-      renderAttachmentList(boxId, data.items || []);
+      await loadLinkedDocs();
+      window.location.href = `/os/docs/${data.item.id}/`;
+    } catch (err) {
+      alert("Lỗi tạo doc: " + (err.message || err));
     }
+  }
 
-    async function uploadEntityAttachment(targetType, targetId, inputId, boxId) {
-      const input = document.getElementById(inputId);
-      const file = input?.files?.[0];
-      if (!file) {
-        alert("Chọn file trước đã anh");
-        return;
-      }
+  async function createQuickSheet(){
+    try {
+      const payload = {
+        name: `Sheet contract #${CONTRACT_ID}`,
+        module_code: "contract",
+        linked_target_type: "contract",
+        linked_target_id: CONTRACT_ID,
+        columns: [
+          { name: "Hạng mục", data_type: "text" },
+          { name: "Giá trị", data_type: "text" },
+          { name: "Ghi chú", data_type: "text" }
+        ]
+      };
 
-      const form = new FormData();
-      form.append("file", file);
-
-      const res = await fetch(`/api/v1/os/attachments/${targetType}/${targetId}/upload/`, {
+      const res = await fetch(`/api/v1/sheets/create/`, {
         method: "POST",
         credentials: "include",
-        headers: entityHeaders(),
-        body: form,
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(payload)
       });
 
-      const ct = res.headers.get("content-type") || "";
-      const data = ct.includes("application/json") ? await res.json() : await res.text();
+      const data = await readJsonSafe(res);
 
       if (!res.ok || !data.ok) {
-        alert(data.message || "Upload file lỗi");
+        alert(data.message || "Tạo sheet lỗi");
         return;
       }
 
-      input.value = "";
-      await loadEntityAttachments(targetType, targetId, boxId);
-    }
-
-    function renderHeadline(h){
-      const el = document.getElementById("headlineRow");
-      el.innerHTML = `
-        ${kpiCard("Milestone", h.milestones_total || 0)}
-        ${kpiCard("Đã xong", h.milestones_done || 0)}
-        ${kpiCard("Payment", h.payments_total || 0)}
-        ${kpiCard("Đã thanh toán", h.payments_paid || 0)}
-        ${kpiCard("Booking", h.bookings_total || 0)}
-        ${kpiCard("Đã air", h.booking_aired || 0)}
-      `;
-    }
-
-    function renderContract(x){
-      const shops = Array.isArray(x.shops) ? x.shops : [];
-      const shopText = shops.length ? shops.map(s => s.name || ("#" + s.id)).join(", ") : "Chưa gắn shop";
-      const meta = x.meta || {};
-      const kind = x.contract_kind || meta.contract_kind || "-";
-
-      document.getElementById("contractOverview").innerHTML = `
-        <div class="item">
-          <div class="item-t">${escapeHtml(x.code)} • ${escapeHtml(x.name)}</div>
-          <div class="item-d">${escapeHtml(x.partner_name || "Chưa có đối tác")}</div>
-          <div class="row">
-            <span class="tag2">Type: ${escapeHtml(x.contract_type)}</span>
-            <span class="tag2">Kind: ${escapeHtml(kind)}</span>
-            <span class="tag2">Status: ${escapeHtml(x.status)}</span>
-            <span class="tag2">Value: ${escapeHtml(x.total_value)}</span>
-            <span class="tag2">VAT: ${escapeHtml(x.vat_percent)}%</span>
-          </div>
-          <div class="item-d" style="margin-top:8px;">
-            Company ID: ${escapeHtml(x.company_id ?? "-")} • Shop: ${escapeHtml(shopText)}
-          </div>
-          <div class="item-d" style="margin-top:6px;">
-            Note: ${escapeHtml(x.note || "-")}
-          </div>
-
-          <div class="actions-row" style="justify-content:flex-start; margin-top:14px;">
-            <a class="btn primary" href="/os/contracts/${x.id}/content/">Vào Content Studio</a>
-            <a class="btn" href="/os/content-work-sync/?contract_id=${x.id}">Viết content</a>
-            <a class="btn" href="/os/founder/content-ai/">AI Content</a>
-            <a class="btn" href="/os/founder/content-priority/">Ưu tiên content</a>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderMilestones(items){
-      const el = document.getElementById("milestoneList");
-      if (!items.length){
-        el.innerHTML = `<div class="empty-box">Chưa có milestone</div>`;
-        return;
-      }
-
-      el.innerHTML = items.map(x => `
-        <div class="item">
-          <div class="item-t">${escapeHtml(x.title)}</div>
-          <div class="item-d">${escapeHtml(x.description || "")}</div>
-          <div class="row">
-            <span class="tag2">ID: ${escapeHtml(x.id)}</span>
-            <span class="tag2">Kind: ${escapeHtml(x.kind)}</span>
-            <span class="tag2">Status: ${escapeHtml(x.status)}</span>
-            <span class="tag2">Sort: ${escapeHtml(x.sort_order)}</span>
-            ${x.shop_id ? `<span class="tag2">Shop ID: ${escapeHtml(x.shop_id)}</span>` : ``}
-            ${x.due_at ? `<span class="tag2">Due: ${escapeHtml(x.due_at)}</span>` : ``}
-          </div>
-          <div class="state-actions">
-            ${x.status !== "done" ? `<button class="soft-btn" type="button" onclick="markMilestoneDone(${x.id})">Đánh dấu xong</button>` : ``}
-          </div>
-        </div>
-      `).join("");
-    }
-
-    function renderPayments(items){
-      const el = document.getElementById("paymentList");
-      if (!items.length){
-        el.innerHTML = `<div class="empty-box">Chưa có payment</div>`;
-        return;
-      }
-
-      el.innerHTML = items.map(x => `
-        <div class="item">
-          <div class="item-t">${escapeHtml(x.title)}</div>
-          <div class="row">
-            <span class="tag2">ID: ${escapeHtml(x.id)}</span>
-            <span class="tag2">Amount: ${escapeHtml(x.amount)}</span>
-            <span class="tag2">VAT: ${escapeHtml(x.vat_percent)}%</span>
-            <span class="tag2">Total: ${escapeHtml(x.total_amount)}</span>
-            <span class="tag2">Paid: ${escapeHtml(x.paid_amount)}</span>
-            <span class="tag2">Status: ${escapeHtml(x.status)}</span>
-            ${x.milestone_id ? `<span class="tag2">Milestone ID: ${escapeHtml(x.milestone_id)}</span>` : ``}
-          </div>
-          <div class="item-d">${escapeHtml(x.note || "")}</div>
-          <div class="state-actions">
-            ${x.status !== "paid" ? `<button class="soft-btn" type="button" onclick="markPaymentPaid(${x.id})">Đánh dấu đã thanh toán</button>` : ``}
-          </div>
-        </div>
-      `).join("");
-    }
-
-    function renderBookings(items){
-      const el = document.getElementById("bookingList");
-      if (!items.length){
-        el.innerHTML = `<div class="empty-box">Chưa có booking</div>`;
-        return;
-      }
-
-      el.innerHTML = items.map(x => `
-        <div class="item">
-          <div class="item-t">${escapeHtml(x.koc_name)}</div>
-          <div class="item-d">${escapeHtml(x.koc_channel_name || "")}</div>
-          <div class="row">
-            <span class="tag2">ID: ${escapeHtml(x.id)}</span>
-            <span class="tag2">Type: ${escapeHtml(x.booking_type)}</span>
-            <span class="tag2">Air: ${x.is_aired ? "Đã air" : "Chưa air"}</span>
-            <span class="tag2">Payout: ${escapeHtml(x.payout_status)}</span>
-            <span class="tag2">Brand: ${escapeHtml(x.brand_amount)}</span>
-            <span class="tag2">Payout amount: ${escapeHtml(x.payout_amount)}</span>
-            ${x.shop_id ? `<span class="tag2">Shop ID: ${escapeHtml(x.shop_id)}</span>` : ``}
-          </div>
-          <div class="item-d" style="margin-top:8px;">
-            Video: ${escapeHtml(x.video_link || "-")}
-          </div>
-          <div class="item-d">
-            Phone: ${escapeHtml((x.meta || {}).phone || "-")}
-          </div>
-          <div class="state-actions">
-            ${!x.is_aired ? `<button class="soft-btn" type="button" onclick="markBookingAired(${x.id})">Đánh dấu đã air</button>` : ``}
-            ${x.payout_status !== "paid" ? `<button class="soft-btn" type="button" onclick="markBookingPayoutPaid(${x.id})">Đánh dấu đã trả payout</button>` : ``}
-          </div>
-        </div>
-      `).join("");
-    }
-
-    async function loadCenter(){
-      if (!CURRENT_TENANT_ID) {
-        alert("Thiếu tenant hiện tại.");
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/center/`, {
-          credentials: "include",
-          cache: "no-store",
-          headers: authHeaders()
-        });
-
-        const data = await readJsonSafe(res);
-
-        if (!res.ok || !data.ok){
-          alert(data.message || "Không tải được contract center");
-          return;
-        }
-
-        renderHeadline(data.headline || {});
-        renderContract(data.contract || {});
-        renderMilestones(Array.isArray(data.milestones) ? data.milestones : []);
-        renderPayments(Array.isArray(data.payments) ? data.payments : []);
-        renderBookings(Array.isArray(data.bookings) ? data.bookings : []);
-
-        await loadEntityAttachments("contract", CONTRACT_ID, "contractAttachmentList");
-      } catch (err) {
-        alert("Lỗi tải dữ liệu: " + err.message);
-      }
-    }
-
-    async function createMilestone(){
-      const payload = {
-        title: document.getElementById("ms_title").value.trim(),
-        kind: document.getElementById("ms_kind").value,
-        shop_id: document.getElementById("ms_shop_id").value.trim(),
-        sort_order: document.getElementById("ms_sort_order").value.trim(),
-        due_at: document.getElementById("ms_due_at").value,
-        description: document.getElementById("ms_description").value.trim(),
-      };
-
-      setBox("milestoneCreateStatus", "Đang tạo milestone...", "info");
-
-      try {
-        const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/milestones/create/`, {
-          method: "POST",
-          credentials: "include",
-          headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify(payload)
-        });
-
-        const data = await readJsonSafe(res);
-        if (!res.ok || !data.ok){
-          setBox("milestoneCreateStatus", data.message || "Tạo milestone thất bại", "err");
-          return;
-        }
-
-        document.getElementById("ms_title").value = "";
-        document.getElementById("ms_description").value = "";
-        document.getElementById("ms_shop_id").value = "";
-        document.getElementById("ms_sort_order").value = "1";
-        document.getElementById("ms_due_at").value = "";
-        setBox("milestoneCreateStatus", "Tạo milestone thành công", "ok");
-        await loadCenter();
-      } catch (err) {
-        setBox("milestoneCreateStatus", "Lỗi tạo milestone: " + err.message, "err");
-      }
-    }
-
-    async function markMilestoneDone(milestoneId){
-      try {
-        const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/milestones/${milestoneId}/done/`, {
-          method: "POST",
-          credentials: "include",
-          headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({})
-        });
-        const data = await readJsonSafe(res);
-        if (!res.ok || !data.ok){
-          alert(data.message || "Không cập nhật được milestone");
-          return;
-        }
-        await loadCenter();
-      } catch (err) {
-        alert("Lỗi cập nhật milestone: " + err.message);
-      }
-    }
-
-    async function createPayment(){
-      const payload = {
-        title: document.getElementById("pay_title").value.trim(),
-        amount: document.getElementById("pay_amount").value.trim(),
-        vat_percent: document.getElementById("pay_vat_percent").value.trim(),
-        milestone_id: document.getElementById("pay_milestone_id").value.trim(),
-        due_at: document.getElementById("pay_due_at").value,
-        note: document.getElementById("pay_note").value.trim(),
-      };
-
-      setBox("paymentCreateStatus", "Đang tạo payment...", "info");
-
-      try {
-        const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/payments/create/`, {
-          method: "POST",
-          credentials: "include",
-          headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify(payload)
-        });
-
-        const data = await readJsonSafe(res);
-        if (!res.ok || !data.ok){
-          setBox("paymentCreateStatus", data.message || "Tạo payment thất bại", "err");
-          return;
-        }
-
-        document.getElementById("pay_title").value = "";
-        document.getElementById("pay_amount").value = "";
-        document.getElementById("pay_vat_percent").value = "0";
-        document.getElementById("pay_milestone_id").value = "";
-        document.getElementById("pay_due_at").value = "";
-        document.getElementById("pay_note").value = "";
-        setBox("paymentCreateStatus", "Tạo payment thành công", "ok");
-        await loadCenter();
-      } catch (err) {
-        setBox("paymentCreateStatus", "Lỗi tạo payment: " + err.message, "err");
-      }
-    }
-
-    async function markPaymentPaid(paymentId){
-      const paidAmount = window.prompt("Nhập số tiền đã thanh toán. Để trống = thanh toán đủ.");
-      const payload = {};
-      if (paidAmount !== null && String(paidAmount).trim() !== "") {
-        payload.paid_amount = String(paidAmount).trim();
-      }
-
-      try {
-        const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/payments/${paymentId}/mark-paid/`, {
-          method: "POST",
-          credentials: "include",
-          headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify(payload)
-        });
-        const data = await readJsonSafe(res);
-        if (!res.ok || !data.ok){
-          alert(data.message || "Không cập nhật được payment");
-          return;
-        }
-        await loadCenter();
-      } catch (err) {
-        alert("Lỗi cập nhật payment: " + err.message);
-      }
-    }
-
-    async function createBooking(){
-      const payload = {
-        koc_name: document.getElementById("bk_koc_name").value.trim(),
-        shop_id: document.getElementById("bk_shop_id").value.trim(),
-        koc_channel_name: document.getElementById("bk_channel_name").value.trim(),
-        koc_channel_link: document.getElementById("bk_channel_link").value.trim(),
-        booking_type: document.getElementById("bk_booking_type").value,
-        unit_price: document.getElementById("bk_unit_price").value.trim(),
-        commission_percent: document.getElementById("bk_commission_percent").value.trim(),
-        expected_post_count: document.getElementById("bk_expected_post_count").value.trim(),
-        brand_amount: document.getElementById("bk_brand_amount").value.trim(),
-        payout_amount: document.getElementById("bk_payout_amount").value.trim(),
-        air_date: document.getElementById("bk_air_date").value,
-        payout_due_at: document.getElementById("bk_payout_due_at").value,
-        video_link: document.getElementById("bk_video_link").value.trim(),
-        phone: document.getElementById("bk_phone").value.trim(),
-        contact_note: document.getElementById("bk_contact_note").value.trim(),
-      };
-
-      setBox("bookingCreateStatus", "Đang tạo booking...", "info");
-
-      try {
-        const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/bookings/create/`, {
-          method: "POST",
-          credentials: "include",
-          headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify(payload)
-        });
-
-        const data = await readJsonSafe(res);
-        if (!res.ok || !data.ok){
-          setBox("bookingCreateStatus", data.message || "Tạo booking thất bại", "err");
-          return;
-        }
-
-        document.getElementById("bk_koc_name").value = "";
-        document.getElementById("bk_shop_id").value = "";
-        document.getElementById("bk_channel_name").value = "";
-        document.getElementById("bk_channel_link").value = "";
-        document.getElementById("bk_unit_price").value = "";
-        document.getElementById("bk_commission_percent").value = "";
-        document.getElementById("bk_expected_post_count").value = "1";
-        document.getElementById("bk_brand_amount").value = "";
-        document.getElementById("bk_payout_amount").value = "";
-        document.getElementById("bk_air_date").value = "";
-        document.getElementById("bk_payout_due_at").value = "";
-        document.getElementById("bk_video_link").value = "";
-        document.getElementById("bk_phone").value = "";
-        document.getElementById("bk_contact_note").value = "";
-        setBox("bookingCreateStatus", "Tạo booking thành công", "ok");
-        await loadCenter();
-      } catch (err) {
-        setBox("bookingCreateStatus", "Lỗi tạo booking: " + err.message, "err");
-      }
-    }
-
-    async function markBookingAired(bookingId){
-      const videoLink = window.prompt("Nhập link video đã air:");
-      if (!videoLink) return;
-
-      try {
-        const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/bookings/${bookingId}/mark-aired/`, {
-          method: "POST",
-          credentials: "include",
-          headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({
-            video_link: videoLink,
-            delivered_post_count: 1
-          })
-        });
-        const data = await readJsonSafe(res);
-        if (!res.ok || !data.ok){
-          alert(data.message || "Không cập nhật được booking air");
-          return;
-        }
-        await loadCenter();
-      } catch (err) {
-        alert("Lỗi cập nhật booking air: " + err.message);
-      }
-    }
-
-    async function markBookingPayoutPaid(bookingId){
-      try {
-        const res = await fetch(`/api/v1/contracts/${CONTRACT_ID}/bookings/${bookingId}/mark-payout-paid/`, {
-          method: "POST",
-          credentials: "include",
-          headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({})
-        });
-        const data = await readJsonSafe(res);
-        if (!res.ok || !data.ok){
-          alert(data.message || "Không cập nhật được payout");
-          return;
-        }
-        await loadCenter();
-      } catch (err) {
-        alert("Lỗi cập nhật payout: " + err.message);
-      }
-    }
-
-    loadCenter();
-  </script>
-  <script>
-    async function loadLinkedDocs(){
-      const box = document.getElementById("linkedDocsBox");
-      if (!box) return;
-
-      box.innerHTML = `<div class="item-d">Đang tải docs...</div>`;
-
-      try {
-        const res = await fetch(
-          `/api/v1/docs/?linked_target_type=contract&linked_target_id=${CONTRACT_ID}`,
-          {
-            credentials: "include",
-            headers: authHeaders(),
-            cache: "no-store",
-          }
-        );
-
-        const data = await readJsonSafe(res);
-
-        if (!res.ok || !data.ok) {
-          box.innerHTML = `<div class="item-d">Không tải được docs</div>`;
-          return;
-        }
-
-        const items = data.items || [];
-        if (!items.length) {
-          box.innerHTML = `<div class="empty-box">Chưa có document nào</div>`;
-          return;
-        }
-
-        box.innerHTML = items.map(x => `
-          <div class="item">
-            <div class="item-t">${escapeHtml(x.title || ("Doc #" + x.id))}</div>
-            <div class="item-d">
-              Type: ${escapeHtml(x.doc_type || "-")}
-            </div>
-            <div class="state-actions">
-              <a class="soft-btn" href="/os/docs/${x.id}/">Mở doc</a>
-            </div>
-          </div>
-        `).join("");
-      } catch (err) {
-        box.innerHTML = `<div class="item-d">Lỗi tải docs: ${escapeHtml(err.message || err)}</div>`;
-      }
-    }
-
-    async function loadLinkedSheets(){
-      const box = document.getElementById("linkedSheetsBox");
-      if (!box) return;
-
-      box.innerHTML = `<div class="item-d">Đang tải sheets...</div>`;
-
-      try {
-        const res = await fetch(
-          `/api/v1/sheets/?linked_target_type=contract&linked_target_id=${CONTRACT_ID}`,
-          {
-            credentials: "include",
-            headers: authHeaders(),
-            cache: "no-store",
-          }
-        );
-
-        const data = await readJsonSafe(res);
-
-        if (!res.ok || !data.ok) {
-          box.innerHTML = `<div class="item-d">Không tải được sheets</div>`;
-          return;
-        }
-
-        const items = data.items || [];
-        if (!items.length) {
-          box.innerHTML = `<div class="empty-box">Chưa có sheet nào</div>`;
-          return;
-        }
-
-        box.innerHTML = items.map(x => `
-          <div class="item">
-            <div class="item-t">${escapeHtml(x.name || ("Sheet #" + x.id))}</div>
-            <div class="item-d">
-              Module: ${escapeHtml(x.module_code || "-")}
-            </div>
-            <div class="state-actions">
-              <a class="soft-btn" href="/os/sheets/${x.id}/">Mở sheet</a>
-              <a class="soft-btn" href="/api/v1/sheets/${x.id}/export.xlsx">Export Excel</a>
-            </div>
-          </div>
-        `).join("");
-      } catch (err) {
-        box.innerHTML = `<div class="item-d">Lỗi tải sheets: ${escapeHtml(err.message || err)}</div>`;
-      }
-    }
-
-    async function createQuickDoc(){
-      try {
-        const payload = {
-          title: `Document contract #${CONTRACT_ID}`,
-          doc_type: "doc",
-          linked_target_type: "contract",
-          linked_target_id: CONTRACT_ID,
-          content_blocks: [
-            {
-              type: "header",
-              data: {
-                text: `Document contract #${CONTRACT_ID}`,
-                level: 2
-              }
-            },
-            {
-              type: "paragraph",
-              data: {
-                text: "Nội dung tài liệu online cho hợp đồng này."
-              }
-            },
-            {
-              type: "paragraph",
-              data: {
-                text: "Có thể dùng cho báo giá / proposal / phụ lục."
-              }
-            }
-          ]
-        };
-
-        const res = await fetch(`/api/v1/docs/create/`, {
-          method: "POST",
-          credentials: "include",
-          headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify(payload)
-        });
-
-        const data = await readJsonSafe(res);
-
-        if (!res.ok || !data.ok) {
-          alert(data.message || "Tạo doc lỗi");
-          return;
-        }
-
-        await loadLinkedDocs();
-        window.location.href = `/os/docs/${data.item.id}/`;
-      } catch (err) {
-        alert("Lỗi tạo doc: " + (err.message || err));
-      }
-    }
-
-    async function createQuickSheet(){
-      try {
-        const payload = {
-          name: `Sheet contract #${CONTRACT_ID}`,
-          module_code: "contract",
-          linked_target_type: "contract",
-          linked_target_id: CONTRACT_ID,
-          columns: [
-            { name: "Hạng mục", data_type: "text" },
-            { name: "Giá trị", data_type: "text" },
-            { name: "Ghi chú", data_type: "text" }
-          ]
-        };
-
-        const res = await fetch(`/api/v1/sheets/create/`, {
-          method: "POST",
-          credentials: "include",
-          headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify(payload)
-        });
-
-        const data = await readJsonSafe(res);
-
-        if (!res.ok || !data.ok) {
-          alert(data.message || "Tạo sheet lỗi");
-          return;
-        }
-
-        await loadLinkedSheets();
-        window.location.href = `/os/sheets/${data.item.id}/`;
-      } catch (err) {
-        alert("Lỗi tạo sheet: " + (err.message || err));
-      }
-    }
-
-    const __oldLoadCenter = loadCenter;
-    loadCenter = async function(){
-      await __oldLoadCenter();
-      await loadLinkedDocs();
       await loadLinkedSheets();
-    };
-  </script>
-</body>
-</html>
+      window.location.href = `/os/sheets/${data.item.id}/`;
+    } catch (err) {
+      alert("Lỗi tạo sheet: " + (err.message || err));
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    loadCenter();
+  });
+</script>
+{% endblock %}

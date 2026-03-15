@@ -1,632 +1,676 @@
+{% extends "os/os_layout.html" %}
 {% load static %}
-<!doctype html>
-<html lang="vi" data-theme="dark">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>HeightTech Sheet</title>
-  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=1" />
-  <style>
-    .page-wrap{max-width:1440px;margin:0 auto;padding:24px;}
-    .page-head{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:12px;
-      flex-wrap:wrap;
+
+{% block page_title %}HeightTech Sheet{% endblock %}
+{% block body_page %}os-sheet-detail{% endblock %}
+
+{% block sidebar_brand_title %}HeightTech Sheet{% endblock %}
+{% block sidebar_brand_sub %}Editable sheet{% endblock %}
+
+{% block topbar_brand_title %}HeightTech Sheet{% endblock %}
+{% block topbar_brand_sub %}Editable sheet • Row / Column • Image upload • Excel export{% endblock %}
+
+{% block extra_head %}
+<style>
+  .hero-v2-compact{
+    padding:22px;
+  }
+
+  .hero-v2-right-mini{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .sheet-inline-form{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .sheet-inline-form > *{
+    flex:1 1 220px;
+  }
+
+  .sheet-grid-wrap{
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:18px;
+    background:rgba(255,255,255,.03);
+    overflow:auto;
+  }
+
+  .sheet-grid{
+    width:100%;
+    min-width:980px;
+    border-collapse:collapse;
+    table-layout:auto;
+  }
+
+  .sheet-grid th,
+  .sheet-grid td{
+    border:1px solid rgba(255,255,255,.08);
+    vertical-align:top;
+  }
+
+  .sheet-grid th{
+    background:rgba(255,255,255,.05);
+    text-align:left;
+    font-size:13px;
+    font-weight:800;
+    padding:10px 12px;
+    white-space:nowrap;
+  }
+
+  .sheet-grid td{
+    background:rgba(255,255,255,.02);
+    padding:8px;
+    min-width:160px;
+  }
+
+  .row-number-cell{
+    width:70px;
+    min-width:70px !important;
+    text-align:center;
+    color:var(--muted);
+    font-size:13px;
+    font-weight:700;
+    white-space:nowrap;
+  }
+
+  .cell-edit{
+    min-width:140px;
+    min-height:36px;
+    padding:8px 10px;
+    border-radius:10px;
+    outline:none;
+    white-space:pre-wrap;
+    word-break:break-word;
+    overflow-wrap:anywhere;
+    line-height:1.65;
+    font-size:14px;
+    transition:background .15s ease,border-color .15s ease,box-shadow .15s ease;
+    border:1px solid transparent;
+    box-sizing:border-box;
+  }
+
+  .cell-edit:hover{
+    background:rgba(255,255,255,.03);
+  }
+
+  .cell-edit:focus{
+    background:rgba(255,255,255,.05);
+    border-color:rgba(255,255,255,.16);
+    box-shadow:0 0 0 2px rgba(255,255,255,.04);
+  }
+
+  .cell-edit.text-cell{
+    text-align:left;
+  }
+
+  .cell-edit.number-cell{
+    text-align:right;
+    white-space:nowrap;
+  }
+
+  .cell-edit.date-cell{
+    white-space:nowrap;
+  }
+
+  .cell-edit.select-cell{
+    white-space:pre-wrap;
+  }
+
+  .cell-edit.image-cell{
+    min-width:190px;
+    min-height:132px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    background:rgba(255,255,255,.02);
+  }
+
+  .cell-edit.image-cell.empty{
+    border:1px dashed rgba(255,255,255,.10);
+    color:var(--muted);
+    font-size:12px;
+    padding:12px;
+    line-height:1.6;
+  }
+
+  .sheet-image-preview{
+    display:block;
+    max-width:190px;
+    max-height:128px;
+    width:auto;
+    height:auto;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,.08);
+    background:#111;
+    object-fit:contain;
+  }
+
+  .status-box{
+    min-height:20px;
+    font-size:13px;
+  }
+
+  .edit-hint{
+    font-size:12px;
+    color:var(--muted);
+    line-height:1.6;
+  }
+
+  @media (max-width: 980px){
+    .hero-v2-right-mini{
+      grid-template-columns:1fr 1fr;
     }
+  }
 
-    .page-title{font-size:28px;font-weight:900;}
-    .page-sub{margin-top:6px;color:var(--muted);line-height:1.5;}
-
-    .toolbar{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-top:16px;
-    }
-
-    .grid-wrap{
-      margin-top:18px;
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:18px;
-      background:rgba(255,255,255,.03);
-      overflow:hidden;
-    }
-
-    .grid-head{
-      padding:14px 16px;
-      border-bottom:1px solid rgba(255,255,255,.06);
-    }
-
-    .grid-body{
-      padding:16px;
-      overflow:auto;
-    }
-
-    table.sheet-grid{
-      width:100%;
-      border-collapse:collapse;
-      min-width:980px;
-      table-layout:auto;
-    }
-
-    .sheet-grid th,
+  @media (max-width: 900px){
     .sheet-grid td{
-      border:1px solid rgba(255,255,255,.08);
-      vertical-align:top;
-    }
-
-    .sheet-grid th{
-      background:rgba(255,255,255,.05);
-      text-align:left;
-      font-size:13px;
-      font-weight:800;
-      padding:10px 12px;
-      white-space:nowrap;
-    }
-
-    .sheet-grid td{
-      background:rgba(255,255,255,.02);
-      padding:8px;
-      min-width:160px;
-    }
-
-    .row-number-cell{
-      width:70px;
-      min-width:70px !important;
-      text-align:center;
-      color:var(--muted);
-      font-size:13px;
-      font-weight:700;
-      white-space:nowrap;
-    }
-
-    .cell-edit{
-      min-width:140px;
-      min-height:36px;
-      padding:8px 10px;
-      border-radius:8px;
-      outline:none;
-      white-space:pre-wrap;
-      word-break:break-word;
-      overflow-wrap:anywhere;
-      line-height:1.65;
-      font-size:14px;
-      transition:background .15s ease,border-color .15s ease,box-shadow .15s ease;
-      border:1px solid transparent;
-      box-sizing:border-box;
-    }
-
-    .cell-edit:hover{
-      background:rgba(255,255,255,.03);
-    }
-
-    .cell-edit:focus{
-      background:rgba(255,255,255,.05);
-      border-color:rgba(255,255,255,.16);
-      box-shadow:0 0 0 2px rgba(255,255,255,.04);
-    }
-
-    .cell-edit.text-cell{
-      text-align:left;
-    }
-
-    .cell-edit.number-cell{
-      text-align:right;
-      white-space:nowrap;
-    }
-
-    .cell-edit.date-cell{
-      white-space:nowrap;
-    }
-
-    .cell-edit.select-cell{
-      white-space:pre-wrap;
+      min-width:130px;
     }
 
     .cell-edit.image-cell{
-      min-width:190px;
-      min-height:132px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      text-align:center;
-      background:rgba(255,255,255,.02);
+      min-width:150px;
+    }
+  }
+
+  @media (max-width: 768px){
+    .sheet-inline-form{
+      flex-direction:column;
     }
 
-    .cell-edit.image-cell.empty{
-      border:1px dashed rgba(255,255,255,.10);
-      color:var(--muted);
-      font-size:12px;
-      padding:12px;
-      line-height:1.6;
+    .sheet-inline-form > *{
+      flex:1 1 auto;
     }
 
-    .sheet-image-preview{
-      display:block;
-      max-width:190px;
-      max-height:128px;
-      width:auto;
-      height:auto;
-      border-radius:10px;
-      border:1px solid rgba(255,255,255,.08);
-      background:#111;
-      object-fit:contain;
+    .hero-v2-right-mini{
+      grid-template-columns:1fr;
     }
+  }
+</style>
+{% endblock %}
 
-    .muted2{
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.5;
-    }
+{% block main_content %}
+<section class="hero-v2 hero-v2-compact">
+  <div class="hero-v2-left">
+    <div class="hero-kicker">HEIGHTTECH SHEET</div>
+    <h1 class="hero-v2-title" id="sheetTitle">Sheet</h1>
+    <p class="hero-v2-desc" id="sheetMeta">Đang tải...</p>
 
-    .inline-form{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-top:12px;
-    }
-
-    .status-box{
-      min-height:20px;
-      margin-top:10px;
-      font-size:13px;
-    }
-
-    .edit-hint{
-      margin-top:8px;
-      font-size:12px;
-      color:var(--muted);
-      line-height:1.6;
-    }
-
-    @media (max-width: 900px){
-      .page-wrap{padding:14px;}
-      .sheet-grid td{min-width:130px;}
-      .cell-edit.image-cell{min-width:150px;}
-    }
-  </style>
-</head>
-<body>
-  <div class="page-wrap">
-    <div class="page-head">
-      <div>
-        <div class="page-title" id="sheetTitle">Sheet</div>
-        <div class="page-sub" id="sheetMeta">Đang tải...</div>
-      </div>
-
-      <div>
-        <a class="btn" href="/os/sheets/">← Danh sách sheet</a>
-      </div>
-    </div>
-
-    <div class="toolbar">
+    <div class="hero-actions">
+      <a class="btn" href="/os/sheets/">← Danh sách sheet</a>
       <button class="btn primary" type="button" onclick="addRow()">+ Add Row</button>
       <a class="btn" id="exportBtn" href="#">Export Excel</a>
     </div>
+  </div>
 
-    <div class="grid-wrap">
-      <div class="grid-head">
-        <b>Columns</b>
+  <div class="hero-v2-right hero-v2-right-mini">
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Sheet ID</div>
+      <div class="hero-stat-value" id="heroSheetId">{{ sheet_id }}</div>
+    </div>
 
-        <div class="inline-form">
-          <input id="newColName" class="input" placeholder="Tên cột mới" />
-          <select id="newColType" class="input">
-            <option value="text">text</option>
-            <option value="number">number</option>
-            <option value="date">date</option>
-            <option value="select">select</option>
-            <option value="image">image</option>
-          </select>
-          <button class="btn" type="button" onclick="addColumn()">+ Add Column</button>
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Trạng thái</div>
+      <div class="hero-stat-value" id="heroSheetStatus">ready</div>
+    </div>
+  </div>
+</section>
+
+<section class="grid">
+  <div class="card span3">
+    <div class="card-h">
+      <div>
+        <div class="card-title">Cấu trúc sheet</div>
+        <div class="brand-sub">
+          Thêm cột mới và quản lý kiểu dữ liệu cho sheet đang mở
         </div>
+      </div>
+    </div>
 
-        <div class="edit-hint">
-          Cột <b>image</b>: kéo ảnh vào ô, dán ảnh từ clipboard, hoặc dán link ảnh. Double click vào ô ảnh để sửa link thủ công.
-        </div>
-
-        <div id="statusBox" class="status-box muted2"></div>
+    <div class="card-b">
+      <div class="sheet-inline-form">
+        <input id="newColName" class="input" placeholder="Tên cột mới" />
+        <select id="newColType" class="input">
+          <option value="text">text</option>
+          <option value="number">number</option>
+          <option value="date">date</option>
+          <option value="select">select</option>
+          <option value="image">image</option>
+        </select>
+        <button class="btn" type="button" onclick="addColumn()">+ Add Column</button>
       </div>
 
-      <div class="grid-body">
+      <div class="edit-hint" style="margin-top:10px;">
+        Cột <b>image</b>: kéo ảnh vào ô, dán ảnh từ clipboard, hoặc dán link ảnh.
+        Double click vào ô ảnh để sửa link thủ công.
+      </div>
+
+      <div id="statusBox" class="status-box muted" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <div class="card span3">
+    <div class="card-h">
+      <div>
+        <div class="card-title">Sheet grid</div>
+        <div class="brand-sub">Chỉnh sửa trực tiếp từng ô dữ liệu</div>
+      </div>
+    </div>
+
+    <div class="card-b">
+      <div class="sheet-grid-wrap">
         <div id="sheetGridBox">Đang tải sheet...</div>
       </div>
     </div>
   </div>
+</section>
+{% endblock %}
 
-  <script>
-    const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
-    const SHEET_ID = "{{ sheet_id|escapejs }}".trim();
+{% block extra_js %}
+<script>
+  const CURRENT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
+  const SHEET_ID = "{{ sheet_id|escapejs }}".trim();
 
-    let SHEET_DATA = {
-      sheet: null,
-      columns: [],
-      rows: [],
-    };
+  let SHEET_DATA = {
+    sheet: null,
+    columns: [],
+    rows: [],
+  };
 
-    function getCookie(name) {
-      const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
-      return m ? decodeURIComponent(m[2]) : "";
+  function getCookie(name) {
+    const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
+    return m ? decodeURIComponent(m[2]) : "";
+  }
+
+  function authHeaders(extra = {}) {
+    const headers = Object.assign({}, extra || {});
+    if (CURRENT_TENANT_ID) headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
+    const csrf = getCookie("csrftoken");
+    if (csrf) headers["X-CSRFToken"] = csrf;
+    return headers;
+  }
+
+  async function readJsonSafe(res) {
+    const ct = res.headers.get("content-type") || "";
+    if (ct.includes("application/json")) return await res.json();
+    const txt = await res.text();
+    throw new Error(txt || `HTTP ${res.status}`);
+  }
+
+  function setStatus(msg, type = "info"){
+    const el = document.getElementById("statusBox");
+    el.textContent = msg || "";
+    el.style.color =
+      type === "err" ? "#ff8f9c" :
+      type === "ok" ? "#8fe3a1" :
+      "#8ab4ff";
+
+    const heroStatus = document.getElementById("heroSheetStatus");
+    if (heroStatus) {
+      heroStatus.textContent =
+        type === "err" ? "error" :
+        type === "ok" ? "saved" :
+        "working";
     }
+  }
 
-    function authHeaders(extra = {}) {
-      const headers = Object.assign({}, extra || {});
-      if (CURRENT_TENANT_ID) headers["X-Tenant-Id"] = CURRENT_TENANT_ID;
-      const csrf = getCookie("csrftoken");
-      if (csrf) headers["X-CSRFToken"] = csrf;
-      return headers;
-    }
+  function esc(v){
+    return String(v ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
 
-    async function readJsonSafe(res) {
-      const ct = res.headers.get("content-type") || "";
-      if (ct.includes("application/json")) return await res.json();
-      const txt = await res.text();
-      throw new Error(txt || `HTTP ${res.status}`);
-    }
-
-    function setStatus(msg, type="info"){
-      const el = document.getElementById("statusBox");
-      el.textContent = msg || "";
-      el.style.color =
-        type === "err" ? "#ff8f9c" :
-        type === "ok" ? "#8fe3a1" :
-        "#8ab4ff";
-    }
-
-    function esc(v){
-      return String(v ?? "")
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-    }
-
-    function isImageUrl(value){
-      const v = String(value || "").trim().toLowerCase();
-      if (!v) return false;
-      if (v.startsWith("/media/")) return true;
-      if (v.startsWith("http://") || v.startsWith("https://")) {
-        return (
-          v.includes(".png") ||
-          v.includes(".jpg") ||
-          v.includes(".jpeg") ||
-          v.includes(".webp") ||
-          v.includes(".gif") ||
-          v.includes(".svg")
-        );
-      }
+  function isImageUrl(value){
+    const v = String(value || "").trim().toLowerCase();
+    if (!v) return false;
+    if (v.startsWith("/media/")) return true;
+    if (v.startsWith("http://") || v.startsWith("https://")) {
       return (
-        v.endsWith(".png") ||
-        v.endsWith(".jpg") ||
-        v.endsWith(".jpeg") ||
-        v.endsWith(".webp") ||
-        v.endsWith(".gif") ||
-        v.endsWith(".svg")
+        v.includes(".png") ||
+        v.includes(".jpg") ||
+        v.includes(".jpeg") ||
+        v.includes(".webp") ||
+        v.includes(".gif") ||
+        v.includes(".svg")
       );
     }
+    return (
+      v.endsWith(".png") ||
+      v.endsWith(".jpg") ||
+      v.endsWith(".jpeg") ||
+      v.endsWith(".webp") ||
+      v.endsWith(".gif") ||
+      v.endsWith(".svg")
+    );
+  }
 
-    function getCellRawValue(row, columnId){
-      return ((row.cells || {})[String(columnId)] || "");
-    }
+  function getCellRawValue(row, columnId){
+    return ((row.cells || {})[String(columnId)] || "");
+  }
 
-    function getCellClassByType(dataType){
-      const t = String(dataType || "text");
-      if (t === "number") return "number-cell";
-      if (t === "date") return "date-cell";
-      if (t === "select") return "select-cell";
-      if (t === "image") return "image-cell";
-      return "text-cell";
-    }
+  function getCellClassByType(dataType){
+    const t = String(dataType || "text");
+    if (t === "number") return "number-cell";
+    if (t === "date") return "date-cell";
+    if (t === "select") return "select-cell";
+    if (t === "image") return "image-cell";
+    return "text-cell";
+  }
 
-    function renderNormalCell(row, col){
-      const value = getCellRawValue(row, col.id);
+  function renderNormalCell(row, col){
+    const value = getCellRawValue(row, col.id);
+    return `
+      <div
+        class="cell-edit ${getCellClassByType(col.data_type)}"
+        contenteditable="true"
+        data-row-id="${row.id}"
+        data-column-id="${col.id}"
+        data-column-type="${esc(col.data_type || "text")}"
+      >${esc(value)}</div>
+    `;
+  }
+
+  function renderImageCell(row, col){
+    const value = getCellRawValue(row, col.id);
+
+    if (isImageUrl(value)) {
       return `
         <div
-          class="cell-edit ${getCellClassByType(col.data_type)}"
-          contenteditable="true"
-          data-row-id="${row.id}"
-          data-column-id="${col.id}"
-          data-column-type="${esc(col.data_type || "text")}"
-        >${esc(value)}</div>
-      `;
-    }
-
-    function renderImageCell(row, col){
-      const value = getCellRawValue(row, col.id);
-
-      if (isImageUrl(value)) {
-        return `
-          <div
-            class="cell-edit image-cell"
-            contenteditable="false"
-            data-row-id="${row.id}"
-            data-column-id="${col.id}"
-            data-column-type="image"
-            data-raw-value="${esc(value)}"
-            title="Double click để sửa link ảnh"
-          ><img class="sheet-image-preview" src="${esc(value)}" alt="image" /></div>
-        `;
-      }
-
-      return `
-        <div
-          class="cell-edit image-cell empty"
-          contenteditable="true"
+          class="cell-edit image-cell"
+          contenteditable="false"
           data-row-id="${row.id}"
           data-column-id="${col.id}"
           data-column-type="image"
-          title="Dán link ảnh, kéo ảnh vào ô, hoặc paste ảnh"
-        >${value ? esc(value) : "Dán link ảnh / kéo ảnh vào đây"}</div>
+          data-raw-value="${esc(value)}"
+          title="Double click để sửa link ảnh"
+        ><img class="sheet-image-preview" src="${esc(value)}" alt="image" /></div>
       `;
     }
 
-    async function loadSheet(){
-      const res = await fetch(`/api/v1/sheets/${SHEET_ID}/`, {
-        credentials: "include",
-        headers: authHeaders(),
-        cache: "no-store",
-      });
+    return `
+      <div
+        class="cell-edit image-cell empty"
+        contenteditable="true"
+        data-row-id="${row.id}"
+        data-column-id="${col.id}"
+        data-column-type="image"
+        title="Dán link ảnh, kéo ảnh vào ô, hoặc paste ảnh"
+      >${value ? esc(value) : "Dán link ảnh / kéo ảnh vào đây"}</div>
+    `;
+  }
 
-      const data = await readJsonSafe(res);
+  async function loadSheet(){
+    const res = await fetch(`/api/v1/sheets/${SHEET_ID}/`, {
+      credentials: "include",
+      headers: authHeaders(),
+      cache: "no-store",
+    });
 
-      if (!res.ok || !data.ok) {
-        document.getElementById("sheetGridBox").innerHTML = `Không tải được sheet`;
-        return;
-      }
+    const data = await readJsonSafe(res);
 
-      SHEET_DATA = data;
-      renderSheet();
+    if (!res.ok || !data.ok) {
+      document.getElementById("sheetGridBox").innerHTML = `Không tải được sheet`;
+      setStatus("Không tải được sheet", "err");
+      return;
     }
 
-    function renderSheet(){
-      const sheet = SHEET_DATA.sheet || {};
-      const columns = SHEET_DATA.columns || [];
-      const rows = SHEET_DATA.rows || [];
+    SHEET_DATA = data;
+    renderSheet();
+    setStatus("Đã tải sheet", "ok");
+  }
 
-      document.getElementById("sheetTitle").textContent =
-        sheet.name || `Sheet #${SHEET_ID}`;
+  function renderSheet(){
+    const sheet = SHEET_DATA.sheet || {};
+    const columns = SHEET_DATA.columns || [];
+    const rows = SHEET_DATA.rows || [];
 
-      document.getElementById("sheetMeta").textContent =
-        `Module: ${sheet.module_code || "-"} • Linked: ${sheet.linked_target_type || "-"} ${sheet.linked_target_id || ""}`;
+    document.getElementById("sheetTitle").textContent =
+      sheet.name || `Sheet #${SHEET_ID}`;
 
-      document.getElementById("exportBtn").href =
-        `/api/v1/sheets/${SHEET_ID}/export.xlsx`;
+    document.getElementById("sheetMeta").textContent =
+      `Module: ${sheet.module_code || "-"} • Linked: ${sheet.linked_target_type || "-"} ${sheet.linked_target_id || ""}`;
 
-      const box = document.getElementById("sheetGridBox");
+    document.getElementById("exportBtn").href =
+      `/api/v1/sheets/${SHEET_ID}/export.xlsx`;
 
-      if (!columns.length) {
-        box.innerHTML = `<div class="muted2">Sheet chưa có cột. Anh thêm cột đầu tiên nha.</div>`;
-        return;
-      }
+    const box = document.getElementById("sheetGridBox");
 
-      const thead = `
-        <thead>
+    if (!columns.length) {
+      box.innerHTML = `<div class="muted">Sheet chưa có cột. Anh thêm cột đầu tiên nha.</div>`;
+      return;
+    }
+
+    const thead = `
+      <thead>
+        <tr>
+          <th class="row-number-cell">#</th>
+          ${columns.map(c => `<th>${esc(c.name)} <span class="muted">(${esc(c.data_type || "text")})</span></th>`).join("")}
+        </tr>
+      </thead>
+    `;
+
+    const tbody = `
+      <tbody>
+        ${rows.map((r, idx) => `
           <tr>
-            <th class="row-number-cell">#</th>
-            ${columns.map(c => `<th>${esc(c.name)} <span class="muted2">(${esc(c.data_type || "text")})</span></th>`).join("")}
+            <td class="row-number-cell">${idx + 1}</td>
+            ${columns.map(c => `
+              <td>
+                ${String(c.data_type || "text") === "image"
+                  ? renderImageCell(r, c)
+                  : renderNormalCell(r, c)}
+              </td>
+            `).join("")}
           </tr>
-        </thead>
-      `;
+        `).join("")}
+      </tbody>
+    `;
 
-      const tbody = `
-        <tbody>
-          ${rows.map((r, idx) => `
-            <tr>
-              <td class="row-number-cell">${idx + 1}</td>
-              ${columns.map(c => `
-                <td>
-                  ${String(c.data_type || "text") === "image"
-                    ? renderImageCell(r, c)
-                    : renderNormalCell(r, c)}
-                </td>
-              `).join("")}
-            </tr>
-          `).join("")}
-        </tbody>
-      `;
+    box.innerHTML = `<table class="sheet-grid">${thead}${tbody}</table>`;
+    bindCellEvents();
+  }
 
-      box.innerHTML = `<table class="sheet-grid">${thead}${tbody}</table>`;
-      bindCellEvents();
+  async function uploadImage(file){
+    const form = new FormData();
+    form.append("file", file);
+
+    const res = await fetch("/api/v1/sheets/upload-image/", {
+      method: "POST",
+      credentials: "include",
+      headers: authHeaders(),
+      body: form,
+    });
+
+    const data = await readJsonSafe(res);
+    if (!res.ok || !data.ok) {
+      throw new Error(data.message || "Upload ảnh lỗi");
     }
+    return data.url;
+  }
 
-    async function uploadImage(file){
-      const form = new FormData();
-      form.append("file", file);
+  async function saveImageValue(el, value){
+    const rowId = el.dataset.rowId;
+    const columnId = el.dataset.columnId;
 
-      const res = await fetch("/api/v1/sheets/upload-image/", {
-        method: "POST",
-        credentials: "include",
-        headers: authHeaders(),
-        body: form,
-      });
+    await updateCell(rowId, columnId, value);
+    setStatus("Đã lưu ô ảnh", "ok");
+    await loadSheet();
+  }
 
-      const data = await readJsonSafe(res);
-      if (!res.ok || !data.ok) {
-        throw new Error(data.message || "Upload ảnh lỗi");
-      }
-      return data.url;
-    }
+  function bindCellEvents(){
+    document.querySelectorAll(".cell-edit").forEach((el) => {
+      const type = el.dataset.columnType || "text";
 
-    async function saveImageValue(el, value){
-      const rowId = el.dataset.rowId;
-      const columnId = el.dataset.columnId;
+      if (type === "image") {
+        el.addEventListener("dblclick", () => {
+          const raw = el.dataset.rawValue || "";
+          el.setAttribute("contenteditable", "true");
+          el.classList.remove("empty");
+          el.innerText = raw;
+          el.focus();
 
-      await updateCell(rowId, columnId, value);
-      setStatus("Đã lưu ô ảnh", "ok");
-      await loadSheet();
-    }
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          range.collapse(false);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        });
 
-    function bindCellEvents(){
-      document.querySelectorAll(".cell-edit").forEach((el) => {
-        const type = el.dataset.columnType || "text";
+        el.addEventListener("paste", async (e) => {
+          const items = Array.from(e.clipboardData?.items || []);
+          const imageItem = items.find((x) => String(x.type || "").startsWith("image/"));
+          if (!imageItem) return;
 
-        if (type === "image") {
-          el.addEventListener("dblclick", () => {
-            const raw = el.dataset.rawValue || "";
-            el.setAttribute("contenteditable", "true");
-            el.classList.remove("empty");
-            el.innerText = raw;
-            el.focus();
+          e.preventDefault();
 
-            const range = document.createRange();
-            range.selectNodeContents(el);
-            range.collapse(false);
-            const sel = window.getSelection();
-            sel.removeAllRanges();
-            sel.addRange(range);
-          });
+          const file = imageItem.getAsFile();
+          if (!file) return;
 
-          el.addEventListener("paste", async (e) => {
-            const items = Array.from(e.clipboardData?.items || []);
-            const imageItem = items.find((x) => String(x.type || "").startsWith("image/"));
-            if (!imageItem) return;
-
-            e.preventDefault();
-
-            const file = imageItem.getAsFile();
-            if (!file) return;
-
-            setStatus("Đang upload ảnh...", "info");
-
-            try {
-              const url = await uploadImage(file);
-              await saveImageValue(el, url);
-            } catch (err) {
-              setStatus("Upload ảnh lỗi: " + (err.message || err), "err");
-            }
-          });
-
-          el.addEventListener("dragover", (e) => {
-            e.preventDefault();
-          });
-
-          el.addEventListener("drop", async (e) => {
-            e.preventDefault();
-
-            const file = e.dataTransfer?.files?.[0];
-            if (!file) return;
-
-            if (!String(file.type || "").startsWith("image/")) {
-              setStatus("Chỉ chấp nhận file ảnh", "err");
-              return;
-            }
-
-            setStatus("Đang upload ảnh...", "info");
-
-            try {
-              const url = await uploadImage(file);
-              await saveImageValue(el, url);
-            } catch (err) {
-              setStatus("Upload ảnh lỗi: " + (err.message || err), "err");
-            }
-          });
-
-          el.addEventListener("blur", async () => {
-            if (el.getAttribute("contenteditable") !== "true") return;
-
-            const value = (el.innerText || "").trim();
-            try {
-              await saveImageValue(el, value);
-            } catch (e) {
-              setStatus("Lưu ô ảnh lỗi: " + (e.message || e), "err");
-            }
-          });
-
-          return;
-        }
-
-        el.addEventListener("blur", async () => {
-          const rowId = el.dataset.rowId;
-          const columnId = el.dataset.columnId;
-          const value = el.innerText;
+          setStatus("Đang upload ảnh...", "info");
 
           try {
-            await updateCell(rowId, columnId, value);
-            setStatus("Đã lưu ô", "ok");
-          } catch (e) {
-            setStatus("Lưu ô lỗi: " + (e.message || e), "err");
+            const url = await uploadImage(file);
+            await saveImageValue(el, url);
+          } catch (err) {
+            setStatus("Upload ảnh lỗi: " + (err.message || err), "err");
           }
         });
-      });
-    }
 
-    async function updateCell(rowId, columnId, value){
-      const res = await fetch("/api/v1/sheets/cells/update/", {
-        method: "POST",
-        credentials: "include",
-        headers: authHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({
-          row_id: rowId,
-          column_id: columnId,
-          value: value
-        })
-      });
+        el.addEventListener("dragover", (e) => {
+          e.preventDefault();
+        });
 
-      const data = await readJsonSafe(res);
-      if (!res.ok || !data.ok) {
-        throw new Error(data.message || "Update cell lỗi");
-      }
-      return data;
-    }
+        el.addEventListener("drop", async (e) => {
+          e.preventDefault();
 
-    async function addRow(){
-      setStatus("Đang thêm dòng...", "info");
+          const file = e.dataTransfer?.files?.[0];
+          if (!file) return;
 
-      const res = await fetch(`/api/v1/sheets/${SHEET_ID}/rows/create/`, {
-        method: "POST",
-        credentials: "include",
-        headers: authHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({})
-      });
+          if (!String(file.type || "").startsWith("image/")) {
+            setStatus("Chỉ chấp nhận file ảnh", "err");
+            return;
+          }
 
-      const data = await readJsonSafe(res);
-      if (!res.ok || !data.ok) {
-        setStatus(data.message || "Thêm dòng lỗi", "err");
+          setStatus("Đang upload ảnh...", "info");
+
+          try {
+            const url = await uploadImage(file);
+            await saveImageValue(el, url);
+          } catch (err) {
+            setStatus("Upload ảnh lỗi: " + (err.message || err), "err");
+          }
+        });
+
+        el.addEventListener("blur", async () => {
+          if (el.getAttribute("contenteditable") !== "true") return;
+
+          const value = (el.innerText || "").trim();
+          try {
+            await saveImageValue(el, value);
+          } catch (e) {
+            setStatus("Lưu ô ảnh lỗi: " + (e.message || e), "err");
+          }
+        });
+
         return;
       }
 
-      setStatus("Đã thêm dòng", "ok");
-      await loadSheet();
-    }
+      el.addEventListener("blur", async () => {
+        const rowId = el.dataset.rowId;
+        const columnId = el.dataset.columnId;
+        const value = el.innerText;
 
-    async function addColumn(){
-      const name = document.getElementById("newColName").value.trim();
-      const dataType = document.getElementById("newColType").value;
-
-      if (!name) {
-        setStatus("Thiếu tên cột", "err");
-        return;
-      }
-
-      setStatus("Đang thêm cột...", "info");
-
-      const res = await fetch(`/api/v1/sheets/${SHEET_ID}/columns/create/`, {
-        method: "POST",
-        credentials: "include",
-        headers: authHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({
-          name: name,
-          data_type: dataType
-        })
+        try {
+          await updateCell(rowId, columnId, value);
+          setStatus("Đã lưu ô", "ok");
+        } catch (e) {
+          setStatus("Lưu ô lỗi: " + (e.message || e), "err");
+        }
       });
-
-      const data = await readJsonSafe(res);
-      if (!res.ok || !data.ok) {
-        setStatus(data.message || "Thêm cột lỗi", "err");
-        return;
-      }
-
-      document.getElementById("newColName").value = "";
-      setStatus("Đã thêm cột", "ok");
-      await loadSheet();
-    }
-
-    loadSheet().catch((e) => {
-      document.getElementById("sheetGridBox").innerHTML =
-        `Load sheet lỗi: ${esc(e.message || e)}`;
     });
-  </script>
-</body>
-</html>
+  }
+
+  async function updateCell(rowId, columnId, value){
+    const res = await fetch("/api/v1/sheets/cells/update/", {
+      method: "POST",
+      credentials: "include",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        row_id: rowId,
+        column_id: columnId,
+        value: value
+      })
+    });
+
+    const data = await readJsonSafe(res);
+    if (!res.ok || !data.ok) {
+      throw new Error(data.message || "Update cell lỗi");
+    }
+    return data;
+  }
+
+  async function addRow(){
+    setStatus("Đang thêm dòng...", "info");
+
+    const res = await fetch(`/api/v1/sheets/${SHEET_ID}/rows/create/`, {
+      method: "POST",
+      credentials: "include",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({})
+    });
+
+    const data = await readJsonSafe(res);
+    if (!res.ok || !data.ok) {
+      setStatus(data.message || "Thêm dòng lỗi", "err");
+      return;
+    }
+
+    setStatus("Đã thêm dòng", "ok");
+    await loadSheet();
+  }
+
+  async function addColumn(){
+    const name = document.getElementById("newColName").value.trim();
+    const dataType = document.getElementById("newColType").value;
+
+    if (!name) {
+      setStatus("Thiếu tên cột", "err");
+      return;
+    }
+
+    setStatus("Đang thêm cột...", "info");
+
+    const res = await fetch(`/api/v1/sheets/${SHEET_ID}/columns/create/`, {
+      method: "POST",
+      credentials: "include",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        name: name,
+        data_type: dataType
+      })
+    });
+
+    const data = await readJsonSafe(res);
+    if (!res.ok || !data.ok) {
+      setStatus(data.message || "Thêm cột lỗi", "err");
+      return;
+    }
+
+    document.getElementById("newColName").value = "";
+    setStatus("Đã thêm cột", "ok");
+    await loadSheet();
+  }
+
+  loadSheet().catch((e) => {
+    document.getElementById("sheetGridBox").innerHTML =
+      `Load sheet lỗi: ${esc(e.message || e)}`;
+    setStatus("Load sheet lỗi: " + (e.message || e), "err");
+  });
+</script>
+{% endblock %}

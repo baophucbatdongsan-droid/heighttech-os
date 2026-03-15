@@ -68,16 +68,6 @@ def _create_os_notification_once(
     dedupe_code: str,
     meta: Optional[dict] = None,
 ) -> bool:
-    """
-    OSNotification chưa có field dedupe_key.
-    Beta mình chống trùng theo:
-    - tenant
-    - entity_kind
-    - entity_id
-    - title
-    - mã dedupe trong meta
-    - cùng ngày
-    """
     today = timezone.localdate()
 
     existed = OSNotification.objects_all.filter(
@@ -135,6 +125,8 @@ def _ensure_work_task(
     project_id=None,
     due_at=None,
     priority: int = 3,
+    target_type: str = "",
+    target_id=None,
 ) -> bool:
     """
     Không tạo trùng nếu đang có task mở cùng title.
@@ -158,14 +150,16 @@ def _ensure_work_task(
         assignee=None,
         is_internal=False,
     )
+
     if hasattr(obj, "target_type"):
         obj.target_type = (target_type or "").strip()
 
-    if hasattr(obj, "target_id"):
+    if hasattr(obj, "target_id") and target_id:
         obj.target_id = int(target_id)
 
     if hasattr(obj, "type"):
         obj.type = WorkItem.Type.TASK
+
     obj.save()
     return True
 
@@ -190,8 +184,8 @@ def _handle_contract_payment_alerts(start_today, end_today, now) -> tuple[int, i
         contract = getattr(p, "contract", None)
         if not contract:
             continue
-        ctype = (getattr(contract, "contract_type", "") or "").lower()
 
+        ctype = (getattr(contract, "contract_type", "") or "").lower()
         if ctype == "booking":
             contract_prefix = "[Booking]"
         elif ctype == "channel":
@@ -254,6 +248,8 @@ def _handle_contract_payment_alerts(start_today, end_today, now) -> tuple[int, i
                 project_id=None,
                 due_at=due_at,
                 priority=3,
+                target_type="contract_payment",
+                target_id=p.id,
             ):
                 created_tasks += 1
 
@@ -308,6 +304,8 @@ def _handle_contract_payment_alerts(start_today, end_today, now) -> tuple[int, i
                 project_id=None,
                 due_at=due_at,
                 priority=4,
+                target_type="contract_payment",
+                target_id=p.id,
             ):
                 created_tasks += 1
 
@@ -395,6 +393,8 @@ def _handle_contract_milestone_alerts(start_today, end_today, now) -> tuple[int,
                 project_id=None,
                 due_at=due_at,
                 priority=3,
+                target_type="contract_milestone",
+                target_id=m.id,
             ):
                 created_tasks += 1
 
@@ -445,6 +445,8 @@ def _handle_contract_milestone_alerts(start_today, end_today, now) -> tuple[int,
                 project_id=None,
                 due_at=due_at,
                 priority=4,
+                target_type="contract_milestone",
+                target_id=m.id,
             ):
                 created_tasks += 1
 
@@ -533,6 +535,8 @@ def _handle_booking_payout_overdue(now) -> tuple[int, int, int]:
             project_id=None,
             due_at=payout_due_at,
             priority=4,
+            target_type="contract_booking_item",
+            target_id=item.id,
         ):
             created_tasks += 1
 
@@ -622,6 +626,8 @@ def _handle_booking_air_passed_no_link(now) -> tuple[int, int, int]:
             project_id=None,
             due_at=air_date,
             priority=3,
+            target_type="contract_booking_item",
+            target_id=item.id,
         ):
             created_tasks += 1
 

@@ -1,51 +1,201 @@
-<!-- templates/os_partner_new.html -->
+{% extends "os/os_layout.html" %}
 {% load static %}
-<!doctype html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Tạo Công Ty / Đối Tác • HeightTech OS</title>
-  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=40">
-  <style>
-    .page-wrap{max-width:860px;margin:0 auto;padding:24px}
-    .page-title{font-size:28px;font-weight:900}
-    .page-sub{color:var(--muted);margin-top:6px;line-height:1.6}
-    .card{margin-top:18px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);border-radius:20px;padding:18px}
-    .field{margin-bottom:14px}
-    .field label{display:block;margin-bottom:8px;font-size:14px;font-weight:700}
-    .field input{width:100%}
-    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-    .flash{margin-top:12px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.08)}
-  </style>
-</head>
-<body>
-  <div class="page-wrap">
-    <div class="page-title">Tạo Công Ty / Đối Tác mới</div>
-    <div class="page-sub">
-      Dùng để khởi tạo đơn vị khách hàng / đối tác trước khi tạo Hợp đồng, Brand và Shop.
+
+{% block page_title %}Tạo Công Ty / Đối Tác • HeightTech OS{% endblock %}
+{% block body_page %}os-partner-new{% endblock %}
+
+{% block sidebar_brand_title %}HeightTech OS{% endblock %}
+{% block sidebar_brand_sub %}Commerce Control Center{% endblock %}
+
+{% block topbar_brand_title %}Partner / Company Creator{% endblock %}
+{% block topbar_brand_sub %}Khởi tạo công ty, đối tác và đơn vị khách hàng trong HeightTech OS{% endblock %}
+
+{% block search_placeholder %}Tìm công ty / đối tác{% endblock %}
+
+{% block extra_head %}
+<style>
+  .hero-v2-compact{
+    padding:22px;
+  }
+
+  .hero-v2-right-mini{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .hero-stat-value-sm{
+    font-size:18px;
+    line-height:1.25;
+    letter-spacing:-.01em;
+    word-break:break-word;
+  }
+
+  .partner-form{
+    display:block;
+  }
+
+  .partner-form-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px;
+  }
+
+  .partner-field{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+
+  .partner-field.full{
+    grid-column:1 / -1;
+  }
+
+  .partner-field label{
+    font-size:13px;
+    font-weight:800;
+    color:var(--text-soft);
+  }
+
+  .partner-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:16px;
+  }
+
+  .partner-flash-list{
+    margin-bottom:14px;
+  }
+
+  .partner-flash{
+    padding:12px 14px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(255,255,255,.04);
+    color:var(--text-soft);
+    font-size:13px;
+    line-height:1.6;
+  }
+
+  @media (max-width: 980px){
+    .hero-v2-right-mini{
+      grid-template-columns:1fr;
+    }
+
+    .partner-form-grid{
+      grid-template-columns:1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block main_content %}
+<section class="hero-v2 hero-v2-compact">
+  <div class="hero-v2-left">
+    <div class="hero-kicker">PARTNER SETUP</div>
+    <h1 class="hero-v2-title">Tạo Công Ty / Đối Tác mới</h1>
+    <p class="hero-v2-desc">
+      Dùng để khởi tạo đơn vị khách hàng hoặc đối tác trước khi tạo hợp đồng,
+      brand, shop và workspace vận hành trong hệ thống.
+    </p>
+
+    <div class="hero-actions">
+      <a class="btn" href="/os/partners/">← Quay lại danh sách</a>
+      <a class="btn" href="/os/">Về OS</a>
     </div>
-    <div class="page-sub" style="margin-top:8px">Tenant hiện tại: {{ tenant_id|default:"-" }}</div>
-
-    {% if messages %}
-      {% for message in messages %}
-        <div class="flash card">{{ message }}</div>
-      {% endfor %}
-    {% endif %}
-
-    <form method="post" class="card">
-      {% csrf_token %}
-
-      <div class="field">
-        <label for="id_name">Tên Công Ty / Đối Tác</label>
-        <input id="id_name" name="name" type="text" placeholder="VD: Công ty Cổ phần 70mai" required>
-      </div>
-
-      <div class="actions">
-        <a class="btn" href="/os/partners/">← Quay lại</a>
-        <button class="btn primary" type="submit">Tạo mới</button>
-      </div>
-    </form>
   </div>
-</body>
-</html>
+
+  <div class="hero-v2-right hero-v2-right-mini">
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Tenant</div>
+      <div class="hero-stat-value hero-stat-value-sm">{{ tenant_id|default:"-" }}</div>
+    </div>
+
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Entity</div>
+      <div class="hero-stat-value hero-stat-value-sm">company</div>
+    </div>
+
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Mode</div>
+      <div class="hero-stat-value hero-stat-value-sm">create new</div>
+    </div>
+
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Flow</div>
+      <div class="hero-stat-value hero-stat-value-sm">partner setup</div>
+    </div>
+  </div>
+</section>
+
+<section class="grid">
+  <div class="card span2">
+    <div class="card-h">
+      <div>
+        <div class="card-title">Form tạo Công Ty / Đối Tác</div>
+        <div class="brand-sub">Tạo đơn vị gốc để đi tiếp sang hợp đồng, brand và shop</div>
+      </div>
+    </div>
+
+    <div class="card-b">
+      {% if messages %}
+        <div class="list partner-flash-list">
+          {% for message in messages %}
+            <div class="partner-flash">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <form method="post" class="partner-form">
+        {% csrf_token %}
+
+        <div class="partner-form-grid">
+          <div class="partner-field full">
+            <label for="id_name">Tên Công Ty / Đối Tác</label>
+            <input
+              id="id_name"
+              name="name"
+              type="text"
+              class="input"
+              placeholder="VD: Công ty Cổ phần 70mai"
+              required
+            >
+          </div>
+        </div>
+
+        <div class="partner-actions">
+          <a class="btn" href="/os/partners/">← Quay lại</a>
+          <button class="btn primary" type="submit">Tạo mới</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">
+      <div>
+        <div class="card-title">Gợi ý tiếp theo</div>
+        <div class="brand-sub">Sau khi tạo xong, anh có thể đi tiếp theo luồng này</div>
+      </div>
+    </div>
+
+    <div class="card-b">
+      <div class="list">
+        <div class="item">
+          <div class="t">1. Tạo hợp đồng</div>
+          <div class="d">Khởi tạo logic doanh thu, milestone, payment và phạm vi vận hành.</div>
+        </div>
+
+        <div class="item">
+          <div class="t">2. Tạo shop / brand</div>
+          <div class="d">Gắn đối tác với shop hoặc nhãn hàng để đi vào vận hành thực tế.</div>
+        </div>
+
+        <div class="item">
+          <div class="t">3. Mở workspace</div>
+          <div class="d">Sau đó mới vào Work OS, Content Studio hoặc Contract Center.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

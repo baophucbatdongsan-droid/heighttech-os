@@ -54,7 +54,6 @@ def _parse_int(s: Optional[str], default: int) -> int:
 def _paginate(request: Request, qs):
     page = max(_parse_int(request.query_params.get("page"), 1), 1)
 
-    # hỗ trợ cả page_size và limit để FE OS gọi ổn
     raw_page_size = (
         request.query_params.get("page_size")
         or request.query_params.get("limit")
@@ -136,7 +135,6 @@ def _apply_filters(request: Request, qs):
         except Exception:
             pass
 
-    # legacy filters (target)
     if target_type:
         qs = qs.filter(target_type=target_type)
 
@@ -158,11 +156,6 @@ def _is_client(user) -> bool:
 
 
 def _apply_client_scope(request: Request, qs):
-    """
-    Client chỉ thấy task public:
-    - visible_to_client=True
-    - is_internal=False
-    """
     if _is_client(request.user):
         qs = qs.filter(visible_to_client=True, is_internal=False)
     return qs
@@ -231,7 +224,10 @@ class WorkItemListCreateView(generics.GenericAPIView):
         obj._actor = request.user  # type: ignore[attr-defined]
         obj.save()
 
-        return Response({"ok": True, "item": WorkItemSerializer(obj, context={"request": request}).data}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"ok": True, "item": WorkItemSerializer(obj, context={"request": request}).data},
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class WorkItemDetailView(generics.GenericAPIView):
@@ -366,8 +362,16 @@ class WorkMySummaryView(generics.GenericAPIView):
                 "my": {
                     "assigned_total": my_assigned.count(),
                     "requested_total": my_requested.count(),
-                    "assigned_items": WorkItemSerializer(_with_related(my_assigned.order_by("-updated_at", "-id")[:20]), many=True, context={"request": request}).data,
-                    "requested_items": WorkItemSerializer(_with_related(my_requested.order_by("-updated_at", "-id")[:20]), many=True, context={"request": request}).data,
+                    "assigned_items": WorkItemSerializer(
+                        _with_related(my_assigned.order_by("-updated_at", "-id")[:20]),
+                        many=True,
+                        context={"request": request},
+                    ).data,
+                    "requested_items": WorkItemSerializer(
+                        _with_related(my_requested.order_by("-updated_at", "-id")[:20]),
+                        many=True,
+                        context={"request": request},
+                    ).data,
                 },
                 "due_soon": WorkItemSerializer(_with_related(due_soon), many=True, context={"request": request}).data,
                 "recent_timeline": WorkCommentSerializer(comment_qs, many=True).data,
@@ -454,7 +458,10 @@ class WorkBoardView(generics.GenericAPIView):
             target_type = (request.query_params.get("target_type") or "").strip()
             target_id = request.query_params.get("target_id")
             if not target_type or not target_id:
-                return Response({"ok": False, "message": "target_type and target_id are required for scope=target"}, status=400)
+                return Response(
+                    {"ok": False, "message": "target_type and target_id are required for scope=target"},
+                    status=400,
+                )
             try:
                 qs = qs.filter(target_type=target_type, target_id=int(target_id))
             except Exception:
@@ -486,7 +493,9 @@ class WorkBoardView(generics.GenericAPIView):
             columns.append({"status": st, "total": total, "items": items})
             totals[st] = total
 
-        return Response({"ok": True, "scope": scope, "limit": limit, "sort": sort, "dir": direction, "totals": totals, "columns": columns})
+        return Response(
+            {"ok": True, "scope": scope, "limit": limit, "sort": sort, "dir": direction, "totals": totals, "columns": columns}
+        )
 
 
 class WorkItemMoveView(TenantRequiredMixin, APIView):
@@ -495,7 +504,10 @@ class WorkItemMoveView(TenantRequiredMixin, APIView):
 
     def post(self, request, pk: int):
         if _is_client(request.user):
-            return Response({"ok": False, "detail": "Khách hàng không được thay đổi trạng thái"}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"ok": False, "detail": "Khách hàng không được thay đổi trạng thái"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         tenant = self.get_tenant()
 
@@ -517,6 +529,7 @@ class WorkItemMoveView(TenantRequiredMixin, APIView):
                 item_id=int(item.id),
                 to_status=to_status,
                 to_position=int(to_position) if to_position is not None else None,
+                actor_id=getattr(request.user, "id", None),
             )
         except ValueError as e:
             return Response({"ok": False, "detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -551,7 +564,6 @@ class WorkItemAssignSerializer(serializers.Serializer):
 
 
 class WorkItemAssignView(generics.GenericAPIView):
-
     permission_classes = [IsAuthenticated, AbilityPermission]
     required_ability = VIEW_API_DASHBOARD
     serializer_class = WorkItemAssignSerializer
@@ -563,7 +575,6 @@ class WorkItemAssignView(generics.GenericAPIView):
         item = get_scoped_workitem_or_404(request, pk)
 
         payload = dict(request.data or {})
-        # validate scope write
         ok, msg = validate_write_scope(request, payload)
         if not ok:
             return Response({"ok": False, "message": msg}, status=status.HTTP_403_FORBIDDEN)
@@ -574,9 +585,6 @@ class WorkItemAssignView(generics.GenericAPIView):
         assignee_id = ser.validated_data.get("assignee_id", None)
         requester_id = ser.validated_data.get("requester_id", None)
         note = (ser.validated_data.get("note") or "").strip()
-
-        # Safety: block assign on cancelled/done? (tuỳ anh muốn)
-        # ở đây để "mềm": vẫn cho assign nếu cần audit, không chặn.
 
         with transaction.atomic():
             updated = set()
@@ -595,7 +603,6 @@ class WorkItemAssignView(generics.GenericAPIView):
             else:
                 item.save()
 
-            # log comment để FE thấy lịch sử giao việc
             if note or updated:
                 WorkComment.objects_all.create(
                     tenant_id=item.tenant_id,
@@ -611,4 +618,3 @@ class WorkItemAssignView(generics.GenericAPIView):
 
         item.refresh_from_db()
         return Response({"ok": True, "item": WorkItemSerializer(item, context={"request": request}).data})
-

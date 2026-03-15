@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from apps.events.bus import get_handlers
 from apps.events.models import OutboxEvent
-
+from django.db import models
 logger = logging.getLogger(__name__)
 
 DEFAULT_MAX_ATTEMPTS = 12

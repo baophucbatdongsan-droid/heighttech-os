@@ -1,137 +1,236 @@
-<!-- templates/os_partners.html -->
+{% extends "os/os_layout.html" %}
 {% load static %}
-<!doctype html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Công Ty / Đối Tác • HeightTech OS</title>
 
-  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=41">
+{% block page_title %}Công Ty / Đối Tác • HeightTech OS{% endblock %}
+{% block body_page %}os-partners{% endblock %}
 
-  <style>
-    .page-wrap{max-width:1180px;margin:0 auto;padding:24px}
-    .page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+{% block sidebar_brand_title %}HeightTech OS{% endblock %}
+{% block sidebar_brand_sub %}Commerce Control Center{% endblock %}
 
-    .page-title{font-size:28px;font-weight:900}
-    .page-sub{color:var(--muted);margin-top:6px;line-height:1.6;max-width:780px}
+{% block topbar_brand_title %}Partners / Companies{% endblock %}
+{% block topbar_brand_sub %}Quản trị đơn vị khách hàng, đối tác và công ty trong tenant hiện tại{% endblock %}
 
-    .page-actions{display:flex;gap:10px;flex-wrap:wrap}
+{% block search_placeholder %}Tìm công ty / đối tác{% endblock %}
 
-    .card{
-      border:1px solid rgba(255,255,255,.08);
-      background:rgba(255,255,255,.03);
-      border-radius:20px;
-      padding:18px;
+{% block extra_head %}
+<style>
+  .hero-v2-compact{
+    padding:22px;
+  }
+
+  .hero-v2-right-mini{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .hero-stat-value-sm{
+    font-size:18px;
+    line-height:1.25;
+    letter-spacing:-.01em;
+    word-break:break-word;
+  }
+
+  .partner-search-form{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+
+  .partner-search-form .input{
+    flex:1;
+    min-width:260px;
+  }
+
+  .partner-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:14px;
+  }
+
+  .partner-card{
+    display:block;
+    text-decoration:none;
+    color:inherit;
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(255,255,255,.03);
+    border-radius:18px;
+    padding:16px;
+    transition:transform .15s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+  }
+
+  .partner-card:hover{
+    transform:translateY(-2px);
+    border-color:rgba(96,165,250,.28);
+    background:rgba(255,255,255,.045);
+    box-shadow:var(--shadow-soft);
+  }
+
+  .partner-card-title{
+    font-size:18px;
+    font-weight:900;
+    line-height:1.35;
+  }
+
+  .partner-card-meta-row{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:10px;
+  }
+
+  .partner-chip{
+    display:inline-flex;
+    align-items:center;
+    min-height:28px;
+    padding:0 10px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    background:rgba(255,255,255,.05);
+    color:var(--text-soft);
+    font-size:12px;
+    font-weight:800;
+  }
+
+  .partner-card-desc{
+    margin-top:12px;
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.7;
+  }
+
+  .partner-empty{
+    border:1px dashed rgba(255,255,255,.10);
+    border-radius:16px;
+    padding:16px;
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.7;
+    background:rgba(255,255,255,.02);
+    grid-column:1 / -1;
+  }
+
+  .partner-flash-list{
+    margin-bottom:14px;
+  }
+
+  .partner-flash{
+    padding:12px 14px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(255,255,255,.04);
+    color:var(--text-soft);
+    font-size:13px;
+    line-height:1.6;
+  }
+
+  @media (max-width: 980px){
+    .hero-v2-right-mini{
+      grid-template-columns:1fr;
     }
+  }
+</style>
+{% endblock %}
 
-    .search-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
-    .search-row input{min-width:260px}
+{% block main_content %}
+<section class="hero-v2 hero-v2-compact">
+  <div class="hero-v2-left">
+    <div class="hero-kicker">PARTNER DIRECTORY</div>
+    <h1 class="hero-v2-title">Công Ty / Đối Tác</h1>
+    <p class="hero-v2-desc">
+      Quản trị đơn vị khách hàng và đối tác trong tenant hiện tại.
+      Đây là lớp gốc để tạo brand, shop, hợp đồng và workspace vận hành phía sau.
+    </p>
 
-    .partner-list{
-      display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-      gap:14px;
-    }
-
-    .partner-card{
-      display:block;
-      text-decoration:none;
-      color:inherit;
-      transition:.15s ease;
-    }
-
-    .partner-card:hover{
-      transform:translateY(-2px);
-      border-color:rgba(96,165,250,.28);
-      background:rgba(255,255,255,.045);
-    }
-
-    .partner-name{font-size:18px;font-weight:800}
-    .partner-meta{margin-top:8px;color:var(--muted);font-size:13px}
-
-    .flash{
-      margin-bottom:12px;
-      padding:12px 14px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.08);
-    }
-  </style>
-</head>
-
-<body>
-
-<div class="page-wrap">
-
-  <div class="page-head">
-
-    <div>
-      <div class="page-title">Công Ty / Đối Tác</div>
-
-      <div class="page-sub">
-        Quản trị đơn vị khách hàng / đối tác trong tenant hiện tại.
-        Đây là gốc để tạo Brand, Shop và Hợp đồng.
-      </div>
-
-      <div class="page-sub" style="margin-top:8px">
-        Tenant hiện tại: {{ tenant_id|default:"-" }}
-      </div>
-    </div>
-
-    <div class="page-actions">
+    <div class="hero-actions">
       <a class="btn" href="/os/">← Về OS</a>
       <a class="btn primary" href="/os/partners/new/">＋ Tạo Công Ty / Đối Tác</a>
     </div>
-
   </div>
 
+  <div class="hero-v2-right hero-v2-right-mini">
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Tenant</div>
+      <div class="hero-stat-value hero-stat-value-sm">{{ tenant_id|default:"-" }}</div>
+    </div>
 
-  {% if messages %}
-    {% for message in messages %}
-      <div class="flash card">{{ message }}</div>
-    {% endfor %}
-  {% endif %}
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Entity</div>
+      <div class="hero-stat-value hero-stat-value-sm">company</div>
+    </div>
 
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Mode</div>
+      <div class="hero-stat-value hero-stat-value-sm">directory</div>
+    </div>
 
-  <!-- SEARCH -->
-  <form method="get" class="search-row">
-    <input type="text" name="q" value="{{ q }}" placeholder="Tìm theo tên Công Ty / Đối Tác">
-    <button class="btn" type="submit">Tìm</button>
-  </form>
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Scope</div>
+      <div class="hero-stat-value hero-stat-value-sm">tenant</div>
+    </div>
+  </div>
+</section>
 
-
-  <!-- LIST -->
-  <div class="partner-list">
-
-    {% for x in items %}
-
-      <a class="card partner-card" href="/os/company/{{ x.id }}/">
-
-        <div class="partner-name">
-          {{ x.name }}
-        </div>
-
-        <div class="partner-meta">
-          ID: {{ x.id }}
-        </div>
-
-        <div class="partner-meta">
-          Tenant: {{ x.tenant_id }}
-        </div>
-
-      </a>
-
-    {% empty %}
-
-      <div class="card">
-        Chưa có Công Ty / Đối Tác nào trong tenant hiện tại.
+<section class="grid">
+  <div class="card span3">
+    <div class="card-h">
+      <div>
+        <div class="card-title">Tìm kiếm Công Ty / Đối Tác</div>
+        <div class="brand-sub">Lọc nhanh theo tên công ty hoặc đối tác</div>
       </div>
+    </div>
 
-    {% endfor %}
+    <div class="card-b">
+      {% if messages %}
+        <div class="list partner-flash-list">
+          {% for message in messages %}
+            <div class="partner-flash">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
 
+      <form method="get" class="partner-search-form">
+        <input
+          type="text"
+          name="q"
+          value="{{ q }}"
+          class="input"
+          placeholder="Tìm theo tên Công Ty / Đối Tác"
+        >
+        <button class="btn" type="submit">Tìm</button>
+      </form>
+    </div>
   </div>
 
-</div>
+  <div class="card span3">
+    <div class="card-h">
+      <div>
+        <div class="card-title">Danh sách Công Ty / Đối Tác</div>
+        <div class="brand-sub">Các đơn vị đang thuộc tenant hiện tại</div>
+      </div>
+    </div>
 
-</body>
-</html>
+    <div class="card-b">
+      <div class="partner-grid">
+        {% for x in items %}
+          <a class="partner-card" href="/os/company/{{ x.id }}/">
+            <div class="partner-card-title">{{ x.name }}</div>
+
+            <div class="partner-card-meta-row">
+              <span class="partner-chip">ID: {{ x.id }}</span>
+              <span class="partner-chip">Tenant: {{ x.tenant_id }}</span>
+            </div>
+
+            <div class="partner-card-desc">
+              Mở workspace của công ty / đối tác này để đi tiếp sang shop, SKU, hợp đồng và khu làm việc.
+            </div>
+          </a>
+        {% empty %}
+          <div class="partner-empty">
+            Chưa có Công Ty / Đối Tác nào trong tenant hiện tại.
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,451 @@
+{% load static %}
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>{% block page_title %}HeightTech OS{% endblock %}</title>
+
+  <link rel="icon" href="{% static 'os/img/favicon.ico' %}" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="{% static 'os/img/logo-heighttech-os.svg' %}">
+  <link rel="apple-touch-icon" href="{% static 'os/img/logo-heighttech-os-256.png' %}">
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=1001" />
+
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body data-page="{% block body_page %}os-page{% endblock %}">
+  <script>
+    window.HT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
+    window.HT_OS = window.HT_OS || {
+      home: "/api/v1/os/home/",
+      controlCenter: "/api/v1/os/control-center/",
+      timeline: "/api/v1/os/timeline/",
+      notifications: "/api/v1/os/notifications/",
+      stream: "/api/v1/os/stream/",
+      workInbox: "/api/v1/os/work/inbox/",
+      workCreate: "/api/v1/os/work/create/",
+      workAssignBase: "/api/v1/os/work/",
+      workUpdateBase: "/api/v1/os/work/",
+      workAssignBy: "/api/v1/os/work/assign-by/",
+      workCommentsBase: "/api/v1/os/work/",
+      commandCenter: "/api/v1/os/command/"
+    };
+  </script>
+
+  <div class="os-shell" id="osShell">
+    <div class="os-sidebar-backdrop" id="osSidebarBackdrop"></div>
+
+    <aside class="os-sidebar" id="osSidebar">
+      <div class="os-sidebar-top">
+        <a href="/os/" class="os-sidebar-brand">
+          <div class="os-sidebar-logo">
+            <img
+              src="{% static 'os/img/logo-heighttech-os.svg' %}"
+              alt="HeightTech OS"
+              style="width:28px;height:28px;object-fit:contain;"
+              onerror="this.style.display='none'; this.parentNode.innerHTML='HT';"
+            />
+          </div>
+
+          <div>
+            <div class="os-sidebar-brand-title">
+              {% block sidebar_brand_title %}HeightTech OS{% endblock %}
+            </div>
+            <div class="os-sidebar-brand-sub">
+              {% block sidebar_brand_sub %}Commerce Control Center{% endblock %}
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <nav class="os-nav">
+        <a href="/os/" class="os-nav-item" id="nav-home">
+          <span class="os-nav-ic">⌂</span>
+          <span>Tổng quan OS</span>
+        </a>
+
+        <a href="/work/" class="os-nav-item" id="nav-work">
+          <span class="os-nav-ic">🧩</span>
+          <span>Khu làm việc</span>
+        </a>
+
+        <a href="/os/shops/" class="os-nav-item" id="nav-shops">
+          <span class="os-nav-ic">🏪</span>
+          <span>Shop</span>
+        </a>
+
+        <a href="/os/contracts/" class="os-nav-item" id="nav-contracts">
+          <span class="os-nav-ic">📄</span>
+          <span>Hợp đồng</span>
+        </a>
+
+        <a href="/os/team/" class="os-nav-item" id="nav-team">
+          <span class="os-nav-ic">👥</span>
+          <span>Team</span>
+        </a>
+
+        <a href="/os/founder/content-priority/" class="os-nav-item" id="nav-ai">
+          <span class="os-nav-ic">✦</span>
+          <span>Founder AI</span>
+        </a>
+      </nav>
+
+      <div class="os-sidebar-bottom">
+        <div class="os-sidebar-mini-card">
+          <div class="os-sidebar-mini-k">Scope</div>
+          <div class="os-sidebar-mini-v" id="scopePill">tenant</div>
+        </div>
+
+        <div class="os-sidebar-mini-card">
+          <div class="os-sidebar-mini-k">Realtime</div>
+          <div class="os-sidebar-mini-v" id="rtPill">realtime</div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="os-main">
+      <header class="topbar">
+        <div class="brand">
+          <button
+            class="btn icon os-sidebar-toggle"
+            id="osSidebarToggle"
+            type="button"
+            aria-label="Mở menu"
+          >☰</button>
+
+          <div class="logo topbar-logo">
+            <img
+              src="{% static 'os/img/logo-heighttech-os.svg' %}"
+              alt="HeightTech OS"
+              style="width:30px;height:30px;object-fit:contain;"
+              onerror="this.style.display='none'; this.parentNode.innerHTML='HT';"
+            />
+          </div>
+
+          <div class="brand-text">
+            <div class="brand-title">{% block topbar_brand_title %}HeightTech OS{% endblock %}</div>
+            <div class="brand-sub">{% block topbar_brand_sub %}Commerce Control Center{% endblock %}</div>
+          </div>
+        </div>
+
+        <div class="searchbar" id="searchbar">
+          <span class="kbd">Ctrl+K</span>
+          <input
+            id="q"
+            type="search"
+            placeholder="{% block search_placeholder %}Tìm company / shop / project / task{% endblock %}"
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="actions">
+          <div class="scope" id="scopeChips">
+            <button class="chip active" data-scope="tenant" type="button">Tenant</button>
+            <button class="chip" data-scope="company" type="button">Company</button>
+            <button class="chip" data-scope="shop" type="button">Shop</button>
+            <button class="chip" data-scope="project" type="button">Project</button>
+          </div>
+
+          <div class="userbox">
+            <div class="user-avatar">
+              {% if request.user.is_authenticated %}
+                {{ request.user.username|default:request.user.email|slice:":1"|upper }}
+              {% else %}
+                G
+              {% endif %}
+            </div>
+
+            <div class="user-meta">
+              <div class="user-name">
+                {% if request.user.is_authenticated %}
+                  {{ request.user.username|default:request.user.email }}
+                {% else %}
+                  Guest
+                {% endif %}
+              </div>
+              <div class="user-role">
+                {% if request.user.is_authenticated %}Đã đăng nhập{% else %}Khách{% endif %}
+              </div>
+            </div>
+
+            {% if request.user.is_authenticated %}
+              <a class="btn ghost mini" href="/logout/">Đăng xuất</a>
+            {% endif %}
+          </div>
+
+          <button class="btn icon" id="themeToggle" type="button" aria-label="Đổi giao diện">☾</button>
+          <button class="btn icon" id="helpBtn" type="button" aria-label="Trợ giúp">?</button>
+          <button class="btn primary" id="cmdBtn" type="button">Lệnh ⌘K</button>
+        </div>
+      </header>
+
+      <main class="wrap">
+        {% block page_header %}{% endblock %}
+        {% block content %}{% endblock %}
+        {% block main_content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <nav class="bottombar">
+    <button class="bb-item" data-tab="home" type="button">
+      <span class="bb-ic">⌂</span>
+      <span class="bb-tx">Home</span>
+    </button>
+
+    <button class="bb-item" data-tab="timeline" type="button">
+      <span class="bb-ic">≡</span>
+      <span class="bb-tx">Timeline</span>
+    </button>
+
+    <button class="bb-item" data-tab="alerts" type="button">
+      <span class="bb-ic">!</span>
+      <span class="bb-tx">Alerts</span>
+      <span class="bb-dot" id="bbDot"></span>
+    </button>
+
+    <button class="bb-item" data-tab="work" type="button">
+      <span class="bb-ic">✓</span>
+      <span class="bb-tx">Work</span>
+    </button>
+
+    <button class="bb-item" data-tab="command" id="bbCmd" type="button">
+      <span class="bb-ic">⌘</span>
+      <span class="bb-tx">Cmd</span>
+    </button>
+  </nav>
+
+  <div class="modal" id="cmdModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close="1"></div>
+
+    <div class="modal-card">
+      <div class="modal-h">
+        <div class="modal-title">Trung tâm lệnh</div>
+        <div class="modal-sub">
+          scope shop 49 • work create ads • work move 12 doing • refresh
+        </div>
+      </div>
+
+      <div class="modal-b">
+        <input id="cmdInput" class="cmd-input" placeholder="Nhập lệnh" autocomplete="off" />
+        <div class="cmd-hints" id="cmdHints"></div>
+        <div class="cmd-result" id="cmdResult"></div>
+      </div>
+
+      <div class="modal-f">
+        <button class="btn" data-close="1" type="button">Đóng</button>
+        <button class="btn primary" id="cmdRun" type="button">Chạy</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="helpModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close="1"></div>
+
+    <div class="modal-card">
+      <div class="modal-h">
+        <div class="modal-title">Phím tắt</div>
+        <div class="modal-sub">HeightTech OS keyboard help</div>
+      </div>
+
+      <div class="modal-b">
+        <div class="help-grid">
+          <div class="help-row"><span>Mở command</span><code>Ctrl + K</code></div>
+          <div class="help-row"><span>Đổi giao diện</span><code>Ctrl + /</code></div>
+          <div class="help-row"><span>Làm mới</span><code>R</code></div>
+          <div class="help-row"><span>Đóng modal</span><code>Esc</code></div>
+        </div>
+      </div>
+
+      <div class="modal-f">
+        <button class="btn primary" data-close="1" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
+  {% block drawers %}{% endblock %}
+  {% block modals %}{% endblock %}
+  {% block floating_ui %}{% endblock %}
+
+  <script>
+    (function () {
+      var body = document.body;
+      var html = document.documentElement;
+      var shell = document.getElementById("osShell");
+      var sidebar = document.getElementById("osSidebar");
+      var sidebarToggle = document.getElementById("osSidebarToggle");
+      var sidebarBackdrop = document.getElementById("osSidebarBackdrop");
+      var themeToggle = document.getElementById("themeToggle");
+      var helpBtn = document.getElementById("helpBtn");
+      var cmdBtn = document.getElementById("cmdBtn");
+      var bbCmd = document.getElementById("bbCmd");
+      var helpModal = document.getElementById("helpModal");
+      var cmdModal = document.getElementById("cmdModal");
+
+      function openSidebar() {
+        if (shell) shell.classList.add("sidebar-open");
+      }
+
+      function closeSidebar() {
+        if (shell) shell.classList.remove("sidebar-open");
+      }
+
+      function isMobileWidth() {
+        return window.innerWidth <= 1100;
+      }
+
+      if (sidebarToggle) {
+        sidebarToggle.addEventListener("click", function () {
+          if (!shell) return;
+          if (shell.classList.contains("sidebar-open")) closeSidebar();
+          else openSidebar();
+        });
+      }
+
+      if (sidebarBackdrop) {
+        sidebarBackdrop.addEventListener("click", closeSidebar);
+      }
+
+      document.addEventListener("click", function (e) {
+        if (!isMobileWidth()) return;
+        if (!shell || !shell.classList.contains("sidebar-open")) return;
+        if (!sidebar) return;
+
+        var insideSidebar = sidebar.contains(e.target);
+        var isToggle = sidebarToggle && sidebarToggle.contains(e.target);
+
+        if (!insideSidebar && !isToggle) closeSidebar();
+      });
+
+      function setTheme(nextTheme) {
+        html.setAttribute("data-theme", nextTheme);
+        try { localStorage.setItem("ht_theme", nextTheme); } catch (e) {}
+      }
+
+      try {
+        var savedTheme = localStorage.getItem("ht_theme");
+        if (savedTheme === "light" || savedTheme === "dark") {
+          setTheme(savedTheme);
+        }
+      } catch (e) {}
+
+      if (themeToggle) {
+        themeToggle.addEventListener("click", function () {
+          var current = html.getAttribute("data-theme") || "dark";
+          setTheme(current === "dark" ? "light" : "dark");
+        });
+      }
+
+      function openModal(el) {
+        if (!el) return;
+        el.setAttribute("aria-hidden", "false");
+        body.classList.add("modal-open");
+      }
+
+      function closeModal(el) {
+        if (!el) return;
+        el.setAttribute("aria-hidden", "true");
+        if (!document.querySelector('.modal[aria-hidden="false"]')) {
+          body.classList.remove("modal-open");
+        }
+      }
+
+      function closeAllModals() {
+        document.querySelectorAll(".modal[aria-hidden='false']").forEach(function (el) {
+          el.setAttribute("aria-hidden", "true");
+        });
+        body.classList.remove("modal-open");
+      }
+
+      if (helpBtn) {
+        helpBtn.addEventListener("click", function () { openModal(helpModal); });
+      }
+
+      if (cmdBtn) {
+        cmdBtn.addEventListener("click", function () {
+          openModal(cmdModal);
+          var input = document.getElementById("cmdInput");
+          if (input) setTimeout(function () { input.focus(); }, 40);
+        });
+      }
+
+      if (bbCmd) {
+        bbCmd.addEventListener("click", function () {
+          openModal(cmdModal);
+          var input = document.getElementById("cmdInput");
+          if (input) setTimeout(function () { input.focus(); }, 40);
+        });
+      }
+
+      document.addEventListener("click", function (e) {
+        var closeTrigger = e.target.closest("[data-close='1']");
+        if (closeTrigger) {
+          var modal = closeTrigger.closest(".modal");
+          closeModal(modal);
+        }
+      });
+
+      document.addEventListener("keydown", function (e) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
+          e.preventDefault();
+          openModal(cmdModal);
+          var input = document.getElementById("cmdInput");
+          if (input) setTimeout(function () { input.focus(); }, 40);
+          return;
+        }
+
+        if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+          e.preventDefault();
+          var current = html.getAttribute("data-theme") || "dark";
+          setTheme(current === "dark" ? "light" : "dark");
+          return;
+        }
+
+        if (e.key === "Escape") {
+          closeAllModals();
+          closeSidebar();
+        }
+      });
+
+      var path = window.location.pathname || "";
+      function activeNav(id, patterns) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        for (var i = 0; i < patterns.length; i++) {
+          if (path.indexOf(patterns[i]) === 0) {
+            el.classList.add("active");
+            return;
+          }
+        }
+      }
+
+      activeNav("nav-home", ["/os/"]);
+      activeNav("nav-work", ["/work/", "/os/work/"]);
+      activeNav("nav-shops", ["/os/shops/", "/os/sku/"]);
+      activeNav("nav-contracts", ["/os/contracts/"]);
+      activeNav("nav-team", ["/os/team/"]);
+      activeNav("nav-ai", ["/os/founder/"]);
+
+      var bottomButtons = document.querySelectorAll(".bottombar .bb-item");
+      bottomButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var tab = btn.getAttribute("data-tab");
+          if (tab === "home") window.location.href = "/os/";
+          if (tab === "timeline") {
+            var t = document.getElementById("timelineList") || document.getElementById("timeline");
+            if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+          if (tab === "alerts") {
+            var n = document.getElementById("notifList") || document.getElementById("notifs");
+            if (n) n.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+          if (tab === "work") window.location.href = "/work/";
+        });
+      });
+    })();
+  </script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,135 +1,54 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>HeightTech OS</title>
+{% extends "os/os_layout.html" %}
+{% load static %}
+
+{% block page_title %}Dashboard • HeightTech OS{% endblock %}
+{% block body_page %}os-dashboard{% endblock %}
+
+{% block sidebar_brand_title %}HeightTech OS{% endblock %}
+{% block sidebar_brand_sub %}Commerce Control Center{% endblock %}
+
+{% block topbar_brand_title %}HeightTech Dashboard{% endblock %}
+{% block topbar_brand_sub %}Realtime control center • Timeline • Notifications • Work Kanban{% endblock %}
+
+{% block search_placeholder %}Tìm shop / task / notification / timeline{% endblock %}
+
+{% block extra_head %}
 <style>
-  body{
-    font-family:Arial;
-    background:#0f172a;
-    color:white;
-    margin:0;
-  }
-  .header{
-    background:#020617;
-    padding:15px;
-    font-size:20px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:12px;
-  }
-  .header .right{
-    display:flex;
-    gap:10px;
-    align-items:center;
-    font-size:12px;
-    opacity:.95;
-  }
-  .pill{
-    background:#111827;
-    border:1px solid #1f2937;
-    padding:6px 10px;
-    border-radius:999px;
-  }
-  .container{
-    padding:20px;
-  }
-  .cards{
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:15px;
-  }
-  .card{
-    background:#1e293b;
-    padding:20px;
-    border-radius:10px;
-    border:1px solid #243244;
+  .hero-v2-compact{
+    padding:22px;
   }
 
-  .grid{
-    display:grid;
-    grid-template-columns:2fr 1fr;
-    gap:20px;
-    margin-top:20px;
-  }
-  .panel{
-    background:#1e293b;
-    padding:20px;
-    border-radius:10px;
-    border:1px solid #243244;
+  .hero-v2-right-mini{
+    grid-template-columns:repeat(2,minmax(0,1fr));
   }
 
-  .timeline-item{
-    border-bottom:1px solid #334155;
-    padding:10px 0;
-  }
-  .notification{
-    background:#334155;
-    padding:10px;
-    margin-bottom:10px;
-    border-radius:6px;
+  .hero-stat-value-sm{
+    font-size:18px;
+    line-height:1.25;
+    letter-spacing:-.01em;
   }
 
-  /* ===== Kanban ===== */
-  .kanbanWrap{
-    margin-top:20px;
+  .timeline-card-fixed .card-b,
+  .notif-card-fixed .card-b{
+    padding-top:12px;
   }
-  .kanbanHead{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:12px;
-    margin-bottom:10px;
+
+  .fixed-scroll-list{
+    max-height:420px;
+    overflow:auto;
+    padding-right:4px;
   }
-  .kanbanHead .left{
-    display:flex;
-    gap:10px;
-    align-items:center;
-    flex-wrap:wrap;
+
+  .kanban-shell-card{
+    overflow:visible;
   }
-  .kanbanHead .right{
-    display:flex;
-    gap:10px;
-    align-items:center;
-    flex-wrap:wrap;
-  }
-  .btn{
-    background:#0b1220;
-    color:white;
-    border:1px solid #263244;
-    padding:8px 10px;
-    border-radius:8px;
-    cursor:pointer;
-    font-weight:700;
-  }
-  .btn.primary{
-    background:#172554;
-    border-color:#3b82f6;
-  }
-  .btn:active{ transform: translateY(1px); }
-  .btn.mini{ padding:6px 8px; border-radius:7px; font-weight:700; font-size:12px; }
-  .input, .textarea, .select{
-    background:#0b1220;
-    color:white;
-    border:1px solid #263244;
-    padding:8px 10px;
-    border-radius:8px;
-    outline:none;
-    width:100%;
-    box-sizing:border-box;
-  }
-  .textarea{
-    min-height:96px;
-    resize:vertical;
-  }
-  .muted{ opacity:.7; }
 
   .kanban{
     display:grid;
-    grid-template-columns:repeat(4,1fr);
+    grid-template-columns:repeat(4,minmax(0,1fr));
     gap:12px;
   }
+
   .col{
     background:#111827;
     border:1px solid #243244;
@@ -137,30 +56,36 @@
     padding:10px;
     min-height:240px;
   }
+
   .colHead{
     display:flex;
     justify-content:space-between;
     align-items:center;
     margin-bottom:8px;
   }
+
   .colTitle{
     font-weight:900;
     letter-spacing:.4px;
   }
+
   .colCount{
     font-size:12px;
     opacity:.8;
   }
+
   .dropzone{
     min-height:200px;
     padding:6px;
     border-radius:10px;
   }
+
   .dropzone.dragover{
     outline:2px dashed #3b82f6;
     outline-offset:2px;
     background:rgba(59,130,246,.08);
   }
+
   .task{
     background:#1e293b;
     border:1px solid #243244;
@@ -169,12 +94,25 @@
     margin:8px 0;
     cursor:grab;
     user-select:none;
+    transition:transform .15s ease, border-color .18s ease, box-shadow .18s ease;
   }
-  .task:active{ cursor:grabbing; }
+
+  .task:hover{
+    transform:translateY(-1px);
+    border-color:var(--line-strong);
+    box-shadow:var(--shadow-soft);
+  }
+
+  .task:active{
+    cursor:grabbing;
+  }
+
   .task .t{
     font-weight:900;
     margin-bottom:6px;
+    line-height:1.45;
   }
+
   .task .meta{
     display:flex;
     gap:10px;
@@ -182,6 +120,7 @@
     font-size:12px;
     opacity:.9;
   }
+
   .tag{
     display:inline-flex;
     align-items:center;
@@ -191,89 +130,51 @@
     padding:3px 8px;
     border-radius:999px;
   }
-  .row{
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-    margin-top:10px;
-  }
+
   .flash{
-    animation: flash 900ms ease-in-out;
+    animation:flash 900ms ease-in-out;
   }
+
   @keyframes flash{
     0%{ box-shadow:0 0 0 rgba(59,130,246,0); }
     40%{ box-shadow:0 0 0 3px rgba(59,130,246,.35); }
     100%{ box-shadow:0 0 0 rgba(59,130,246,0); }
   }
 
-  /* ===== Modal create task ===== */
-  .modal{
-    position:fixed;
-    inset:0;
-    display:none;
-    z-index:120;
-  }
-  .modal.open{
-    display:block;
-  }
-  .modal-backdrop{
-    position:absolute;
-    inset:0;
-    background:rgba(0,0,0,.58);
-  }
-  .modalBox{
-    position:absolute;
-    left:50%;
-    top:6%;
-    transform:translateX(-50%);
-    width:min(760px, 96vw);
-    background:#0b1220;
-    border:1px solid #243244;
-    border-radius:16px;
-    padding:16px;
-    box-sizing:border-box;
-    box-shadow:0 24px 80px rgba(0,0,0,.45);
-  }
-  .modalBox h3{
-    margin:0;
-  }
-  .modalHead{
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    gap:12px;
-    margin-bottom:12px;
-  }
-  .modalSub{
-    font-size:12px;
-    opacity:.75;
-    margin-top:6px;
-    line-height:1.5;
-  }
   .formGrid{
     display:grid;
     grid-template-columns:repeat(2,minmax(0,1fr));
     gap:12px;
   }
+
   .formBlock{
     display:flex;
     flex-direction:column;
     gap:6px;
   }
+
   .full{
     grid-column:1 / -1;
   }
+
   .label{
     font-size:12px;
     opacity:.8;
     font-weight:700;
   }
+
+  .textarea{
+    min-height:96px;
+    resize:vertical;
+  }
+
   .msgErr{
     color:#ff8f9c;
     font-size:13px;
     min-height:18px;
     margin-top:10px;
   }
+
   .msgOk{
     color:#8fe3a1;
     font-size:13px;
@@ -281,174 +182,266 @@
     margin-top:6px;
   }
 
-  @media (max-width: 980px){
-    .cards{ grid-template-columns:repeat(2,1fr); }
-    .grid{ grid-template-columns:1fr; }
-    .kanban{ grid-template-columns:1fr 1fr; }
+  @media (max-width: 1100px){
+    .kanban{
+      grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+  }
+
+  @media (max-width: 920px){
+    .hero-v2-right-mini{
+      grid-template-columns:1fr;
+    }
+
+    .formGrid{
+      grid-template-columns:1fr;
+    }
   }
 
   @media (max-width: 680px){
-    .cards{ grid-template-columns:1fr; }
-    .kanban{ grid-template-columns:1fr; }
-    .formGrid{ grid-template-columns:1fr; }
-    .header{
-      flex-direction:column;
-      align-items:flex-start;
+    .kanban{
+      grid-template-columns:1fr;
+    }
+
+    .fixed-scroll-list{
+      max-height:320px;
     }
   }
 </style>
-</head>
+{% endblock %}
 
-<body>
+{% block main_content %}
+<section class="hero-v2 hero-v2-compact">
+  <div class="hero-v2-left">
+    <div class="hero-kicker">HEIGHTTECH DASHBOARD</div>
+    <h1 class="hero-v2-title">Realtime Control Center</h1>
 
-<div class="header">
-  <div>HeightTech OS</div>
-  <div class="right">
-    <span class="pill">scope: <b id="scopePill">tenant</b></span>
-    <span class="pill" id="rtPill">realtime</span>
-  </div>
-</div>
+    <p class="hero-v2-desc">
+      Góc nhìn điều hành realtime cho founder và team: theo dõi shops, risk, open tasks,
+      actions, timeline, notifications và kanban công việc trong một màn hình thống nhất.
+    </p>
 
-<div class="container">
-
-  <div class="cards">
-    <div class="card"><h3>Shops</h3><div id="shops">0</div></div>
-    <div class="card"><h3>Risk</h3><div id="risk">0</div></div>
-    <div class="card"><h3>Open Tasks</h3><div id="tasks">0</div></div>
-    <div class="card"><h3>Actions</h3><div id="actions">0</div></div>
-  </div>
-
-  <div class="grid">
-    <div class="panel">
-      <h3>Timeline</h3>
-      <div id="timeline"></div>
-      <div class="row">
-        <button class="btn mini" id="btnRefresh">Refresh</button>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h3>Notifications</h3>
-      <div id="notifications"></div>
+    <div class="hero-actions">
+      <button class="btn primary" id="btnRefresh" type="button">Refresh dashboard</button>
+      <button class="btn" id="btnRefreshWork" type="button">Refresh work</button>
+      <button type="button" class="btn" id="openCreateTaskBtn">+ Mới</button>
     </div>
   </div>
 
-  <!-- ===== Kanban ===== -->
-  <div class="kanbanWrap panel" style="margin-top:20px;">
-    <div class="kanbanHead">
-      <div class="left">
-        <h3 style="margin:0;">Work Kanban</h3>
-        <span class="muted" id="workHint">drag & drop để đổi trạng thái</span>
-        <span class="pill" id="workContextPill">Chưa khóa context</span>
-      </div>
-      <div class="right">
-        <button type="button" class="btn primary" id="openCreateTaskBtn">+ Mới</button>
-        <button class="btn" id="btnRefreshWork">Refresh</button>
-      </div>
+  <div class="hero-v2-right hero-v2-right-mini">
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Scope</div>
+      <div class="hero-stat-value" id="scopePill">tenant</div>
     </div>
 
-    <div class="kanban" id="kanban">
-      <div class="col" data-status="todo">
-        <div class="colHead"><div class="colTitle">TODO</div><div class="colCount" id="cnt_todo">0</div></div>
-        <div class="dropzone" id="col_todo"></div>
-      </div>
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Realtime</div>
+      <div class="hero-stat-value" id="rtPill">realtime</div>
+    </div>
 
-      <div class="col" data-status="doing">
-        <div class="colHead"><div class="colTitle">DOING</div><div class="colCount" id="cnt_doing">0</div></div>
-        <div class="dropzone" id="col_doing"></div>
-      </div>
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Work Context</div>
+      <div class="hero-stat-value hero-stat-value-sm" id="workContextPill">Chưa khóa context</div>
+    </div>
 
-      <div class="col" data-status="blocked">
-        <div class="colHead"><div class="colTitle">BLOCKED</div><div class="colCount" id="cnt_blocked">0</div></div>
-        <div class="dropzone" id="col_blocked"></div>
-      </div>
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Open Tasks</div>
+      <div class="hero-stat-value" id="tasks">0</div>
+    </div>
+  </div>
+</section>
 
-      <div class="col" data-status="done">
-        <div class="colHead"><div class="colTitle">DONE</div><div class="colCount" id="cnt_done">0</div></div>
-        <div class="dropzone" id="col_done"></div>
+<section class="kpis">
+  <div class="kpi">
+    <div class="k">Shops</div>
+    <div class="v" id="shops">0</div>
+    <div class="s">Tổng shop đang theo dõi</div>
+  </div>
+
+  <div class="kpi">
+    <div class="k">Risk</div>
+    <div class="v" id="risk">0</div>
+    <div class="s">Shop có tín hiệu rủi ro</div>
+  </div>
+
+  <div class="kpi">
+    <div class="k">Open Tasks</div>
+    <div class="v" id="tasksTop">0</div>
+    <div class="s">Tổng task đang mở</div>
+  </div>
+
+  <div class="kpi">
+    <div class="k">Actions</div>
+    <div class="v" id="actions">0</div>
+    <div class="s">Số hành động cần xử lý</div>
+  </div>
+</section>
+
+<section class="grid">
+  <div class="card span2 timeline-card-fixed">
+    <div class="card-h">
+      <div>
+        <div class="card-title">Timeline</div>
+        <div class="brand-sub">Dòng thay đổi gần nhất trong hệ thống</div>
       </div>
+      <div class="card-meta">
+        <button class="btn mini" id="btnRefreshTimeline" type="button">Refresh</button>
+      </div>
+    </div>
+    <div class="card-b">
+      <div id="timeline" class="list fixed-scroll-list"></div>
     </div>
   </div>
 
-</div>
+  <div class="card notif-card-fixed">
+    <div class="card-h">
+      <div>
+        <div class="card-title">Notifications</div>
+        <div class="brand-sub">Thông báo gần nhất</div>
+      </div>
+      <div class="card-meta">
+        <span class="badge" id="notifBadge">0</span>
+      </div>
+    </div>
+    <div class="card-b">
+      <div id="notifications" class="list fixed-scroll-list"></div>
+    </div>
+  </div>
 
-<!-- ===== Modal create task mới ===== -->
-<div class="modal" id="createTaskModal">
+  <div class="panel card span3 kanban-shell-card">
+    <div class="card-h">
+      <div>
+        <div class="card-title">Work Kanban</div>
+        <div class="brand-sub">Drag & drop để đổi trạng thái</div>
+      </div>
+
+      <div class="panel-actions">
+        <span class="pill" id="workContextPillTop">Chưa khóa context</span>
+        <button type="button" class="btn primary" id="openCreateTaskBtnTop">+ Mới</button>
+        <button class="btn" id="btnRefreshWorkTop" type="button">Refresh</button>
+      </div>
+    </div>
+
+    <div class="card-b">
+      <div class="kanban" id="kanban">
+        <div class="col" data-status="todo">
+          <div class="colHead">
+            <div class="colTitle">TODO</div>
+            <div class="colCount" id="cnt_todo">0</div>
+          </div>
+          <div class="dropzone" id="col_todo"></div>
+        </div>
+
+        <div class="col" data-status="doing">
+          <div class="colHead">
+            <div class="colTitle">DOING</div>
+            <div class="colCount" id="cnt_doing">0</div>
+          </div>
+          <div class="dropzone" id="col_doing"></div>
+        </div>
+
+        <div class="col" data-status="blocked">
+          <div class="colHead">
+            <div class="colTitle">BLOCKED</div>
+            <div class="colCount" id="cnt_blocked">0</div>
+          </div>
+          <div class="dropzone" id="col_blocked"></div>
+        </div>
+
+        <div class="col" data-status="done">
+          <div class="colHead">
+            <div class="colTitle">DONE</div>
+            <div class="colCount" id="cnt_done">0</div>
+          </div>
+          <div class="dropzone" id="col_done"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block floating_ui %}
+<div class="modal" id="createTaskModal" aria-hidden="true">
   <div class="modal-backdrop" id="createTaskBackdrop"></div>
 
-  <div class="modalBox">
-    <div class="modalHead">
+  <div class="modal-card">
+    <div class="modal-h">
       <div>
-        <h3>Tạo công việc mới</h3>
-        <div class="modalSub" id="createTaskContextLine">
+        <div class="modal-title">Tạo công việc mới</div>
+        <div class="modal-sub" id="createTaskContextLine">
           Chọn đúng company / shop / project trước khi tạo task để hệ thống hiểu ngữ cảnh.
         </div>
       </div>
       <button class="btn mini" id="closeCreateTaskBtn" type="button">Đóng</button>
     </div>
 
-    <div class="formGrid">
-      <div class="formBlock full">
-        <div class="label">Tiêu đề *</div>
-        <input class="input" id="createTaskTitle" placeholder="VD: Viết content hook cho 70mai">
+    <div class="modal-b">
+      <div class="formGrid">
+        <div class="formBlock full">
+          <div class="label">Tiêu đề *</div>
+          <input class="input" id="createTaskTitle" placeholder="VD: Viết content hook cho 70mai">
+        </div>
+
+        <div class="formBlock full">
+          <div class="label">Mô tả</div>
+          <textarea class="textarea input" id="createTaskDescription" placeholder="Mô tả ngắn task cần làm..."></textarea>
+        </div>
+
+        <div class="formBlock">
+          <div class="label">Company ID</div>
+          <input class="input" id="createTaskCompanyId" placeholder="Tự nhận nếu đang lọc company">
+        </div>
+
+        <div class="formBlock">
+          <div class="label">Shop ID</div>
+          <input class="input" id="createTaskShopId" placeholder="Tự nhận nếu đang lọc shop">
+        </div>
+
+        <div class="formBlock">
+          <div class="label">Project ID</div>
+          <input class="input" id="createTaskProjectId" placeholder="Không bắt buộc">
+        </div>
+
+        <div class="formBlock">
+          <div class="label">Priority</div>
+          <select class="input" id="createTaskPriority">
+            <option value="1">Thấp</option>
+            <option value="2" selected>Vừa</option>
+            <option value="3">Cao</option>
+            <option value="4">Khẩn cấp</option>
+          </select>
+        </div>
+
+        <div class="formBlock">
+          <div class="label">Assignee ID</div>
+          <input class="input" id="createTaskAssigneeId" placeholder="Không bắt buộc">
+        </div>
+
+        <div class="formBlock">
+          <div class="label">Target type</div>
+          <input class="input" id="createTaskTargetType" placeholder="VD: contract_channel_content">
+        </div>
+
+        <div class="formBlock">
+          <div class="label">Target ID</div>
+          <input class="input" id="createTaskTargetId" placeholder="Không bắt buộc">
+        </div>
       </div>
 
-      <div class="formBlock full">
-        <div class="label">Mô tả</div>
-        <textarea class="textarea" id="createTaskDescription" placeholder="Mô tả ngắn task cần làm..."></textarea>
-      </div>
-
-      <div class="formBlock">
-        <div class="label">Company ID</div>
-        <input class="input" id="createTaskCompanyId" placeholder="Tự nhận nếu đang lọc company">
-      </div>
-
-      <div class="formBlock">
-        <div class="label">Shop ID</div>
-        <input class="input" id="createTaskShopId" placeholder="Tự nhận nếu đang lọc shop">
-      </div>
-
-      <div class="formBlock">
-        <div class="label">Project ID</div>
-        <input class="input" id="createTaskProjectId" placeholder="Không bắt buộc">
-      </div>
-
-      <div class="formBlock">
-        <div class="label">Priority</div>
-        <select class="select" id="createTaskPriority">
-          <option value="1">Thấp</option>
-          <option value="2" selected>Vừa</option>
-          <option value="3">Cao</option>
-          <option value="4">Khẩn cấp</option>
-        </select>
-      </div>
-
-      <div class="formBlock">
-        <div class="label">Assignee ID</div>
-        <input class="input" id="createTaskAssigneeId" placeholder="Không bắt buộc">
-      </div>
-
-      <div class="formBlock">
-        <div class="label">Target type</div>
-        <input class="input" id="createTaskTargetType" placeholder="VD: contract_channel_content">
-      </div>
-
-      <div class="formBlock">
-        <div class="label">Target ID</div>
-        <input class="input" id="createTaskTargetId" placeholder="Không bắt buộc">
-      </div>
+      <div class="msgErr" id="createTaskError"></div>
+      <div class="msgOk" id="createTaskOk"></div>
     </div>
 
-    <div class="msgErr" id="createTaskError"></div>
-    <div class="msgOk" id="createTaskOk"></div>
-
-    <div class="row">
+    <div class="modal-f">
       <button class="btn" id="resetCreateTaskBtn" type="button">Xóa form</button>
       <button class="btn primary" id="submitCreateTaskBtn" type="button">Tạo task</button>
     </div>
   </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
 const CFG = {
   controlCenter: "/api/v1/os/control-center/",
@@ -503,12 +496,22 @@ async function http(url, opts={}){
   return data;
 }
 
+function escapeHtml(s){
+  return String(s||"")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
 /* ===== Dashboard render ===== */
 function renderDashboard(data){
   const headline = data.headline || data.kpi || data.headline_block || {};
   $("shops").innerText = headline.shops_total || 0;
   $("risk").innerText = headline.shops_risk || 0;
   $("tasks").innerText = headline.work_open || 0;
+  $("tasksTop").innerText = headline.work_open || 0;
   $("actions").innerText = headline.actions_open || 0;
 
   renderTimeline(data.timeline);
@@ -525,8 +528,8 @@ function renderTimeline(timeline){
   }
   items.forEach(e=>{
     const el=document.createElement("div");
-    el.className="timeline-item";
-    el.innerHTML=`<b>${e.name || e.tieu_de || "Sự kiện"}</b><br><span class="muted">${e.entity || e.noi_dung || ""}</span>`;
+    el.className="item";
+    el.innerHTML=`<div class="t"><b>${escapeHtml(e.name || e.tieu_de || "Sự kiện")}</b></div><div class="d muted">${escapeHtml(e.entity || e.noi_dung || "")}</div>`;
     container.appendChild(el);
   });
 }
@@ -535,14 +538,16 @@ function renderNotifications(notifications){
   const container=$("notifications");
   container.innerHTML="";
   const items = notifications?.items || [];
+  $("notifBadge").innerText = String(notifications?.unread_count || items.length || 0);
+
   if(!items.length){
     container.innerHTML=`<div class="muted">Không có thông báo</div>`;
     return;
   }
   items.forEach(n=>{
     const el=document.createElement("div");
-    el.className="notification";
-    el.innerHTML=`<b>${n.tieu_de || "Thông báo"}</b><br><span class="muted">${n.noi_dung || ""}</span>`;
+    el.className="item";
+    el.innerHTML=`<div class="t"><b>${escapeHtml(n.tieu_de || "Thông báo")}</b></div><div class="d muted">${escapeHtml(n.noi_dung || "")}</div>`;
     container.appendChild(el);
   });
 }
@@ -608,15 +613,6 @@ function renderKanban(items){
   });
 }
 
-function escapeHtml(s){
-  return String(s||"")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-
 async function refreshWork(){
   const p = scopeParams();
   p.set("status","open");
@@ -625,6 +621,7 @@ async function refreshWork(){
   WORK_CACHE = data.items || [];
   renderKanban(WORK_CACHE);
   $("tasks").innerText = data.open_count ?? (WORK_CACHE.length);
+  $("tasksTop").innerText = data.open_count ?? (WORK_CACHE.length);
   renderWorkContextPill();
 }
 
@@ -668,7 +665,7 @@ function bindDropzones(){
   });
 }
 
-/* ===== Create task modal mới ===== */
+/* ===== Create task modal ===== */
 function normalizeInt(v){
   return String(v || "").trim().replace(/\D/g, "");
 }
@@ -678,17 +675,22 @@ function renderWorkContextPill(){
   if (SCOPE.company_id) parts.push("Company #" + SCOPE.company_id);
   if (SCOPE.shop_id) parts.push("Shop #" + SCOPE.shop_id);
   if (SCOPE.project_id) parts.push("Project #" + SCOPE.project_id);
-  $("workContextPill").innerText = parts.length ? parts.join(" • ") : "Chưa khóa context";
+
+  const text = parts.length ? parts.join(" • ") : "Chưa khóa context";
+  $("workContextPill").innerText = text;
+  if ($("workContextPillTop")) $("workContextPillTop").innerText = text;
 }
 
 function openCreateTaskModal(){
-  $("createTaskModal").classList.add("open");
+  $("createTaskModal").setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
   hydrateCreateTaskContext();
   $("createTaskTitle").focus();
 }
 
 function closeCreateTaskModal(){
-  $("createTaskModal").classList.remove("open");
+  $("createTaskModal").setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modal-open");
 }
 
 function clearCreateTaskMessages(){
@@ -790,16 +792,19 @@ async function boot(){
   renderWorkContextPill();
 
   $("btnRefresh").addEventListener("click", loadDashboard);
+  $("btnRefreshTimeline").addEventListener("click", loadDashboard);
   $("btnRefreshWork").addEventListener("click", refreshWork);
+  $("btnRefreshWorkTop").addEventListener("click", refreshWork);
 
   $("openCreateTaskBtn").addEventListener("click", openCreateTaskModal);
+  $("openCreateTaskBtnTop").addEventListener("click", openCreateTaskModal);
   $("closeCreateTaskBtn").addEventListener("click", closeCreateTaskModal);
   $("createTaskBackdrop").addEventListener("click", closeCreateTaskModal);
   $("resetCreateTaskBtn").addEventListener("click", resetCreateTaskForm);
   $("submitCreateTaskBtn").addEventListener("click", createTask);
 
   document.addEventListener("keydown", function(e){
-    if (e.key === "Escape" && $("createTaskModal").classList.contains("open")) {
+    if (e.key === "Escape" && $("createTaskModal").getAttribute("aria-hidden") === "false") {
       closeCreateTaskModal();
     }
   });
@@ -810,8 +815,6 @@ async function boot(){
   await refreshWork();
 }
 
-boot();
+document.addEventListener("DOMContentLoaded", boot);
 </script>
-
-</body>
-</html>
+{% endblock %}

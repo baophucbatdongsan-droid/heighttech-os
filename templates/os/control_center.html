@@ -1,121 +1,240 @@
+{% extends "os/os_layout.html" %}
 {% load static %}
-<!doctype html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>HeightTech OS</title>
-  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=2">
-</head>
-<body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="logo">HT</div>
-      <div class="title">
-        <div class="name">HeightTech OS</div>
-        <div class="sub">Control Center</div>
+
+{% block page_title %}HeightTech OS • Control Center{% endblock %}
+{% block body_page %}os-control-center{% endblock %}
+
+{% block sidebar_brand_title %}HeightTech OS{% endblock %}
+{% block sidebar_brand_sub %}Control Center{% endblock %}
+
+{% block topbar_brand_title %}HeightTech OS{% endblock %}
+{% block topbar_brand_sub %}Control Center • Timeline • Notifications • Shop health • AI strategy{% endblock %}
+
+{% block extra_head %}
+<style>
+  .hero-v2-compact{
+    margin-bottom:16px;
+  }
+
+  .card-fixed-feed .card-b{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+
+  .feed-scroll{
+    max-height:520px;
+    overflow:auto;
+    padding-right:4px;
+  }
+
+  @media (max-width: 980px){
+    .feed-scroll{
+      max-height:unset;
+      overflow:visible;
+      padding-right:0;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block main_content %}
+<section class="hero-v2 hero-v2-compact">
+  <div class="hero-v2-left">
+    <div class="hero-kicker">CONTROL CENTER</div>
+    <h1 class="hero-v2-title">Trung tâm điều hành tổng quan</h1>
+    <p class="hero-v2-desc">
+      Theo dõi nhịp vận hành toàn tenant: timeline, notifications, sức khỏe shop
+      và các gợi ý chiến lược AI trong một màn hình điều phối thống nhất.
+    </p>
+
+    <div class="hero-actions">
+      <a class="btn" href="/os/">Về OS</a>
+      <button class="btn" id="btnRefreshKernel" type="button">Làm mới</button>
+      <button class="btn primary" id="cmdBtnHero" type="button">Mở lệnh</button>
+    </div>
+  </div>
+
+  <div class="hero-v2-right">
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Realtime</div>
+      <div class="hero-stat-value" id="rtPillInline">realtime</div>
+    </div>
+
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Scope</div>
+      <div class="hero-stat-value" id="scopePillInline">tenant</div>
+    </div>
+
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Unread Alerts</div>
+      <div class="hero-stat-value" id="heroAlerts">0</div>
+    </div>
+
+    <div class="hero-stat-card">
+      <div class="hero-stat-label">Open Tasks</div>
+      <div class="hero-stat-value" id="heroTasks">0</div>
+    </div>
+  </div>
+</section>
+
+<section class="kpis" id="kpis"></section>
+
+<section class="grid">
+  <div class="card span2 card-fixed-feed">
+    <div class="card-h">
+      <div>
+        <div class="card-title">Timeline</div>
+        <div class="brand-sub" id="timelineMeta">Live system feed</div>
+      </div>
+      <div class="card-meta">
+        <span class="pill">Live</span>
       </div>
     </div>
 
-    <div class="search">
-      <input id="q" type="search" placeholder="Search company / shop / project… (Ctrl+K)" autocomplete="off">
-      <div class="chips">
-        <button class="chip" data-scope="tenant">Tenant</button>
-        <button class="chip" data-scope="company">Company</button>
-        <button class="chip" data-scope="shop">Shop</button>
-        <button class="chip" data-scope="project">Project</button>
-      </div>
-    </div>
-
-    <div class="actions">
-      <button id="themeToggle" class="btn">🌗</button>
-      <button id="helpBtn" class="btn">?</button>
-      <button id="cmdBtn" class="btn primary">Command ⌘K</button>
-    </div>
-  </header>
-
-  <main class="wrap">
-    <section class="kpis" id="kpis"></section>
-
-    <section class="grid">
-      <div class="card">
-        <div class="card-h">
-          <div class="card-title">Timeline</div>
-          <div class="card-sub" id="timelineMeta">—</div>
-        </div>
-        <div class="card-b">
-          <div id="timeline" class="list"></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-h">
-          <div class="card-title">Notifications</div>
-          <div class="badge" id="notifBadge">0</div>
-        </div>
-        <div class="card-b">
-          <div id="notifs" class="list"></div>
-        </div>
-      </div>
-
-      <div class="card span-2">
-        <div class="card-h">
-          <div class="card-title">Shop health monitor</div>
-          <div class="card-sub">Top risk / low health</div>
-        </div>
-        <div class="card-b">
-          <div id="shops" class="table"></div>
-        </div>
-      </div>
-
-      <div class="card span-2">
-        <div class="card-h">
-          <div class="card-title">AI Strategy (V1 rule-based)</div>
-          <div class="card-sub">Deterministic recommendations</div>
-        </div>
-        <div class="card-b">
-          <div id="strategy" class="list"></div>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- Command Palette -->
-  <div id="cmdOverlay" class="overlay hidden">
-    <div class="modal">
-      <div class="modal-h">
-        <div class="modal-title">Command Center</div>
-        <button id="cmdClose" class="icon">✕</button>
-      </div>
-      <div class="modal-b">
-        <input id="cmdInput" class="cmd" placeholder="Gõ lệnh… ví dụ: mark-read 123 | open shop 49 | refresh" />
-        <div class="hint">
-          <div><b>mark-read &lt;id&gt;</b> — đánh dấu đã đọc</div>
-          <div><b>refresh</b> — reload dữ liệu</div>
-        </div>
-        <pre id="cmdOut" class="out"></pre>
+    <div class="card-b">
+      <div id="timeline" class="list feed-scroll"></div>
+      <div class="list-footer">
+        <button class="btn" id="loadMoreTimeline" type="button">Tải thêm</button>
       </div>
     </div>
   </div>
 
-  <!-- Help -->
-  <div id="helpOverlay" class="overlay hidden">
-    <div class="modal">
-      <div class="modal-h">
-        <div class="modal-title">Shortcuts</div>
-        <button id="helpClose" class="icon">✕</button>
+  <div class="card card-fixed-feed">
+    <div class="card-h">
+      <div class="card-title">Notifications</div>
+      <div class="card-meta">
+        <span class="badge" id="notifBadge">0</span>
       </div>
-      <div class="modal-b">
-        <div class="hint">
-          <div><b>Ctrl+K</b>: mở Command Palette</div>
-          <div><b>Ctrl+L</b>: focus Search</div>
-          <div><b>Ctrl+R</b>: refresh data</div>
-          <div><b>🌗</b>: theme toggle</div>
-        </div>
-      </div>
+    </div>
+
+    <div class="card-b">
+      <div id="notifs" class="list feed-scroll"></div>
     </div>
   </div>
 
-  <script src="{% static 'os/os.js' %}?v=2"></script>
-</body>
-</html>
+  <div class="card span3">
+    <div class="card-h">
+      <div>
+        <div class="card-title">Shop health monitor</div>
+        <div class="brand-sub">Top risk / low health</div>
+      </div>
+      <div class="card-meta">
+        <span class="pill">Top risk</span>
+      </div>
+    </div>
+
+    <div class="card-b">
+      <div id="shops" class="table"></div>
+    </div>
+  </div>
+
+  <div class="card span3">
+    <div class="card-h">
+      <div>
+        <div class="card-title">AI Strategy (V1 rule-based)</div>
+        <div class="brand-sub">Deterministic recommendations</div>
+      </div>
+      <div class="card-meta">
+        <span class="pill">AI</span>
+      </div>
+    </div>
+
+    <div class="card-b">
+      <div id="strategy" class="list"></div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block floating_ui %}
+<div id="cmdOverlay" class="modal" aria-hidden="true">
+  <div class="modal-backdrop" id="cmdCloseBackdrop"></div>
+  <div class="modal-card">
+    <div class="modal-h">
+      <div class="modal-title">Command Center</div>
+      <button id="cmdClose" class="btn icon" type="button">✕</button>
+    </div>
+    <div class="modal-b">
+      <input
+        id="cmdInput"
+        class="cmd-input"
+        placeholder="Gõ lệnh… ví dụ: mark-read 123 | open shop 49 | refresh"
+        autocomplete="off"
+      />
+      <div class="help-grid" style="margin-top:12px;">
+        <div class="help-row"><span><b>mark-read &lt;id&gt;</b></span><span>Đánh dấu đã đọc</span></div>
+        <div class="help-row"><span><b>refresh</b></span><span>Reload dữ liệu</span></div>
+      </div>
+      <pre id="cmdOut" class="raw-json" style="margin-top:12px;"></pre>
+    </div>
+  </div>
+</div>
+
+<div id="helpOverlay" class="modal" aria-hidden="true">
+  <div class="modal-backdrop" id="helpCloseBackdrop"></div>
+  <div class="modal-card">
+    <div class="modal-h">
+      <div class="modal-title">Shortcuts</div>
+      <button id="helpClose" class="btn icon" type="button">✕</button>
+    </div>
+    <div class="modal-b">
+      <div class="help-grid">
+        <div class="help-row"><span>Command Palette</span><code>Ctrl + K</code></div>
+        <div class="help-row"><span>Focus Search</span><code>Ctrl + L</code></div>
+        <div class="help-row"><span>Refresh data</span><code>Ctrl + R</code></div>
+        <div class="help-row"><span>Theme toggle</span><code>🌗</code></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    const cmdOverlay = document.getElementById("cmdOverlay");
+    const helpOverlay = document.getElementById("helpOverlay");
+
+    function openModal(el){
+      if (!el) return;
+      el.setAttribute("aria-hidden", "false");
+      document.body.classList.add("modal-open");
+    }
+
+    function closeModal(el){
+      if (!el) return;
+      el.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("modal-open");
+    }
+
+    document.getElementById("cmdBtnHero")?.addEventListener("click", function () {
+      openModal(cmdOverlay);
+      setTimeout(() => document.getElementById("cmdInput")?.focus(), 50);
+    });
+
+    document.getElementById("cmdClose")?.addEventListener("click", function () {
+      closeModal(cmdOverlay);
+    });
+
+    document.getElementById("cmdCloseBackdrop")?.addEventListener("click", function () {
+      closeModal(cmdOverlay);
+    });
+
+    document.getElementById("helpClose")?.addEventListener("click", function () {
+      closeModal(helpOverlay);
+    });
+
+    document.getElementById("helpCloseBackdrop")?.addEventListener("click", function () {
+      closeModal(helpOverlay);
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") {
+        closeModal(cmdOverlay);
+        closeModal(helpOverlay);
+      }
+    });
+  })();
+</script>
+{% endblock %}

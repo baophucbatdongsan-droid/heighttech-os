@@ -1,3 +1,5 @@
+#apps/api/v1/os/os_work.py
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -15,6 +17,7 @@ from apps.api.v1.insight import _get_tenant_id
 from apps.events.bus import emit_event, make_dedupe_key
 from apps.work.models_comment import WorkComment
 from apps.work.services_move import create_work_item, move_work_item
+from django.core.exceptions import ValidationError
 
 
 def _safe_import_workitem_model():
@@ -376,6 +379,9 @@ class OSWorkMoveApi(APIView):
         if not tenant_id:
             return Response({"ok": False, "message": "Thiếu tenant_id"}, status=400)
 
+        if WorkItem is None:
+            return Response({"ok": False, "message": "WorkItem not found"}, status=501)
+
         to_status = (request.data.get("to_status") or request.data.get("status") or "").strip().lower()
         to_position = request.data.get("to_position")
 
@@ -387,13 +393,21 @@ class OSWorkMoveApi(APIView):
         except Exception:
             return Response({"ok": False, "message": "to_position không hợp lệ"}, status=400)
 
+        qs = WorkItem.objects_all.select_related("assignee", "requester", "project", "shop", "company")
+        obj = qs.filter(id=int(task_id), tenant_id=tenant_id).first()
+        if not obj:
+            return Response({"ok": False, "message": "Task not found"}, status=404)
+
         try:
             res = move_work_item(
                 tenant_id=tenant_id,
                 item_id=int(task_id),
                 to_status=to_status,
                 to_position=to_position,
+                actor_id=getattr(request.user, "id", None),
             )
+        except ValidationError as e:
+            return Response({"ok": False, "message": str(e)}, status=400)
         except ValueError as e:
             return Response({"ok": False, "message": str(e)}, status=404)
         except Exception as e:
@@ -408,14 +422,16 @@ class OSWorkMoveApi(APIView):
         except WorkItem.DoesNotExist:
             return Response({"ok": False, "message": "Task không tồn tại sau khi move"}, status=404)
 
+        moved = {
+            "from_status": res.from_status,
+            "to_status": res.to_status,
+            "from_position": res.from_position,
+            "to_position": res.to_position,
+        }
+
         return Response({
             "ok": True,
-            "moved": {
-                "from_status": res.from_status,
-                "to_status": res.to_status,
-                "from_position": res.from_position,
-                "to_position": res.to_position,
-            },
+            "moved": moved,
             "item": _serialize_item(fresh),
         })
 
