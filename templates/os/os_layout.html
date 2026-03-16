@@ -9,7 +9,7 @@
   <link rel="icon" href="{% static 'os/img/favicon.ico' %}" sizes="any">
   <link rel="icon" type="image/svg+xml" href="{% static 'os/img/logo-heighttech-os.svg' %}">
   <link rel="apple-touch-icon" href="{% static 'os/img/logo-heighttech-os-256.png' %}">
-  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=1001" />
+  <link rel="stylesheet" href="{% static 'os/os.css' %}?v=1003" />
 
   {% block extra_head %}{% endblock %}
 </head>
@@ -84,7 +84,19 @@
           <span class="os-nav-ic">👥</span>
           <span>Team</span>
         </a>
+        <a href="/os/partners/" class="os-nav-item" id="nav-customers">
+          <span class="os-nav-ic">🧾</span>
+          <span>Khách hàng</span>
+        </a>
 
+        <a href="/os/founder/content-priority/" class="os-nav-item" id="nav-content-studio">
+          <span class="os-nav-ic">🎬</span>
+          <span>Content Studio</span>
+        </a>
+        <a href="/os/partners/new" class="os-nav-item" id="nav-customers-new">
+          <span class="os-nav-ic">➕</span>
+          <span>Khách hàng mới</span>
+        </a>
         <a href="/os/founder/content-priority/" class="os-nav-item" id="nav-ai">
           <span class="os-nav-ic">✦</span>
           <span>Founder AI</span>
@@ -146,7 +158,6 @@
             <button class="chip" data-scope="shop" type="button">Shop</button>
             <button class="chip" data-scope="project" type="button">Project</button>
           </div>
-
           <div class="userbox">
             <div class="user-avatar">
               {% if request.user.is_authenticated %}
@@ -266,7 +277,6 @@
 
   {% block drawers %}{% endblock %}
   {% block modals %}{% endblock %}
-  {% block floating_ui %}{% endblock %}
 
   <script>
     (function () {
@@ -446,6 +456,37 @@
     })();
   </script>
 
+  {% block floating_ui %}{% endblock %}
   {% block extra_js %}{% endblock %}
+
+  <script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const shell = document.getElementById("osShell");
+    const sidebar = document.getElementById("osSidebar");
+    const toggle = document.getElementById("osSidebarToggle");
+    const backdrop = document.getElementById("osSidebarBackdrop");
+
+    function openSidebar() {
+      shell?.classList.add("sidebar-open");
+    }
+
+    function closeSidebar() {
+      shell?.classList.remove("sidebar-open");
+    }
+
+    toggle?.addEventListener("click", function () {
+      shell?.classList.toggle("sidebar-open");
+    });
+
+    backdrop?.addEventListener("click", closeSidebar);
+
+    window.addEventListener("resize", function () {
+      if (window.innerWidth > 980) {
+        closeSidebar();
+      }
+    });
+  });
+  
+</script>
 </body>
 </html>

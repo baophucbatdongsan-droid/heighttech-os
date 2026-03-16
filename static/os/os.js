@@ -52,6 +52,12 @@
       doing: [],
       blocked: [],
       done: [],
+      boardVisible: {
+        todo: 8,
+        doing: 8,
+        blocked: 8,
+        done: 8,
+      },
       filters: {
         assignee: "",
         keyword: "",
@@ -240,25 +246,61 @@
     return baseTs + days * 24 * 60 * 60 * 1000;
   }
 
-  function normalizeScope() {
-    if (STATE.scope.scope === "company" && !STATE.scope.company_id) STATE.scope.scope = "tenant";
-    if (STATE.scope.scope === "shop" && !STATE.scope.shop_id) STATE.scope.scope = "tenant";
-    if (STATE.scope.scope === "project" && !STATE.scope.project_id) STATE.scope.scope = "tenant";
+    function persistScopeState() {
+    try {
+      localStorage.setItem("ht_scope", STATE.scope.scope || "tenant");
+      localStorage.setItem("ht_company_id", STATE.scope.company_id || "");
+      localStorage.setItem("ht_shop_id", STATE.scope.shop_id || "");
+      localStorage.setItem("ht_project_id", STATE.scope.project_id || "");
+    } catch (_) {}
   }
 
+  function normalizeScopeState() {
+    STATE.scope.company_id = String(STATE.scope.company_id || "").trim();
+    STATE.scope.shop_id = String(STATE.scope.shop_id || "").trim();
+    STATE.scope.project_id = String(STATE.scope.project_id || "").trim();
+    STATE.scope.scope = String(STATE.scope.scope || "tenant").trim() || "tenant";
+
+    if (STATE.scope.scope === "company" && !STATE.scope.company_id) {
+      STATE.scope.scope = "tenant";
+    }
+
+    if (STATE.scope.scope === "shop" && !STATE.scope.shop_id) {
+      STATE.scope.scope = STATE.scope.company_id ? "company" : "tenant";
+    }
+
+    if (STATE.scope.scope === "project" && !STATE.scope.project_id) {
+      STATE.scope.scope = STATE.scope.shop_id
+        ? "shop"
+        : (STATE.scope.company_id ? "company" : "tenant");
+    }
+  }
   function scopeParams() {
-    normalizeScope();
+    normalizeScopeState();
+    persistScopeState();
+
     const p = new URLSearchParams();
-    p.set("scope", STATE.scope.scope || "tenant");
+    const scope = STATE.scope.scope || "tenant";
+
+    p.set("scope", scope);
 
     const tenantId =
       String(window.HT_TENANT_ID || "").trim() ||
       String(localStorage.getItem("ht_tenant_id") || "").trim();
 
     if (tenantId) p.set("tenant_id", tenantId);
-    if (STATE.scope.company_id) p.set("company_id", STATE.scope.company_id);
-    if (STATE.scope.shop_id) p.set("shop_id", STATE.scope.shop_id);
-    if (STATE.scope.project_id) p.set("project_id", STATE.scope.project_id);
+
+    if (scope === "company" || scope === "shop" || scope === "project") {
+      if (STATE.scope.company_id) p.set("company_id", STATE.scope.company_id);
+    }
+
+    if (scope === "shop" || scope === "project") {
+      if (STATE.scope.shop_id) p.set("shop_id", STATE.scope.shop_id);
+    }
+
+    if (scope === "project") {
+      if (STATE.scope.project_id) p.set("project_id", STATE.scope.project_id);
+    }
 
     return p;
   }
@@ -272,12 +314,15 @@
   }
 
   function applyScopeUI() {
+    normalizeScopeState();
+    persistScopeState();
+
     qsa("#scopeChips .chip").forEach((b) => {
       b.classList.toggle("active", b.dataset.scope === STATE.scope.scope);
     });
 
-    const pill = $("scopePill");
-    if (pill) pill.textContent = STATE.scope.scope;
+    if ($("scopePill")) $("scopePill").textContent = STATE.scope.scope || "tenant";
+    if ($("scopePillInline")) $("scopePillInline").textContent = STATE.scope.scope || "tenant";
   }
 
   function setScope(scope, ids = {}) {
@@ -395,9 +440,24 @@
     const list = $("notifList");
     if (!list) return;
 
-    const unread = resp?.unread_count || 0;
-    if ($("notifBadge")) $("notifBadge").textContent = unread;
-    if ($("bbDot")) $("bbDot").classList.toggle("show", unread > 0);
+    const unread = Number(resp?.unread_count || 0);
+
+    const topBadge = $("notifTopBadge");
+    if (topBadge) {
+      topBadge.textContent = unread > 99 ? "99+" : String(unread);
+      topBadge.classList.toggle("is-hidden", unread <= 0);
+      topBadge.style.display = unread > 0 ? "inline-flex" : "none";
+    }
+
+    if ($("notifBadge")) {
+      $("notifBadge").textContent = String(unread);
+      $("notifBadge").style.display = unread > 0 ? "inline-flex" : "none";
+    }
+
+    if ($("bbDot")) {
+      $("bbDot").classList.toggle("show", unread > 0);
+      $("bbDot").style.display = unread > 0 ? "block" : "none";
+    }
 
     const items = resp?.items || [];
     if (!items.length) {
@@ -1736,25 +1796,218 @@
     const x = raw || {};
     return {
       ...x,
-      id: x.id,
-      title: x.title || `Task #${x.id || ""}`,
-      description: x.description || "",
-      status: String(x.status || "todo").toLowerCase(),
-      priority: Number(x.priority || 2),
-      company_id: x.company_id || "",
-      shop_id: x.shop_id || "",
-      project_id: x.project_id || "",
-      company_name: x.company_name || (x.company_id ? `#${x.company_id}` : "-"),
-      shop_name: x.shop_name || (x.shop_id ? `#${x.shop_id}` : "-"),
-      project_name: x.project_name || (x.project_id ? `#${x.project_id}` : "-"),
-      assignee_id: x.assignee_id || "",
-      assignee_name: x.assignee_name || "",
-      assignee_email: x.assignee_email || "",
-      due_at: x.due_at || null,
-      created_at: x.created_at || new Date().toISOString(),
-      updated_at: x.updated_at || new Date().toISOString(),
-      target_type: x.target_type || "",
+      id: x.id ?? x.task_id ?? x.work_id ?? x.pk,
+      title: x.title || x.name || x.ten || x.subject || `Task #${x.id || x.task_id || x.work_id || ""}`,
+      description: x.description || x.mo_ta || x.body || x.note || "",
+      status: normalizeTaskStatus(x.status || x.trang_thai || "todo"),
+      priority: Number(x.priority ?? x.muc_do ?? x.level ?? 2),
+      company_id: x.company_id ?? x.partner_id ?? x.client_id ?? "",
+      shop_id: x.shop_id ?? x.store_id ?? "",
+      project_id: x.project_id ?? x.campaign_id ?? "",
+      company_name: x.company_name || x.partner_name || x.client_name || (x.company_id ? `#${x.company_id}` : "-"),
+      shop_name: x.shop_name || x.store_name || (x.shop_id ? `#${x.shop_id}` : "-"),
+      project_name: x.project_name || x.campaign_name || (x.project_id ? `#${x.project_id}` : "-"),
+      assignee_id: x.assignee_id ?? x.owner_id ?? x.user_id ?? "",
+      assignee_name: x.assignee_name || x.owner_name || x.user_name || "",
+      assignee_email: x.assignee_email || x.owner_email || x.user_email || "",
+      due_at: x.due_at || x.deadline || x.end_at || null,
+      created_at: x.created_at || x.tao_luc || x.time_created || new Date().toISOString(),
+      updated_at: x.updated_at || x.cap_nhat_luc || x.time_updated || new Date().toISOString(),
+      target_type: x.target_type || x.entity_type || "",
     };
+  }
+
+  function normalizeTaskStatus(v) {
+    const s = String(v || "").trim().toLowerCase();
+
+    if (!s) return "todo";
+    if (["todo", "to_do", "new", "open", "pending"].includes(s)) return "todo";
+    if (["doing", "in_progress", "progress", "processing"].includes(s)) return "doing";
+    if (["blocked", "hold", "on_hold"].includes(s)) return "blocked";
+    if (["done", "completed", "complete", "closed", "resolved"].includes(s)) return "done";
+    if (["cancelled", "canceled"].includes(s)) return "cancelled";
+
+    return s;
+  }
+
+  function extractWorkItems(data) {
+    const map = new Map();
+
+    function pushMany(arr, forcedStatus = "") {
+      if (!Array.isArray(arr)) return;
+
+      arr.forEach((raw) => {
+        if (!raw || typeof raw !== "object") return;
+
+        const id =
+          raw.id ??
+          raw.task_id ??
+          raw.work_id ??
+          raw.pk ??
+          raw.uuid ??
+          null;
+
+        if (id === null || id === undefined || id === "") return;
+
+        const item = normalizeTaskItem({
+          ...raw,
+          id,
+          status: normalizeTaskStatus(forcedStatus || raw.status || raw.trang_thai || raw.state || raw.stage),
+          title:
+            raw.title ||
+            raw.name ||
+            raw.ten ||
+            raw.subject ||
+            raw.label ||
+            `Task #${id}`,
+          description:
+            raw.description ||
+            raw.mo_ta ||
+            raw.body ||
+            raw.note ||
+            raw.content ||
+            "",
+          priority:
+            raw.priority ??
+            raw.muc_do ??
+            raw.level ??
+            raw.rank ??
+            2,
+          assignee_id:
+            raw.assignee_id ??
+            raw.owner_id ??
+            raw.user_id ??
+            raw.assigned_to ??
+            "",
+          assignee_name:
+            raw.assignee_name ??
+            raw.owner_name ??
+            raw.user_name ??
+            raw.assigned_to_name ??
+            "",
+          assignee_email:
+            raw.assignee_email ??
+            raw.owner_email ??
+            raw.user_email ??
+            "",
+          company_id:
+            raw.company_id ??
+            raw.partner_id ??
+            raw.client_id ??
+            "",
+          company_name:
+            raw.company_name ??
+            raw.partner_name ??
+            raw.client_name ??
+            "",
+          shop_id:
+            raw.shop_id ??
+            raw.store_id ??
+            "",
+          shop_name:
+            raw.shop_name ??
+            raw.store_name ??
+            "",
+          project_id:
+            raw.project_id ??
+            raw.campaign_id ??
+            "",
+          project_name:
+            raw.project_name ??
+            raw.campaign_name ??
+            "",
+          due_at:
+            raw.due_at ??
+            raw.deadline ??
+            raw.end_at ??
+            raw.due_date ??
+            null,
+          created_at:
+            raw.created_at ??
+            raw.tao_luc ??
+            raw.time_created ??
+            new Date().toISOString(),
+          updated_at:
+            raw.updated_at ??
+            raw.cap_nhat_luc ??
+            raw.time_updated ??
+            new Date().toISOString(),
+          target_type:
+            raw.target_type ??
+            raw.entity_type ??
+            raw.kind ??
+            "",
+        });
+
+        map.set(String(item.id), item);
+      });
+    }
+
+    if (Array.isArray(data)) pushMany(data);
+    if (Array.isArray(data?.data)) pushMany(data.data);
+    if (Array.isArray(data?.payload)) pushMany(data.payload);
+
+    pushMany(data?.items);
+    pushMany(data?.results);
+    pushMany(data?.rows);
+    pushMany(data?.tasks);
+
+    pushMany(data?.data?.items);
+    pushMany(data?.data?.results);
+    pushMany(data?.data?.rows);
+    pushMany(data?.data?.tasks);
+
+    pushMany(data?.payload?.items);
+    pushMany(data?.payload?.results);
+    pushMany(data?.payload?.rows);
+    pushMany(data?.payload?.tasks);
+
+    pushMany(data?.work?.items);
+    pushMany(data?.work?.results);
+    pushMany(data?.work?.rows);
+    pushMany(data?.work?.tasks);
+
+    pushMany(data?.inbox?.items);
+    pushMany(data?.inbox?.results);
+    pushMany(data?.inbox?.rows);
+    pushMany(data?.inbox?.tasks);
+
+    pushMany(data?.open, "todo");
+    pushMany(data?.todo, "todo");
+    pushMany(data?.doing, "doing");
+    pushMany(data?.blocked, "blocked");
+    pushMany(data?.done, "done");
+    pushMany(data?.cancelled, "cancelled");
+
+    pushMany(data?.data?.open, "todo");
+    pushMany(data?.data?.todo, "todo");
+    pushMany(data?.data?.doing, "doing");
+    pushMany(data?.data?.blocked, "blocked");
+    pushMany(data?.data?.done, "done");
+    pushMany(data?.data?.cancelled, "cancelled");
+
+    pushMany(data?.payload?.open, "todo");
+    pushMany(data?.payload?.todo, "todo");
+    pushMany(data?.payload?.doing, "doing");
+    pushMany(data?.payload?.blocked, "blocked");
+    pushMany(data?.payload?.done, "done");
+    pushMany(data?.payload?.cancelled, "cancelled");
+
+    if (Array.isArray(data?.groups)) {
+      data.groups.forEach((g) => {
+        const gStatus = g?.status || g?.key || g?.name || "";
+        pushMany(g?.items || g?.tasks || g?.rows || g?.results, gStatus);
+      });
+    }
+
+    if (Array.isArray(data?.data?.groups)) {
+      data.data.groups.forEach((g) => {
+        const gStatus = g?.status || g?.key || g?.name || "";
+        pushMany(g?.items || g?.tasks || g?.rows || g?.results, gStatus);
+      });
+    }
+
+    return Array.from(map.values());
   }
 
   function patchTaskLocal(taskId, patch = {}) {
@@ -2262,10 +2515,52 @@
   }
 
   function renderWorkBoard() {
+    ensureWorkBoardShell();
     ensureWorkToolbar();
+
+    const board = $("workBoard");
+    const boardWrap = $("workBoardWrap");
+    const listWrap = $("workListWrap");
+
+    if (!board) return;
+
+    let sourceItems = [];
+    if (Array.isArray(STATE.work.all) && STATE.work.all.length) {
+      sourceItems = STATE.work.all;
+    } else if (Array.isArray(STATE.work.open) && STATE.work.open.length) {
+      sourceItems = STATE.work.open;
+    }
+
+    const items = filteredTasks(sourceItems);
+
+    console.log("HT BOARD sourceItems:", sourceItems.length);
+    console.log("HT BOARD filteredItems:", items.length);
+    console.log("HT BOARD groupBy:", STATE.ui.boardGroupBy);
+    console.log("HT BOARD workView:", STATE.ui.workView);
+
     updateWorkSummary();
 
-    const items = filteredTasks(STATE.work.all);
+    if (!items.length) {
+      board.innerHTML = `
+        <div class="kanban-col" style="grid-column:1 / -1;">
+          <div class="kanban-head">
+            <span>Kanban</span>
+            <span class="pill">0</span>
+          </div>
+          <div class="kanban-list">
+            <div class="kanban-empty">Chưa có task phù hợp bộ lọc.</div>
+          </div>
+        </div>
+      `;
+
+      if (STATE.ui.workView === "board") {
+        if (boardWrap) boardWrap.style.display = "block";
+        if (listWrap) listWrap.style.display = "none";
+      }
+
+      return;
+    }
+
     if (STATE.ui.boardGroupBy === "status") {
       renderBoardStatusMode(items);
       bindKanbanDnD(true);
@@ -2274,7 +2569,7 @@
       bindKanbanDnD(false);
     }
 
-    qsa(".kcard").forEach((card) => {
+    qsa(".kcard", board).forEach((card) => {
       card.addEventListener("dragstart", (e) => {
         const id = card.dataset.id;
         STATE.dragTaskId = String(id);
@@ -2288,12 +2583,75 @@
         STATE.dragTaskId = null;
       });
     });
+
+    if (STATE.ui.workView === "board") {
+      if (boardWrap) boardWrap.style.display = "block";
+      if (listWrap) listWrap.style.display = "none";
+    }
+  }
+
+  function ensureWorkBoardShell() {
+    const workPanel = $("workPanel");
+    if (!workPanel) return;
+
+    let boardWrap = $("workBoardWrap");
+    let board = $("workBoard");
+    let listWrap = $("workListWrap");
+    let list = $("workList");
+
+    const cardBody = qs(".card-b", workPanel) || workPanel;
+    if (!cardBody) return;
+
+    if (!listWrap) {
+      listWrap = document.createElement("div");
+      listWrap.id = "workListWrap";
+      cardBody.appendChild(listWrap);
+    }
+
+    if (!list) {
+      list = document.createElement("div");
+      list.id = "workList";
+      listWrap.appendChild(list);
+    }
+
+    if (!boardWrap) {
+      boardWrap = document.createElement("div");
+      boardWrap.id = "workBoardWrap";
+      boardWrap.style.display = "none";
+      cardBody.appendChild(boardWrap);
+    }
+
+    if (!board) {
+      board = document.createElement("div");
+      board.id = "workBoard";
+      boardWrap.appendChild(board);
+    }
   }
 
   function renderAllWork() {
+    const openItems = Array.isArray(STATE.work.open) ? STATE.work.open : [];
+    const allItems = Array.isArray(STATE.work.all) ? STATE.work.all : [];
+
     renderWorkMiniKpis();
-    renderWorkInbox({ items: STATE.work.open, open_count: STATE.work.open.length });
+
+    renderWorkInbox({
+      items: openItems.length ? openItems : allItems,
+      open_count: openItems.length,
+    });
+
     renderWorkBoard();
+
+    if (STATE.ui.workView === "board") {
+      const boardWrap = $("workBoardWrap");
+      const listWrap = $("workListWrap");
+      if (boardWrap) boardWrap.style.display = "block";
+      if (listWrap) listWrap.style.display = "none";
+    } else {
+      const boardWrap = $("workBoardWrap");
+      const listWrap = $("workListWrap");
+      if (boardWrap) boardWrap.style.display = "none";
+      if (listWrap) listWrap.style.display = "";
+    }
   }
 
   function switchWorkView(view) {
@@ -2307,8 +2665,19 @@
       btn.classList.toggle("active", btn.dataset.view === STATE.ui.workView);
     });
 
-    if (listWrap) listWrap.style.display = STATE.ui.workView === "list" ? "" : "none";
-    if (boardWrap) boardWrap.style.display = STATE.ui.workView === "board" ? "" : "none";
+    if (listWrap) {
+      listWrap.style.display = STATE.ui.workView === "list" ? "" : "none";
+    }
+
+    if (boardWrap) {
+      boardWrap.style.display = STATE.ui.workView === "board" ? "block" : "none";
+    }
+
+    if (STATE.ui.workView === "board") {
+      requestAnimationFrame(() => {
+        renderWorkBoard();
+      });
+    }
   }
 
   function calcDropPosition(col, draggedId) {
@@ -2452,17 +2821,19 @@
   }
 
   async function createTaskFromUI(payloadOverride = null) {
+
     const payload = payloadOverride ? { ...payloadOverride } : {};
     let created = null;
 
     if (!payloadOverride) {
       throw new Error("Thiếu payload tạo task");
-    } else {
-      created = await createTask(payload);
     }
+
+    created = await createTask(payload);
 
     const rawNewItem = created?.item || created?.data || created || null;
 
+    /* reset filter */
     STATE.work.filters.assignee = "";
     STATE.work.filters.keyword = "";
     STATE.work.filters.company = "";
@@ -2475,21 +2846,32 @@
     if ($("filterShopFinal")) $("filterShopFinal").value = "";
     if ($("filterStatusFinal")) $("filterStatusFinal").value = "";
 
+    /* ép board mode */
     STATE.ui.workView = "board";
     localStorage.setItem("ht_work_view", "board");
+
+    /* ép group by status */
     STATE.ui.boardGroupBy = "status";
     localStorage.setItem("ht_board_group_by", "status");
 
+    /* patch task vào state */
     if (rawNewItem && rawNewItem.id) {
-      patchTaskLocal(rawNewItem.id, normalizeTaskItem({
-        ...rawNewItem,
-        status: rawNewItem.status || "todo",
-      }));
+      patchTaskLocal(
+        rawNewItem.id,
+        normalizeTaskItem({
+          ...rawNewItem,
+          status: rawNewItem.status || "todo",
+        })
+      );
     }
 
+    /* switch view */
     switchWorkView("board");
+
+    /* render lại UI */
     renderAllWork();
 
+    /* refresh async */
     setTimeout(() => {
       refreshTimeline(true).catch(console.warn);
       refreshHome().catch(console.warn);
@@ -2603,23 +2985,57 @@
   async function refreshWorkData() {
     if (!CFG.workInbox) return;
 
-    const p = scopeParams();
+    ensureWorkBoardShell();
+
+    const p = new URLSearchParams();
+
+    const tenantId =
+      String(window.HT_TENANT_ID || "").trim() ||
+      String(localStorage.getItem("ht_tenant_id") || "").trim() ||
+      "1";
+
     p.set("page", "1");
     p.set("page_size", "200");
 
-    const data = await http(`${CFG.workInbox}?${p.toString()}`);
-    const items = Array.isArray(data?.items) ? data.items : [];
+    // WORK luôn ưu tiên tenant để không bị rỗng board do scope company/shop/project
+    p.set("scope", "tenant");
+    p.set("tenant_id", tenantId);
 
-    STATE.work.all = items.map(normalizeTaskItem);
-    STATE.work.open = STATE.work.all.filter((x) => !["done", "cancelled"].includes(String(x.status || "").toLowerCase()));
-    STATE.work.todo = STATE.work.all.filter((x) => String(x.status || "").toLowerCase() === "todo");
-    STATE.work.doing = STATE.work.all.filter((x) => String(x.status || "").toLowerCase() === "doing");
-    STATE.work.blocked = STATE.work.all.filter((x) => String(x.status || "").toLowerCase() === "blocked");
-    STATE.work.done = STATE.work.all.filter((x) => String(x.status || "").toLowerCase() === "done");
+    const url = `${CFG.workInbox}?${p.toString()}`;
+    console.log("HT WORK URL:", url);
+    console.log("HT WORK TENANT:", tenantId);
+
+    const data = await http(url);
+    const items = extractWorkItems(data);
+
+    console.log("HT WORK API:", data);
+    console.log("HT WORK ITEMS:", items);
+    console.log("HT WORK TOTAL:", data?.total);
+    console.log("HT WORK OPEN COUNT:", data?.open_count);
+
+    STATE.work.all = Array.isArray(items) ? items : [];
+
+    STATE.work.open = STATE.work.all.filter((x) => {
+      const s = normalizeTaskStatus(x.status);
+      return !["done", "cancelled"].includes(s);
+    });
+
+    STATE.work.todo = STATE.work.all.filter((x) => normalizeTaskStatus(x.status) === "todo");
+    STATE.work.doing = STATE.work.all.filter((x) => normalizeTaskStatus(x.status) === "doing");
+    STATE.work.blocked = STATE.work.all.filter((x) => normalizeTaskStatus(x.status) === "blocked");
+    STATE.work.done = STATE.work.all.filter((x) => normalizeTaskStatus(x.status) === "done");
 
     STATE.raw.work = data;
-    renderAllWork();
+
+    renderWorkMiniKpis();
+    renderWorkInbox({ items: STATE.work.open, open_count: STATE.work.open.length });
+    renderWorkBoard();
     renderRawJson();
+
+    requestAnimationFrame(() => {
+      switchWorkView(STATE.ui.workView || "board");
+      renderWorkBoard();
+    });
   }
 
   async function refreshControlCenter() {
@@ -2747,12 +3163,13 @@
 
     try {
       applyScopeUI();
+      ensureWorkBoardShell();
       ensureWorkToolbar();
 
-      await refreshControlCenter();
-      await refreshTimeline(true);
-      await refreshNotifications();
-      await refreshHome();
+      try { await refreshControlCenter(); } catch (e) { console.warn("refreshControlCenter lỗi:", e); }
+      try { await refreshTimeline(true); } catch (e) { console.warn("refreshTimeline lỗi:", e); }
+      try { await refreshNotifications(); } catch (e) { console.warn("refreshNotifications lỗi:", e); }
+      try { await refreshHome(); } catch (e) { console.warn("refreshHome lỗi:", e); }
 
       const shouldRefreshWork =
         force ||
@@ -2760,21 +3177,14 @@
         document.visibilityState === "visible";
 
       if (shouldRefreshWork) {
-        await refreshWorkData();
+        try {
+          await refreshWorkData();
+        } catch (e) {
+          console.warn("refreshWorkData lỗi:", e);
+        }
       }
 
       bindKanbanDnD(STATE.ui.boardGroupBy === "status");
-    } catch (e) {
-      console.error(e);
-      const box = $("strategyList");
-      if (box) {
-        box.innerHTML = `
-          <div class="item">
-            <div class="t">UI loaded</div>
-            <div class="d">Có lỗi khi gọi API: ${escapeHtml(e.message)}</div>
-          </div>
-        `;
-      }
     } finally {
       STATE.isRefreshing = false;
       setTimeout(() => {
@@ -2795,7 +3205,7 @@
     p.set("last_id", "0");
 
     const url = `${CFG.stream}?${p.toString()}`;
-    const rt = $("rtPill");
+    const rt = $("rtPill") || $("rtPillInline");
 
     try {
       STATE.es = new EventSource(url, { withCredentials: true });
@@ -2965,11 +3375,71 @@
     await refreshTaskComments(taskId);
     await refreshTimeline(true);
   }
+  
+  function isFloatingOpen(el) {
+    return !!el && el.getAttribute("aria-hidden") === "false";
+  }
+
+  function hasAnyFloatingUiOpen() {
+    return ["cmdModal", "helpModal", "createTaskModal", "taskDrawer"]
+      .map((id) => $(id))
+      .some(isFloatingOpen);
+  }
+
+  function syncBodyLock() {
+    const locked = hasAnyFloatingUiOpen();
+    document.body.style.overflow = locked ? "hidden" : "";
+    document.body.classList.toggle("modal-open", locked);
+  }
+
+  function hideModalEl(el) {
+    if (!el) return;
+    el.setAttribute("aria-hidden", "true");
+    el.classList.remove("open");
+    el.style.display = "none";
+    el.hidden = true;
+  }
+
+  function showModalEl(el) {
+    if (!el) return;
+    el.hidden = false;
+    el.style.display = "flex";
+    el.setAttribute("aria-hidden", "false");
+    el.classList.add("open");
+  }
+
+  function closeAllFloatingUi(exceptId = "") {
+    ["cmdModal", "helpModal", "createTaskModal"].forEach((id) => {
+      if (id === exceptId) return;
+      hideModalEl($(id));
+    });
+
+    const drawer = $("taskDrawer");
+    if (drawer && exceptId !== "taskDrawer") {
+      drawer.setAttribute("aria-hidden", "true");
+      drawer.classList.remove("open");
+      drawer.style.visibility = "hidden";
+      drawer.style.pointerEvents = "none";
+    }
+
+    const quickMenu = $("osQuickCreateMenu");
+    if (quickMenu && exceptId !== "osQuickCreateMenu") {
+      quickMenu.hidden = true;
+    }
+
+    syncBodyLock();
+  }
+
+  function hardCloseFloatingUi() {
+    closeAllFloatingUi("");
+  }
 
   function openTaskDrawer(task) {
     if (!task) return;
 
+    closeAllFloatingUi("taskDrawer");
     STATE.work.selectedTaskId = task.id;
+
     const drawer = $("taskDrawer");
     if (!drawer) return;
 
@@ -3013,18 +3483,21 @@
     renderTaskSummary(task);
     renderTaskActivity(task);
     refreshTaskComments(task.id).catch((e) => console.warn("load comments lỗi:", e));
-
     drawer.setAttribute("aria-hidden", "false");
-    document.body.style.overflow = "hidden";
-    document.body.classList.add("modal-open");
+    drawer.classList.add("open");
+    drawer.style.visibility = "visible";
+    drawer.style.pointerEvents = "auto";
+    syncBodyLock();
   }
 
   function closeTaskDrawer() {
     const drawer = $("taskDrawer");
     if (!drawer) return;
     drawer.setAttribute("aria-hidden", "true");
-    document.body.style.overflow = "";
-    document.body.classList.remove("modal-open");
+    drawer.classList.remove("open");
+    drawer.style.visibility = "hidden";
+    drawer.style.pointerEvents = "none";
+    syncBodyLock();
   }
 
   async function saveTaskDrawer() {
@@ -3312,6 +3785,7 @@
     if (!m) return;
 
     CREATE_TASK_MODAL_LOCK = true;
+    closeAllFloatingUi("createTaskModal");
 
     renderCreateTaskShopOptions();
     if ($("createTaskProjectId")) $("createTaskProjectId").value = STATE.scope.project_id || "";
@@ -3320,13 +3794,8 @@
     if ($("createTaskOk")) $("createTaskOk").textContent = "";
     hydrateCreateTaskContextRich();
 
-    m.setAttribute("aria-hidden", "false");
-    m.classList.add("open");
-    m.style.display = "flex";
-    m.hidden = false;
-
-    document.body.style.overflow = "hidden";
-    document.body.classList.add("modal-open");
+    showModalEl(m);
+    syncBodyLock();
 
     setTimeout(() => {
       CREATE_TASK_MODAL_LOCK = false;
@@ -3344,13 +3813,8 @@
     const m = $("createTaskModal");
     if (!m) return;
 
-    m.setAttribute("aria-hidden", "true");
-    m.classList.remove("open");
-    m.style.display = "none";
-    m.hidden = true;
-
-    document.body.style.overflow = "";
-    document.body.classList.remove("modal-open");
+    hideModalEl(m);
+    syncBodyLock();
   }
 
   function resetCreateTaskModal() {
@@ -3446,17 +3910,18 @@
   function openModal(id) {
     const m = $(id);
     if (!m) return;
-    m.setAttribute("aria-hidden", "false");
-    document.body.style.overflow = "hidden";
-    document.body.classList.add("modal-open");
+
+    closeAllFloatingUi(id);
+    showModalEl(m);
+    syncBodyLock();
   }
 
   function closeModal(id) {
     const m = $(id);
     if (!m) return;
-    m.setAttribute("aria-hidden", "true");
-    document.body.style.overflow = "";
-    document.body.classList.remove("modal-open");
+
+    hideModalEl(m);
+    syncBodyLock();
   }
 
   function setCmdHints() {
@@ -3675,8 +4140,7 @@
 
     qsa("[data-close='1']").forEach((x) => {
       x.addEventListener("click", () => {
-        closeModal("cmdModal");
-        closeModal("helpModal");
+        hardCloseFloatingUi();
       });
     });
 
@@ -4016,10 +4480,7 @@
       }
 
       if (e.key === "Escape") {
-        closeTaskDrawer();
-        closeModal("cmdModal");
-        closeModal("helpModal");
-        closeCreateTaskModal(e);
+        hardCloseFloatingUi();
       }
 
       if (e.target?.classList?.contains("kb-col-create-title") && e.key === "Enter") {
@@ -4126,54 +4587,61 @@
   }
 
   
-  async function boot() {
+    async function boot() {
     ensureCreateTaskModalAtBody();
     if (typeof ensureStyles === "function") ensureStyles();
+
+    normalizeScopeState();
+    persistScopeState();
+
     setTheme(STATE.ui.theme);
+    hardCloseFloatingUi();
     applyScopeUI();
+    ensureWorkBoardShell();
     ensureWorkToolbar();
     ensureOSQuickLinks();
     bindEvents();
-    bootOsShellUi();
-    switchWorkView(STATE.ui.workView);
+    ensureWorkBoardShell();
+    STATE.ui.workView = localStorage.getItem("ht_work_view") || "board";
+    switchWorkView(STATE.ui.workView || "board");
 
     const currentTenantId = String(window.HT_TENANT_ID || "").trim();
     if (currentTenantId) {
       localStorage.setItem("ht_tenant_id", currentTenantId);
     }
 
-    if (!localStorage.getItem("ht_board_group_by")) {
-      STATE.ui.boardGroupBy = "status";
-      localStorage.setItem("ht_board_group_by", "status");
-    } else {
-      STATE.ui.boardGroupBy = localStorage.getItem("ht_board_group_by") || "status";
-    }
+    STATE.ui.boardGroupBy = localStorage.getItem("ht_board_group_by") || "status";
+    localStorage.setItem("ht_board_group_by", STATE.ui.boardGroupBy);
 
-    const qp = getCreateTaskPrefill();
+const qp = getCreateTaskPrefill();
 
-    if (qp.company_id) {
-      STATE.scope.company_id = qp.company_id;
-      localStorage.setItem("ht_company_id", STATE.scope.company_id);
-      STATE.scope.scope = "company";
-      localStorage.setItem("ht_scope", STATE.scope.scope);
-    }
+if (qp.company_id) {
+  STATE.scope.company_id = qp.company_id;
+}
 
-    if (qp.shop_id) {
-      STATE.scope.shop_id = qp.shop_id;
-      localStorage.setItem("ht_shop_id", STATE.scope.shop_id);
-      STATE.scope.scope = "shop";
-      localStorage.setItem("ht_scope", STATE.scope.scope);
-    }
+if (qp.shop_id) {
+  STATE.scope.shop_id = qp.shop_id;
+}
 
-    if (qp.project_id) {
-      STATE.scope.project_id = qp.project_id;
-      localStorage.setItem("ht_project_id", STATE.scope.project_id);
-      STATE.scope.scope = "project";
-      localStorage.setItem("ht_scope", STATE.scope.scope);
-    }
+if (qp.project_id) {
+  STATE.scope.project_id = qp.project_id;
+}
+
+// Home có thể giữ scope riêng, nhưng Work mặc định nên xem tenant để không rỗng board
+STATE.scope.scope = localStorage.getItem("ht_scope") || "tenant";
+if (!STATE.scope.scope) STATE.scope.scope = "tenant";
+
+    applyScopeUI();
+    ensureWorkBoardShell();
+    ensureWorkToolbar();
+    ensureOSQuickLinks();
 
     STATE.work.filters.time_scope = "all";
     syncTimeScopeUI();
+
+    if (typeof bootOsShellUi === "function") {
+      bootOsShellUi();
+    }
 
     await safeRefreshAll(true);
     syncTimeScopeUI();
@@ -4184,6 +4652,7 @@
     if ($("filterStatusFinal")) {
       $("filterStatusFinal").value = STATE.work.filters.status || "";
     }
+
     if (qp.open) {
       switchWorkView("board");
       openCreateTaskModal();
@@ -4228,7 +4697,7 @@
 
     setTimeout(() => {
       restartSSE();
-    }, 1500);
+    }, 1200);
   }
   function ensureStyles() {
     if (document.getElementById("htFinalStylePatch")) return;
@@ -4346,7 +4815,9 @@
         margin-top:10px;
         flex-wrap:wrap;
       }
-
+      .ht-kanban-force-hidden{
+        display:none !important;
+      }
       @media (max-width: 1200px){
         #workBoard{
           grid-template-columns:repeat(2, minmax(280px, 1fr)) !important;
@@ -4387,7 +4858,7 @@
   } else {
     console.error("HT OS boot missing");
   }
-  /* =========================================================
+   /* =========================================================
     HEIGHTTECH OS — SIDEBAR / MOBILE SHELL PATCH
   ========================================================= */
 
@@ -4478,6 +4949,9 @@
       { match: (p) => p.startsWith("/os/shops"), key: "nav-shops" },
       { match: (p) => p.startsWith("/os/contracts"), key: "nav-contracts" },
       { match: (p) => p.startsWith("/os/team"), key: "nav-team" },
+      { match: (p) => p.startsWith("/os/partners/new"), key: "nav-customer-new" },
+      { match: (p) => p.startsWith("/os/partners"), key: "nav-customers" },
+      { match: (p) => p.startsWith("/os/founder/content-priority"), key: "nav-content-studio" },
       { match: (p) => p.startsWith("/os/founder"), key: "nav-ai" },
     ];
 
@@ -4497,5 +4971,255 @@
     ensureOsShellBehavior();
     syncSidebarActiveNav();
   }
-  bootOsShellUi();
+
+  /* =========================================================
+    HT OS FINAL STABILIZER
+  ========================================================= */
+  (function () {
+    "use strict";
+
+    if (window.__HT_OS_STABILIZER_V1__) return;
+    window.__HT_OS_STABILIZER_V1__ = true;
+
+    const OVERLAY_IDS = ["cmdModal", "helpModal", "createTaskModal", "taskDrawer"];
+
+    function isDrawerOpen() {
+      const drawer = $("taskDrawer");
+      if (!drawer) return false;
+      return drawer.getAttribute("aria-hidden") === "false";
+    }
+
+    function isModalOpen(id) {
+      const el = $(id);
+      if (!el) return false;
+      return el.getAttribute("aria-hidden") === "false" && el.hidden !== true;
+    }
+
+    function syncGlobalBodyLock() {
+      const anyOpen =
+        isDrawerOpen() ||
+        isModalOpen("cmdModal") ||
+        isModalOpen("helpModal") ||
+        isModalOpen("createTaskModal");
+
+      document.body.classList.toggle("modal-open", anyOpen);
+      document.body.style.overflow = anyOpen ? "hidden" : "";
+    }
+
+    function ensureCreateModalAtBodySafe() {
+      const modal = $("createTaskModal");
+      if (modal && modal.parentNode !== document.body) {
+        document.body.appendChild(modal);
+      }
+    }
+
+    function hardHideDrawer() {
+      const drawer = $("taskDrawer");
+      if (!drawer) return;
+      drawer.setAttribute("aria-hidden", "true");
+      drawer.classList.remove("open");
+      drawer.style.visibility = "hidden";
+      drawer.style.pointerEvents = "none";
+    }
+
+    function hardHideModal(id) {
+      const el = $(id);
+      if (!el) return;
+      el.setAttribute("aria-hidden", "true");
+      el.hidden = true;
+      el.style.display = "none";
+      el.classList.remove("open");
+    }
+
+    function hardShowCreateModal() {
+      const modal = $("createTaskModal");
+      if (!modal) return;
+
+      ensureCreateModalAtBodySafe();
+      hardHideModal("cmdModal");
+      hardHideModal("helpModal");
+      hardHideDrawer();
+
+      modal.hidden = false;
+      modal.setAttribute("aria-hidden", "false");
+      modal.style.display = "flex";
+      modal.classList.add("open");
+
+      const card = modal.querySelector(".modal-card");
+      if (card) {
+        card.style.display = "flex";
+        card.style.flexDirection = "column";
+      }
+
+      syncGlobalBodyLock();
+    }
+
+    function hardHideCreateModal() {
+      hardHideModal("createTaskModal");
+      syncGlobalBodyLock();
+    }
+
+    function syncNotifBadgeOnly() {
+      const notifBadge = $("notifBadge");
+      const bbDot = $("bbDot");
+      const topBadge = $("notifTopBadge") || document.querySelector(".notif-badge");
+
+      let n = 0;
+      if (notifBadge) {
+        n = Number(String(notifBadge.textContent || "0").replace(/\D/g, "") || 0);
+      }
+
+      if (bbDot) {
+        bbDot.classList.toggle("show", n > 0);
+        bbDot.style.display = n > 0 ? "block" : "none";
+      }
+
+      if (notifBadge) {
+        notifBadge.style.display = n > 0 ? "inline-flex" : "none";
+        notifBadge.classList.toggle("is-hidden", n <= 0);
+      }
+
+      if (topBadge) {
+        topBadge.textContent = n > 99 ? "99+" : String(n);
+        topBadge.style.display = n > 0 ? "inline-flex" : "none";
+        topBadge.classList.toggle("is-hidden", n <= 0);
+      }
+    }
+
+    function applyKanbanDesktopLayout() {
+      const boardWrap = $("workBoardWrap");
+      const board = $("workBoard");
+      if (!boardWrap || !board) return;
+
+      const w = window.innerWidth;
+
+      if (w >= 1101) {
+        boardWrap.style.overflowX = "visible";
+        boardWrap.style.overflowY = "hidden";
+        board.style.minWidth = "0";
+        board.style.width = "100%";
+        board.style.display = "grid";
+        board.style.gridTemplateColumns = "repeat(4, minmax(0, 1fr))";
+        return;
+      }
+
+      if (w >= 769) {
+        boardWrap.style.overflowX = "auto";
+        board.style.display = "grid";
+        board.style.gridTemplateColumns = "repeat(2, minmax(280px, 1fr))";
+        board.style.minWidth = "760px";
+        return;
+      }
+
+      boardWrap.style.overflowX = "hidden";
+      board.style.display = "grid";
+      board.style.gridTemplateColumns = "1fr";
+      board.style.minWidth = "100%";
+    }
+
+    let rafToken = 0;
+    function scheduleStableSync() {
+      if (rafToken) return;
+      rafToken = requestAnimationFrame(() => {
+        rafToken = 0;
+        ensureCreateModalAtBodySafe();
+        syncGlobalBodyLock();
+        syncNotifBadgeOnly();
+        applyKanbanDesktopLayout();
+      });
+    }
+
+    function bindStablePatchEvents() {
+      document.addEventListener(
+        "click",
+        function (e) {
+          const t = e.target;
+
+          if (t.closest("#btnNewTask")) {
+            setTimeout(() => {
+              hardShowCreateModal();
+              scheduleStableSync();
+            }, 20);
+            return;
+          }
+
+          if (t.closest("#closeCreateTaskBtn") || t.closest("#createTaskBackdrop")) {
+            setTimeout(() => {
+              hardHideCreateModal();
+              scheduleStableSync();
+            }, 10);
+            return;
+          }
+
+          if (t.closest("#btnCloseTaskDrawer") || t.closest("[data-drawer-close='1']")) {
+            setTimeout(() => {
+              hardHideDrawer();
+              scheduleStableSync();
+            }, 10);
+            return;
+          }
+
+          if (t.closest("[data-close='1']")) {
+            setTimeout(() => {
+              OVERLAY_IDS.forEach((id) => {
+                if (id === "taskDrawer") hardHideDrawer();
+                else hardHideModal(id);
+              });
+              scheduleStableSync();
+            }, 10);
+            return;
+          }
+
+          if (t.closest("[data-open-task]")) {
+            setTimeout(scheduleStableSync, 20);
+            return;
+          }
+        },
+        true
+      );
+
+      document.addEventListener(
+        "keydown",
+        function (e) {
+          if (e.key === "Escape") {
+            setTimeout(() => {
+              OVERLAY_IDS.forEach((id) => {
+                if (id === "taskDrawer") hardHideDrawer();
+                else hardHideModal(id);
+              });
+              scheduleStableSync();
+            }, 10);
+          }
+        },
+        true
+      );
+
+      window.addEventListener("resize", scheduleStableSync, { passive: true });
+      window.addEventListener("load", scheduleStableSync);
+
+      const mo = new MutationObserver(scheduleStableSync);
+      mo.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["style", "class", "aria-hidden", "hidden"],
+      });
+    }
+
+    function bootStabilizer() {
+      ensureCreateModalAtBodySafe();
+      bindStablePatchEvents();
+
+      scheduleStableSync();
+      setTimeout(scheduleStableSync, 200);
+      setTimeout(scheduleStableSync, 800);
+      setTimeout(scheduleStableSync, 1500);
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", bootStabilizer, { once: true });
+    } else {
+      bootStabilizer();
+    }
+  })();
 })();

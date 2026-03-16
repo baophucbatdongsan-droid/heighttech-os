@@ -1,3 +1,5 @@
+#apps/os/shop_risk_radar.py
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -35,9 +37,11 @@ def build_shop_risk_radar(
 ) -> ShopRiskRadarResult:
     now = timezone.now()
 
-    shops = Shop.objects_all.filter(tenant_id=int(tenant_id))
+    shops = Shop.objects_all.select_related("brand").filter(
+        tenant_id=int(tenant_id)
+    )
     if company_id:
-        shops = shops.filter(company_id=int(company_id))
+        shops = shops.filter(brand__company_id=int(company_id))
     if shop_id:
         shops = shops.filter(id=int(shop_id))
 
@@ -114,7 +118,7 @@ def build_shop_risk_radar(
             {
                 "shop_id": sid,
                 "shop_name": getattr(shop, "name", "") or f"Shop #{sid}",
-                "company_id": getattr(shop, "company_id", None),
+                "company_id": getattr(getattr(shop, "brand", None), "company_id", None),
                 "score": score,
                 "level": level,
                 "payment_overdue": payment_overdue,

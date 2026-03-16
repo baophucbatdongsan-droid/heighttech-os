@@ -6,21 +6,26 @@
 
 {% block extra_head %}
   <script>
-    window.HT_TENANT_ID = "{{ current_tenant_id|default:''|escapejs }}".trim();
-    window.HT_OS = {
-      home: "/api/v1/os/home/",
-      controlCenter: "/api/v1/os/control-center/",
-      timeline: "/api/v1/os/timeline/",
-      notifications: "/api/v1/os/notifications/",
-      stream: "/api/v1/os/stream/",
-      workInbox: "/api/v1/os/work/inbox/",
-      workCreate: "/api/v1/os/work/create/",
-      workAssignBase: "/api/v1/os/work/",
-      workUpdateBase: "/api/v1/os/work/",
-      workAssignBy: "/api/v1/os/work/assign-by/",
-      workCommentsBase: "/api/v1/os/work/"
-    };
-  </script>
+  window.HT_TENANT_ID =
+    "{{ current_tenant_id|default:''|escapejs }}".trim() ||
+    "{{ tenant_id|default:''|escapejs }}".trim() ||
+    localStorage.getItem("ht_tenant_id") ||
+    "1";
+
+  window.HT_OS = {
+    home: "/api/v1/os/home/",
+    controlCenter: "/api/v1/os/control-center/",
+    timeline: "/api/v1/os/timeline/",
+    notifications: "/api/v1/os/notifications/",
+    stream: "/api/v1/os/stream/",
+    workInbox: "/api/v1/os/work/inbox/",
+    workCreate: "/api/v1/os/work/create/",
+    workAssignBase: "/api/v1/os/work/",
+    workUpdateBase: "/api/v1/os/work/",
+    workAssignBy: "/api/v1/os/work/assign-by/",
+    workCommentsBase: "/api/v1/os/work/"
+  };
+</script>
 {% endblock %}
 
 {% block main_content %}
@@ -168,9 +173,12 @@
   </section>
 
   <section class="grid">
-    <div class="card span2">
+    <div class="card span2 os-feed-card os-feed-card--timeline">
       <div class="card-h">
-        <div class="card-title">Dòng thời gian hệ thống</div>
+        <div>
+          <div class="card-title">Dòng thời gian hệ thống</div>
+          <div class="card-sub">Payment, milestone, booking, task và AI signal theo thời gian thực</div>
+        </div>
         <div class="card-meta">
           <span class="pill" id="rtPillInline">realtime</span>
           <span class="pill" id="scopePillInline">tenant</span>
@@ -185,9 +193,12 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card os-feed-card os-feed-card--alert">
       <div class="card-h">
-        <div class="card-title">Thông báo</div>
+        <div>
+          <div class="card-title">Thông báo</div>
+          <div class="card-sub">Alert mới, cảnh báo AI và việc cần xử lý ngay</div>
+        </div>
         <div class="card-meta">
           <span class="badge" id="notifBadge">0</span>
         </div>
@@ -198,11 +209,11 @@
       </div>
     </div>
 
-    <div class="panel card span3" id="workPanel">
+    <div class="panel card span3 os-work-card" id="workPanel">
       <div class="card-h">
         <div>
           <div class="card-title">Khu làm việc</div>
-          <div class="brand-sub">Inbox • Kanban • giao việc • chuyển bước • comment • AI task</div>
+          <div class="card-sub">Inbox • Kanban • giao việc • comment • chuyển bước • daily execution</div>
         </div>
 
         <div class="panel-actions">
@@ -230,15 +241,18 @@
           <div id="workList" class="list"></div>
         </div>
 
-        <div id="workBoardWrap" style="display:none;">
+        <div id="workBoardWrap">
           <div class="kanban-board" id="workBoard"></div>
         </div>
       </div>
     </div>
 
-    <div class="card span3">
+    <div class="card span3 os-data-card">
       <div class="card-h">
-        <div class="card-title">Giám sát sức khỏe shop</div>
+        <div>
+          <div class="card-title">Giám sát sức khỏe shop</div>
+          <div class="card-sub">Xếp hạng rủi ro, backlog, milestone trễ và tín hiệu vận hành</div>
+        </div>
         <div class="card-meta">
           <span class="pill">Top risk</span>
         </div>
@@ -249,9 +263,12 @@
       </div>
     </div>
 
-    <div class="card span3">
+    <div class="card span3 os-data-card">
       <div class="card-h">
-        <div class="card-title">Bảng chiến lược AI</div>
+        <div>
+          <div class="card-title">Bảng chiến lược AI</div>
+          <div class="card-sub">Khuyến nghị hành động, ưu tiên xử lý và góc nhìn điều hành</div>
+        </div>
         <div class="card-meta">
           <span class="pill">deterministic</span>
         </div>
@@ -262,9 +279,12 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card os-kernel-card">
       <div class="card-h">
-        <div class="card-title">Trung tâm hệ thống</div>
+        <div>
+          <div class="card-title">Trung tâm hệ thống</div>
+          <div class="card-sub">Tóm tắt scope, tenant, quyết định, risk và trạng thái runtime</div>
+        </div>
         <div class="card-meta">
           <button class="btn mini" id="btnRefreshKernel" type="button">Làm mới</button>
         </div>
@@ -275,9 +295,12 @@
       </div>
     </div>
 
-    <div class="card span2">
+    <div class="card span2 os-raw-card">
       <div class="card-h">
-        <div class="card-title">Trình xem API thô</div>
+        <div>
+          <div class="card-title">Trình xem API thô</div>
+          <div class="card-sub">Kiểm tra payload thực tế từ các API của OS</div>
+        </div>
         <div class="card-meta">
           <button class="btn mini" id="btnRawToggle" type="button">Bật / tắt</button>
         </div>
@@ -598,5 +621,5 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script src="{% static 'os/os.js' %}?v=303"></script>
+  <script src="{% static 'os/os.js' %}?v=503"></script>
 {% endblock %}

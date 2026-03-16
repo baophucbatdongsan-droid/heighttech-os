@@ -2199,7 +2199,7 @@ html[data-theme="light"] .os-sidebar{
    NOTIFICATION / ALERT DOT
 ========================= */
 #notifBadge{
-  display:none;
+  display:inline-flex;
   align-items:center;
   justify-content:center;
   min-width:24px;
@@ -2212,6 +2212,10 @@ html[data-theme="light"] .os-sidebar{
   font-size:11px;
   font-weight:900;
   box-shadow:0 10px 22px rgba(225,29,72,.28);
+}
+
+#notifBadge.is-hidden{
+  display:none !important;
 }
 
 #bbDot{

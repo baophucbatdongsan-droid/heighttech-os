@@ -272,12 +272,45 @@
     if (STATE.scope.scope === "shop" && !STATE.scope.shop_id) STATE.scope.scope = "tenant";
     if (STATE.scope.scope === "project" && !STATE.scope.project_id) STATE.scope.scope = "tenant";
   }
+  
+  function persistScopeState() {
+    localStorage.setItem("ht_scope", STATE.scope.scope || "tenant");
+    localStorage.setItem("ht_company_id", STATE.scope.company_id || "");
+    localStorage.setItem("ht_shop_id", STATE.scope.shop_id || "");
+    localStorage.setItem("ht_project_id", STATE.scope.project_id || "");
+  }
+
+  function normalizeScopeState() {
+    STATE.scope.company_id = String(STATE.scope.company_id || "").trim();
+    STATE.scope.shop_id = String(STATE.scope.shop_id || "").trim();
+    STATE.scope.project_id = String(STATE.scope.project_id || "").trim();
+
+    if (STATE.scope.scope === "company" && !STATE.scope.company_id) {
+      STATE.scope.scope = "tenant";
+    }
+
+    if (STATE.scope.scope === "shop") {
+      if (!STATE.scope.shop_id) {
+        STATE.scope.scope = STATE.scope.company_id ? "company" : "tenant";
+      }
+    }
+
+    if (STATE.scope.scope === "project") {
+      if (!STATE.scope.project_id) {
+        STATE.scope.scope = STATE.scope.shop_id
+          ? "shop"
+          : (STATE.scope.company_id ? "company" : "tenant");
+      }
+    }
+  }
 
   function scopeParams() {
-    normalizeScope();
-    const p = new URLSearchParams();
+    normalizeScopeState();
+    persistScopeState();
 
+    const p = new URLSearchParams();
     const scope = STATE.scope.scope || "tenant";
+
     p.set("scope", scope);
 
     const tenantId =
@@ -286,9 +319,17 @@
 
     if (tenantId) p.set("tenant_id", tenantId);
 
-    if (scope === "company" && STATE.scope.company_id) p.set("company_id", STATE.scope.company_id);
-    if (scope === "shop" && STATE.scope.shop_id) p.set("shop_id", STATE.scope.shop_id);
-    if (scope === "project" && STATE.scope.project_id) p.set("project_id", STATE.scope.project_id);
+    if (scope === "company" || scope === "shop" || scope === "project") {
+      if (STATE.scope.company_id) p.set("company_id", STATE.scope.company_id);
+    }
+
+    if (scope === "shop" || scope === "project") {
+      if (STATE.scope.shop_id) p.set("shop_id", STATE.scope.shop_id);
+    }
+
+    if (scope === "project") {
+      if (STATE.scope.project_id) p.set("project_id", STATE.scope.project_id);
+    }
 
     return p;
   }
@@ -307,10 +348,14 @@
   }
 
   function applyScopeUI() {
+    normalizeScopeState();
+    persistScopeState();
+
     qsa("#scopeChips .chip").forEach((b) => {
       b.classList.toggle("active", b.dataset.scope === STATE.scope.scope);
     });
-    if ($("scopePill")) $("scopePill").textContent = STATE.scope.scope;
+
+    if ($("scopePill")) $("scopePill").textContent = STATE.scope.scope || "tenant";
   }
 
   function setScope(scope, ids = {}) {
@@ -477,6 +522,13 @@
     if (!list) return;
 
     const unread = Number(resp?.unread_count || 0);
+
+    const topBadge = $("notifTopBadge");
+    if (topBadge) {
+      topBadge.textContent = unread > 99 ? "99+" : String(unread);
+      topBadge.classList.toggle("is-hidden", unread <= 0);
+      topBadge.style.display = unread > 0 ? "inline-flex" : "none";
+    }
 
     const badge = $("notifBadge");
     if (badge) {
@@ -1739,10 +1791,29 @@
       ensureWorkToolbar();
       ensureNotificationUi();
 
-      await refreshControlCenter();
-      await refreshTimeline(true);
-      await refreshNotifications();
-      await refreshHome();
+      try {
+        await refreshControlCenter();
+      } catch (e) {
+        console.warn("refreshControlCenter lỗi:", e);
+      }
+
+      try {
+        await refreshTimeline(true);
+      } catch (e) {
+        console.warn("refreshTimeline lỗi:", e);
+      }
+
+      try {
+        await refreshNotifications();
+      } catch (e) {
+        console.warn("refreshNotifications lỗi:", e);
+      }
+
+      try {
+        await refreshHome();
+      } catch (e) {
+        console.warn("refreshHome lỗi:", e);
+      }
 
       const shouldRefreshWork =
         force ||
@@ -1750,21 +1821,15 @@
         document.visibilityState === "visible";
 
       if (shouldRefreshWork) {
-        await refreshWorkData();
+        try {
+          await refreshWorkData();
+        } catch (e) {
+          console.error("refreshWorkData lỗi:", e);
+          showToast("Tải work board lỗi: " + (e?.message || e), "error", 3200);
+        }
       }
 
       bindKanbanDnD(STATE.ui.boardGroupBy === "status");
-    } catch (e) {
-      console.error(e);
-      const box = $("strategyList");
-      if (box) {
-        box.innerHTML = `
-          <div class="item">
-            <div class="t">UI loaded</div>
-            <div class="d">Có lỗi khi gọi API: ${escapeHtml(e.message)}</div>
-          </div>
-        `;
-      }
     } finally {
       STATE.isRefreshing = false;
       setTimeout(() => {
@@ -3142,6 +3207,8 @@
     ensureCreateTaskModalAtBody();
     ensureNotificationUi();
     setTheme(STATE.ui.theme);
+    normalizeScopeState();
+    persistScopeState();
     applyScopeUI();
     updateHeroScope();
     ensureWorkToolbar();
